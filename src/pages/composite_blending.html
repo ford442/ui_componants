@@ -32,13 +32,8 @@
         #webgl-canvas { z-index: 2; pointer-events: none; }
         
         /* Layer order variations */
-        .lab-container.order-gpu-gl #webgpu-canvas { z-index: 1; }
-        .lab-container.order-gpu-gl #webgl-canvas { z-index: 2; }
         .lab-container.order-gl-gpu #webgpu-canvas { z-index: 2; }
         .lab-container.order-gl-gpu #webgl-canvas { z-index: 1; }
-        .lab-container.order-three-layer #backing-canvas { z-index: 0; }
-        .lab-container.order-three-layer #webgpu-canvas { z-index: 1; }
-        .lab-container.order-three-layer #webgl-canvas { z-index: 2; }
 
         .lab-controls {
             position: absolute;

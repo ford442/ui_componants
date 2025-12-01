@@ -56,10 +56,10 @@
         const needsBacking = ['overlay', 'soft-light', 'color-dodge', 'color-burn'].includes(blendMode);
         
         if (needsBacking && glContextState.backingStyle === 'none') {
-            // Automatically suggest mid-gray backing
+            // Automatically set mid-gray backing and trigger UI update
+            glContextState.backingStyle = 'mid-gray';
             if (backingStyleSelect) {
                 backingStyleSelect.value = 'mid-gray';
-                glContextState.backingStyle = 'mid-gray';
             }
         }
         updateBackingVisibility();
@@ -148,12 +148,17 @@
                     ctx.fillRect(0, 0, w, h);
                 } else if (style === 'noise') {
                     // Animated noise pattern
+                    // Noise parameters: base gray level and variation range
+                    const NOISE_BASE_GRAY = 98;  // Base gray level (out of 255)
+                    const NOISE_VARIATION = 60;   // Amount of variation around base
+                    const NOISE_SPEED = 0.01;     // Animation speed factor
+                    
                     const imageData = ctx.createImageData(w, h);
                     const data = imageData.data;
                     const seed = t * 1000;
                     
                     for (let i = 0; i < data.length; i += 4) {
-                        const noise = (Math.sin(seed + i * 0.01) * 0.5 + 0.5) * 60 + 98;
+                        const noise = (Math.sin(seed + i * NOISE_SPEED) * 0.5 + 0.5) * NOISE_VARIATION + NOISE_BASE_GRAY;
                         data[i] = noise;     // R
                         data[i+1] = noise;   // G
                         data[i+2] = noise;   // B
