@@ -1,0 +1,457 @@
+/* Buttons Page Styles */
+
+.layer-info-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.layer-info-banner .info-text {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-left: auto;
+}
+
+/* Button Showcase */
+.button-showcase {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    min-height: 100px;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Button Matrix Section */
+.button-grid-section {
+    margin: 3rem 0;
+    padding: 2rem;
+    background: var(--bg-card);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.button-grid-section h2 {
+    color: var(--accent-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.button-grid-section > .description {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.button-matrix {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    max-width: 500px;
+    margin: 0 auto 1.5rem;
+    padding: 1.5rem;
+    background: linear-gradient(145deg, #1a1a2a, #0a0a15);
+    border-radius: 16px;
+    box-shadow: 
+        inset 0 2px 10px rgba(0, 0, 0, 0.5),
+        0 5px 20px rgba(0, 0, 0, 0.3);
+}
+
+.matrix-controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.control-btn {
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(145deg, #2a2a3a, #1a1a2a);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.control-btn:hover {
+    background: linear-gradient(145deg, #3a3a4a, #2a2a3a);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.control-btn:active {
+    transform: scale(0.98);
+}
+
+/* Layered Demo Section */
+.layered-demo-section {
+    margin: 3rem 0;
+    padding: 2rem;
+    background: var(--bg-card);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.layered-demo-section h2 {
+    color: var(--accent-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.layered-demo-section > .description {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.layered-demo-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.layer-controls {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+}
+
+.layer-controls label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.layer-controls input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-primary);
+}
+
+#layered-demo {
+    height: 400px;
+    background: #050508;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* Advanced Buttons Section */
+.advanced-buttons-section {
+    margin: 3rem 0;
+}
+
+.advanced-buttons-section h2 {
+    color: var(--accent-primary);
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+/* Arcade Style Buttons */
+.arcade-style .arcade-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    background: radial-gradient(circle at 30% 30%, #ff4444, #aa0000);
+    box-shadow: 
+        0 8px 0 #660000,
+        0 12px 20px rgba(0, 0, 0, 0.5),
+        inset 0 -3px 10px rgba(0, 0, 0, 0.3),
+        inset 0 3px 10px rgba(255, 255, 255, 0.2);
+    transition: all 0.1s ease;
+}
+
+.arcade-style .arcade-btn:hover {
+    filter: brightness(1.1);
+}
+
+.arcade-style .arcade-btn:active {
+    transform: translateY(4px);
+    box-shadow: 
+        0 4px 0 #660000,
+        0 6px 10px rgba(0, 0, 0, 0.5),
+        inset 0 -3px 10px rgba(0, 0, 0, 0.3),
+        inset 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.arcade-style .arcade-btn.green {
+    background: radial-gradient(circle at 30% 30%, #44ff44, #00aa00);
+    box-shadow: 
+        0 8px 0 #006600,
+        0 12px 20px rgba(0, 0, 0, 0.5),
+        inset 0 -3px 10px rgba(0, 0, 0, 0.3),
+        inset 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.arcade-style .arcade-btn.green:active {
+    box-shadow: 
+        0 4px 0 #006600,
+        0 6px 10px rgba(0, 0, 0, 0.5),
+        inset 0 -3px 10px rgba(0, 0, 0, 0.3),
+        inset 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.arcade-style .arcade-btn.blue {
+    background: radial-gradient(circle at 30% 30%, #4488ff, #0044aa);
+    box-shadow: 
+        0 8px 0 #002266,
+        0 12px 20px rgba(0, 0, 0, 0.5),
+        inset 0 -3px 10px rgba(0, 0, 0, 0.3),
+        inset 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.arcade-style .arcade-btn.blue:active {
+    box-shadow: 
+        0 4px 0 #002266,
+        0 6px 10px rgba(0, 0, 0, 0.5),
+        inset 0 -3px 10px rgba(0, 0, 0, 0.3),
+        inset 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.arcade-style .arcade-btn.yellow {
+    background: radial-gradient(circle at 30% 30%, #ffff44, #aaaa00);
+    box-shadow: 
+        0 8px 0 #666600,
+        0 12px 20px rgba(0, 0, 0, 0.5),
+        inset 0 -3px 10px rgba(0, 0, 0, 0.3),
+        inset 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.arcade-style .arcade-btn.yellow:active {
+    box-shadow: 
+        0 4px 0 #666600,
+        0 6px 10px rgba(0, 0, 0, 0.5),
+        inset 0 -3px 10px rgba(0, 0, 0, 0.3),
+        inset 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+/* Industrial Style Buttons */
+.industrial-style .industrial-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 8px;
+    border: 3px solid #555;
+    cursor: pointer;
+    position: relative;
+    background: linear-gradient(145deg, #4a4a4a, #2a2a2a);
+    box-shadow: 
+        0 4px 0 #1a1a1a,
+        0 8px 15px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transition: all 0.1s ease;
+}
+
+.industrial-style .industrial-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #333;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.industrial-style .industrial-btn.active::before {
+    background: var(--accent-danger);
+    box-shadow: 
+        inset 0 2px 4px rgba(0, 0, 0, 0.3),
+        0 0 20px var(--accent-danger);
+}
+
+.industrial-style .industrial-btn.warning::before {
+    background: var(--accent-warning);
+    box-shadow: 
+        inset 0 2px 4px rgba(0, 0, 0, 0.3),
+        0 0 20px var(--accent-warning);
+}
+
+.industrial-style .industrial-btn.success::before {
+    background: var(--accent-primary);
+    box-shadow: 
+        inset 0 2px 4px rgba(0, 0, 0, 0.3),
+        0 0 20px var(--accent-primary);
+}
+
+/* Holographic Style Buttons */
+.holographic-style .holo-btn {
+    width: 100px;
+    height: 50px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 255, 255, 0.5);
+    cursor: pointer;
+    position: relative;
+    background: linear-gradient(135deg, 
+        rgba(0, 255, 255, 0.1), 
+        rgba(255, 0, 255, 0.1), 
+        rgba(0, 255, 255, 0.1));
+    backdrop-filter: blur(10px);
+    color: #0ff;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.holographic-style .holo-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 255, 255, 0.2), 
+        transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.holographic-style .holo-btn:hover {
+    border-color: rgba(0, 255, 255, 0.8);
+    box-shadow: 
+        0 0 20px rgba(0, 255, 255, 0.3),
+        inset 0 0 20px rgba(0, 255, 255, 0.1);
+}
+
+.holographic-style .holo-btn::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.1) 2px,
+        rgba(0, 0, 0, 0.1) 4px
+    );
+    pointer-events: none;
+}
+
+/* Organic Style Buttons */
+.organic-style .organic-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 50% 45% 55% 50% / 50% 55% 45% 50%;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    background: radial-gradient(circle at 40% 40%, 
+        #66ff99, 
+        #22aa55, 
+        #116633);
+    box-shadow: 
+        0 5px 15px rgba(0, 100, 50, 0.4),
+        inset 0 -5px 15px rgba(0, 0, 0, 0.2),
+        inset 0 5px 15px rgba(255, 255, 255, 0.2);
+    animation: breathe 4s ease-in-out infinite;
+    transition: all 0.3s ease;
+}
+
+@keyframes breathe {
+    0%, 100% { 
+        transform: scale(1);
+        border-radius: 50% 45% 55% 50% / 50% 55% 45% 50%;
+    }
+    25% {
+        border-radius: 55% 50% 45% 50% / 45% 50% 55% 50%;
+    }
+    50% { 
+        transform: scale(1.05);
+        border-radius: 45% 55% 50% 50% / 55% 45% 50% 50%;
+    }
+    75% {
+        border-radius: 50% 50% 55% 45% / 50% 50% 45% 55%;
+    }
+}
+
+.organic-style .organic-btn:hover {
+    filter: brightness(1.2);
+}
+
+.organic-style .organic-btn.purple {
+    background: radial-gradient(circle at 40% 40%, 
+        #cc88ff, 
+        #8844aa, 
+        #552277);
+    box-shadow: 
+        0 5px 15px rgba(100, 0, 150, 0.4),
+        inset 0 -5px 15px rgba(0, 0, 0, 0.2),
+        inset 0 5px 15px rgba(255, 255, 255, 0.2);
+}
+
+.organic-style .organic-btn.orange {
+    background: radial-gradient(circle at 40% 40%, 
+        #ffaa44, 
+        #cc6600, 
+        #884400);
+    box-shadow: 
+        0 5px 15px rgba(150, 80, 0, 0.4),
+        inset 0 -5px 15px rgba(0, 0, 0, 0.2),
+        inset 0 5px 15px rgba(255, 255, 255, 0.2);
+}
+
+/* Matrix Button Animation */
+.matrix-btn {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    min-height: 60px;
+}
+
+.matrix-btn.animate-on .led-button-element {
+    animation: buttonActivate 0.3s ease;
+}
+
+@keyframes buttonActivate {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .button-matrix {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+    
+    .matrix-btn {
+        min-height: 50px;
+    }
+    
+    .arcade-style .arcade-btn,
+    .organic-style .organic-btn {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .industrial-style .industrial-btn {
+        width: 55px;
+        height: 55px;
+    }
+}

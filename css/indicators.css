@@ -1,0 +1,378 @@
+/* Indicators Page Styles */
+
+.layer-info-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.layer-info-banner .info-text {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-left: auto;
+}
+
+/* Indicator Showcase */
+.indicator-showcase {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    padding: 1.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    min-height: 100px;
+    align-items: center;
+    justify-content: center;
+}
+
+.indicator-showcase.oscilloscope,
+.indicator-showcase.spectrum {
+    min-height: 150px;
+}
+
+/* LED Indicator */
+.led {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #333;
+    box-shadow: 
+        inset 0 2px 4px rgba(0, 0, 0, 0.5),
+        inset 0 -1px 2px rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+}
+
+.led.on {
+    box-shadow: 
+        inset 0 2px 4px rgba(0, 0, 0, 0.2),
+        0 0 20px currentColor;
+}
+
+.led.red { --led-color: #ff4444; }
+.led.green { --led-color: #44ff44; }
+.led.blue { --led-color: #4488ff; }
+.led.yellow { --led-color: #ffff44; }
+.led.orange { --led-color: #ff8844; }
+
+.led.on.red { background: var(--led-color); color: #ff4444; }
+.led.on.green { background: var(--led-color); color: #44ff44; }
+.led.on.blue { background: var(--led-color); color: #4488ff; }
+.led.on.yellow { background: var(--led-color); color: #ffff44; }
+.led.on.orange { background: var(--led-color); color: #ff8844; }
+
+.led.blink {
+    animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* VU Meter */
+.vu-meter {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.vu-bar-container {
+    display: flex;
+    gap: 3px;
+    padding: 8px;
+    background: #0a0a15;
+    border-radius: 6px;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.vu-bar {
+    width: 8px;
+    height: 60px;
+    background: #222;
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+}
+
+.vu-bar-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, 
+        var(--accent-primary) 0%, 
+        var(--accent-primary) 60%, 
+        var(--accent-warning) 60%, 
+        var(--accent-warning) 80%, 
+        var(--accent-danger) 80%);
+    transition: height 0.05s ease;
+}
+
+.vu-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+/* Gauge Meter */
+.gauge-meter {
+    position: relative;
+    width: 120px;
+    height: 80px;
+}
+
+.gauge-meter svg {
+    width: 100%;
+    height: 100%;
+}
+
+.gauge-label {
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+/* Seven Segment Display */
+.seven-segment-display {
+    display: flex;
+    gap: 5px;
+    padding: 10px;
+    background: #0a0a15;
+    border-radius: 8px;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.digit {
+    width: 30px;
+    height: 50px;
+    position: relative;
+}
+
+.segment {
+    position: absolute;
+    background: #1a1a2a;
+    transition: all 0.1s ease;
+}
+
+.segment.on {
+    background: var(--accent-danger);
+    box-shadow: 0 0 10px var(--accent-danger);
+}
+
+.segment.h {
+    height: 4px;
+    width: 20px;
+    left: 5px;
+    border-radius: 2px;
+}
+
+.segment.v {
+    width: 4px;
+    height: 18px;
+    border-radius: 2px;
+}
+
+.segment.a { top: 0; }
+.segment.g { top: 23px; }
+.segment.d { top: 46px; }
+
+.segment.b { top: 3px; right: 0; }
+.segment.c { top: 26px; right: 0; }
+.segment.e { top: 26px; left: 0; }
+.segment.f { top: 3px; left: 0; }
+
+/* Status Panel Section */
+.status-panel-section {
+    margin: 3rem 0;
+    padding: 2rem;
+    background: var(--bg-card);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-panel-section h2 {
+    color: var(--accent-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.status-panel-section > .description {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.status-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+    padding: 2rem;
+    background: linear-gradient(145deg, #1a1a2a, #0a0a15);
+    border-radius: 16px;
+    box-shadow: 
+        inset 0 2px 10px rgba(0, 0, 0, 0.5),
+        0 5px 20px rgba(0, 0, 0, 0.3);
+}
+
+.status-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+}
+
+.status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-title {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.status-value {
+    font-family: 'Courier New', monospace;
+    font-size: 1.5rem;
+    color: var(--accent-primary);
+}
+
+/* Advanced Indicators Section */
+.advanced-indicators-section {
+    margin: 3rem 0;
+}
+
+.advanced-indicators-section h2 {
+    color: var(--accent-primary);
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+/* Ring Meter */
+.ring-meter {
+    position: relative;
+    width: 100px;
+    height: 100px;
+}
+
+.ring-meter svg {
+    transform: rotate(-90deg);
+}
+
+.ring-meter-value {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Courier New', monospace;
+    font-size: 1.2rem;
+    color: var(--accent-primary);
+}
+
+.ring-meter-label {
+    position: absolute;
+    bottom: -20px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+/* Oscilloscope */
+.oscilloscope-display {
+    width: 100%;
+    height: 120px;
+    background: #0a0a0f;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+.oscilloscope-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(rgba(0, 255, 136, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 136, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+.oscilloscope-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Spectrum Analyzer */
+.spectrum-display {
+    width: 100%;
+    height: 100px;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    padding: 10px;
+    background: #0a0a0f;
+    border-radius: 8px;
+}
+
+.spectrum-bar {
+    flex: 1;
+    min-width: 4px;
+    background: linear-gradient(to top, 
+        var(--accent-primary), 
+        var(--accent-secondary), 
+        var(--accent-warning));
+    border-radius: 2px 2px 0 0;
+    transition: height 0.05s ease;
+}
+
+/* LED Matrix */
+.led-matrix {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 3px;
+    padding: 10px;
+    background: #0a0a0f;
+    border-radius: 8px;
+}
+
+.matrix-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #1a1a2a;
+    transition: all 0.1s ease;
+}
+
+.matrix-dot.on {
+    background: var(--accent-primary);
+    box-shadow: 0 0 8px var(--accent-primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .status-dashboard {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 1rem;
+    }
+}

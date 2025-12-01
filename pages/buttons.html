@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buttons - UI Components</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/buttons.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <a href="../index.html" class="back-link">← Back</a>
+            <div>
+                <h1>Animated LED Buttons</h1>
+                <p class="subtitle">Layered canvas effects with WebGL, WebGL2, CSS, and SVG</p>
+            </div>
+        </div>
+        
+        <!-- Layer Info Banner -->
+        <div class="layer-info-banner">
+            <span class="layer-tag webgl">WebGL</span>
+            <span class="layer-tag webgl2">WebGL2</span>
+            <span class="layer-tag css">CSS</span>
+            <span class="layer-tag svg">SVG</span>
+            <span class="info-text">Toggle components to see layered effects in action</span>
+        </div>
+        
+        <div class="component-grid">
+            <!-- Basic LED Buttons -->
+            <div class="component-card">
+                <h3>Basic LED Buttons</h3>
+                <p class="description">Simple on/off LED buttons with WebGL glow effect</p>
+                <div class="layers">
+                    <span class="layer-tag webgl">WebGL Glow</span>
+                    <span class="layer-tag css">CSS Button</span>
+                </div>
+                <div class="button-showcase" id="basic-buttons">
+                    <!-- Buttons will be created by JS -->
+                </div>
+            </div>
+            
+            <!-- RGB LED Buttons -->
+            <div class="component-card">
+                <h3>RGB LED Buttons</h3>
+                <p class="description">Multi-color LED buttons with color cycling</p>
+                <div class="layers">
+                    <span class="layer-tag webgl2">WebGL2 Shader</span>
+                    <span class="layer-tag css">CSS Animation</span>
+                </div>
+                <div class="button-showcase" id="rgb-buttons">
+                    <!-- Buttons will be created by JS -->
+                </div>
+            </div>
+            
+            <!-- Momentary Buttons -->
+            <div class="component-card">
+                <h3>Momentary Buttons</h3>
+                <p class="description">Press and hold buttons with spring animation</p>
+                <div class="layers">
+                    <span class="layer-tag webgl">WebGL Glow</span>
+                    <span class="layer-tag svg">SVG Filter</span>
+                    <span class="layer-tag css">CSS Transform</span>
+                </div>
+                <div class="button-showcase" id="momentary-buttons">
+                    <!-- Buttons will be created by JS -->
+                </div>
+            </div>
+            
+            <!-- Pulsing Buttons -->
+            <div class="component-card">
+                <h3>Pulsing Buttons</h3>
+                <p class="description">Auto-pulsing LED indicators with adjustable speed</p>
+                <div class="layers">
+                    <span class="layer-tag webgl2">WebGL2 Animation</span>
+                    <span class="layer-tag css">CSS Pulse</span>
+                </div>
+                <div class="button-showcase" id="pulsing-buttons">
+                    <!-- Buttons will be created by JS -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Large Button Grid -->
+        <section class="button-grid-section">
+            <h2>Button Matrix</h2>
+            <p class="description">Interactive 4x4 button matrix with coordinated animations</p>
+            <div class="button-matrix" id="button-matrix">
+                <!-- 16 buttons will be created by JS -->
+            </div>
+            <div class="matrix-controls">
+                <button id="matrix-random" class="control-btn">Random Pattern</button>
+                <button id="matrix-wave" class="control-btn">Wave Pattern</button>
+                <button id="matrix-chase" class="control-btn">Chase Pattern</button>
+                <button id="matrix-clear" class="control-btn">Clear All</button>
+            </div>
+        </section>
+        
+        <!-- Layered Effects Demo -->
+        <section class="layered-demo-section">
+            <h2>Layered Effects Demo</h2>
+            <p class="description">Interactive demonstration of multiple canvas layers working together</p>
+            
+            <div class="layered-demo-container">
+                <div class="layer-controls">
+                    <label>
+                        <input type="checkbox" id="layer-webgl" checked>
+                        <span class="layer-tag webgl">WebGL Base</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="layer-webgl2" checked>
+                        <span class="layer-tag webgl2">WebGL2 Effects</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="layer-svg" checked>
+                        <span class="layer-tag svg">SVG Overlay</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="layer-css" checked>
+                        <span class="layer-tag css">CSS Filter</span>
+                    </label>
+                </div>
+                
+                <div class="canvas-container" id="layered-demo">
+                    <!-- Canvases will be created by JS -->
+                </div>
+            </div>
+        </section>
+        
+        <!-- Advanced Button Styles -->
+        <section class="advanced-buttons-section">
+            <h2>Advanced Button Styles</h2>
+            <div class="component-grid">
+                <!-- Arcade Style -->
+                <div class="component-card">
+                    <h3>Arcade Style</h3>
+                    <p class="description">Retro arcade cabinet buttons with neon glow</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Neon</span>
+                        <span class="layer-tag svg">SVG Border</span>
+                        <span class="layer-tag css">CSS 3D</span>
+                    </div>
+                    <div class="button-showcase arcade-style" id="arcade-buttons">
+                        <!-- Arcade buttons -->
+                    </div>
+                </div>
+                
+                <!-- Industrial Style -->
+                <div class="component-card">
+                    <h3>Industrial Style</h3>
+                    <p class="description">Heavy-duty industrial control buttons</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl">WebGL Metal</span>
+                        <span class="layer-tag css">CSS Texture</span>
+                    </div>
+                    <div class="button-showcase industrial-style" id="industrial-buttons">
+                        <!-- Industrial buttons -->
+                    </div>
+                </div>
+                
+                <!-- Holographic Style -->
+                <div class="component-card">
+                    <h3>Holographic Style</h3>
+                    <p class="description">Futuristic holographic buttons with shimmer</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Hologram</span>
+                        <span class="layer-tag svg">SVG Scanlines</span>
+                        <span class="layer-tag css">CSS Blend</span>
+                    </div>
+                    <div class="button-showcase holographic-style" id="holographic-buttons">
+                        <!-- Holographic buttons -->
+                    </div>
+                </div>
+                
+                <!-- Organic Style -->
+                <div class="component-card">
+                    <h3>Organic Style</h3>
+                    <p class="description">Nature-inspired buttons with breathing effect</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl">WebGL Gradient</span>
+                        <span class="layer-tag css">CSS Morph</span>
+                    </div>
+                    <div class="button-showcase organic-style" id="organic-buttons">
+                        <!-- Organic buttons -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <script src="../js/main.js"></script>
+    <script src="../js/buttons.js"></script>
+</body>
+</html>
