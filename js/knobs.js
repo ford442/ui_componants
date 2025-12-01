@@ -693,6 +693,18 @@ function initMixerConsole() {
         const knobContainer = document.createElement('div');
         knobContainer.style.cssText = 'width: 50px; height: 50px;';
         
+        const valueEl = document.createElement('div');
+        valueEl.className = 'channel-value';
+        valueEl.textContent = '50';
+        
+        const meter = document.createElement('div');
+        meter.className = 'channel-meter';
+        
+        const meterFill = document.createElement('div');
+        meterFill.className = 'meter-fill';
+        meterFill.style.height = '50%';
+        meter.appendChild(meterFill);
+        
         new UIComponents.RotaryKnob(knobContainer, {
             size: 50,
             min: 0,
@@ -705,18 +717,6 @@ function initMixerConsole() {
                 meterFill.style.height = `${val}%`;
             }
         });
-        
-        const valueEl = document.createElement('div');
-        valueEl.className = 'channel-value';
-        valueEl.textContent = '50';
-        
-        const meter = document.createElement('div');
-        meter.className = 'channel-meter';
-        
-        const meterFill = document.createElement('div');
-        meterFill.className = 'meter-fill';
-        meterFill.style.height = '50%';
-        meter.appendChild(meterFill);
         
         channel.appendChild(channelLabel);
         channel.appendChild(knobContainer);
