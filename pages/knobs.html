@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knobs - UI Components</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/knobs.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <a href="../index.html" class="back-link">← Back</a>
+            <div>
+                <h1>Animated Rotary Knobs</h1>
+                <p class="subtitle">Layered canvas effects with WebGL, WebGL2, CSS, and SVG</p>
+            </div>
+        </div>
+        
+        <!-- Layer Info Banner -->
+        <div class="layer-info-banner">
+            <span class="layer-tag webgl">WebGL</span>
+            <span class="layer-tag webgl2">WebGL2</span>
+            <span class="layer-tag css">CSS</span>
+            <span class="layer-tag svg">SVG</span>
+            <span class="info-text">Drag up/down on knobs to adjust values</span>
+        </div>
+        
+        <div class="component-grid">
+            <!-- Basic Knobs -->
+            <div class="component-card">
+                <h3>Basic Rotary Knobs</h3>
+                <p class="description">Simple knobs with WebGL glow and SVG indicators</p>
+                <div class="layers">
+                    <span class="layer-tag webgl">WebGL Glow</span>
+                    <span class="layer-tag svg">SVG Knob</span>
+                </div>
+                <div class="knob-showcase" id="basic-knobs">
+                    <!-- Knobs will be created by JS -->
+                </div>
+            </div>
+            
+            <!-- LED Ring Knobs -->
+            <div class="component-card">
+                <h3>LED Ring Knobs</h3>
+                <p class="description">Knobs with animated LED ring indicators</p>
+                <div class="layers">
+                    <span class="layer-tag webgl2">WebGL2 LEDs</span>
+                    <span class="layer-tag svg">SVG Ring</span>
+                    <span class="layer-tag css">CSS Rotate</span>
+                </div>
+                <div class="knob-showcase" id="led-ring-knobs">
+                    <!-- Knobs will be created by JS -->
+                </div>
+            </div>
+            
+            <!-- Vintage Style Knobs -->
+            <div class="component-card">
+                <h3>Vintage Style</h3>
+                <p class="description">Retro amplifier-style knobs with metallic finish</p>
+                <div class="layers">
+                    <span class="layer-tag webgl">WebGL Metal</span>
+                    <span class="layer-tag svg">SVG Detail</span>
+                    <span class="layer-tag css">CSS Texture</span>
+                </div>
+                <div class="knob-showcase" id="vintage-knobs">
+                    <!-- Knobs will be created by JS -->
+                </div>
+            </div>
+            
+            <!-- Digital Encoders -->
+            <div class="component-card">
+                <h3>Digital Encoders</h3>
+                <p class="description">Modern digital-style rotary encoders</p>
+                <div class="layers">
+                    <span class="layer-tag webgl2">WebGL2 Display</span>
+                    <span class="layer-tag svg">SVG Steps</span>
+                </div>
+                <div class="knob-showcase" id="digital-encoders">
+                    <!-- Knobs will be created by JS -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Large Knob Demo -->
+        <section class="large-knob-section">
+            <h2>Interactive Layered Knob</h2>
+            <p class="description">Large-scale demonstration of layered rendering contexts</p>
+            
+            <div class="large-knob-container">
+                <div class="layer-toggles">
+                    <label>
+                        <input type="checkbox" id="knob-layer-webgl" checked>
+                        <span class="layer-tag webgl">WebGL Base</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="knob-layer-webgl2" checked>
+                        <span class="layer-tag webgl2">WebGL2 Glow</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="knob-layer-svg" checked>
+                        <span class="layer-tag svg">SVG Details</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="knob-layer-css" checked>
+                        <span class="layer-tag css">CSS Effects</span>
+                    </label>
+                </div>
+                
+                <div id="large-knob-demo" class="large-knob-wrapper">
+                    <!-- Large knob will be created by JS -->
+                </div>
+                
+                <div class="knob-info">
+                    <div class="knob-stat">
+                        <span class="stat-label">Value</span>
+                        <span class="stat-value" id="large-knob-value">50</span>
+                    </div>
+                    <div class="knob-stat">
+                        <span class="stat-label">Rotation</span>
+                        <span class="stat-value" id="large-knob-rotation">0°</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Mixer Console -->
+        <section class="mixer-section">
+            <h2>Virtual Mixer Console</h2>
+            <p class="description">Multiple coordinated knobs simulating a mixing console</p>
+            
+            <div class="mixer-console" id="mixer-console">
+                <!-- Mixer channels will be created by JS -->
+            </div>
+        </section>
+        
+        <!-- Advanced Knob Styles -->
+        <section class="advanced-knobs-section">
+            <h2>Advanced Knob Styles</h2>
+            <div class="component-grid">
+                <!-- Meter Knobs -->
+                <div class="component-card">
+                    <h3>Meter Knobs</h3>
+                    <p class="description">Knobs with built-in level meters</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Meter</span>
+                        <span class="layer-tag svg">SVG Scale</span>
+                    </div>
+                    <div class="knob-showcase" id="meter-knobs">
+                        <!-- Meter knobs -->
+                    </div>
+                </div>
+                
+                <!-- Dual Concentric -->
+                <div class="component-card">
+                    <h3>Dual Concentric</h3>
+                    <p class="description">Two-in-one concentric knob controls</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl">WebGL Inner</span>
+                        <span class="layer-tag svg">SVG Outer</span>
+                        <span class="layer-tag css">CSS Layer</span>
+                    </div>
+                    <div class="knob-showcase" id="dual-knobs">
+                        <!-- Dual knobs -->
+                    </div>
+                </div>
+                
+                <!-- Illuminated Knobs -->
+                <div class="component-card">
+                    <h3>Illuminated Knobs</h3>
+                    <p class="description">Backlit knobs with color-changing LED</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Backlight</span>
+                        <span class="layer-tag css">CSS Blend</span>
+                    </div>
+                    <div class="knob-showcase" id="illuminated-knobs">
+                        <!-- Illuminated knobs -->
+                    </div>
+                </div>
+                
+                <!-- Step Knobs -->
+                <div class="component-card">
+                    <h3>Step/Detent Knobs</h3>
+                    <p class="description">Knobs with discrete step positions</p>
+                    <div class="layers">
+                        <span class="layer-tag svg">SVG Notches</span>
+                        <span class="layer-tag css">CSS Snap</span>
+                    </div>
+                    <div class="knob-showcase" id="step-knobs">
+                        <!-- Step knobs -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <script src="../js/main.js"></script>
+    <script src="../js/knobs.js"></script>
+</body>
+</html>

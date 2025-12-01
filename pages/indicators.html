@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indicators - UI Components</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/indicators.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <a href="../index.html" class="back-link">← Back</a>
+            <div>
+                <h1>LED Indicators & Meters</h1>
+                <p class="subtitle">Status displays with WebGL effects and SVG graphics</p>
+            </div>
+        </div>
+        
+        <!-- Layer Info Banner -->
+        <div class="layer-info-banner">
+            <span class="layer-tag webgl">WebGL</span>
+            <span class="layer-tag webgl2">WebGL2</span>
+            <span class="layer-tag css">CSS</span>
+            <span class="layer-tag svg">SVG</span>
+            <span class="info-text">Observe animated indicator states</span>
+        </div>
+        
+        <div class="component-grid">
+            <!-- LED Indicators -->
+            <div class="component-card">
+                <h3>LED Indicators</h3>
+                <p class="description">Status LEDs with various colors and states</p>
+                <div class="layers">
+                    <span class="layer-tag webgl">WebGL Glow</span>
+                    <span class="layer-tag css">CSS Shape</span>
+                </div>
+                <div class="indicator-showcase" id="led-indicators">
+                    <!-- LEDs will be created by JS -->
+                </div>
+            </div>
+            
+            <!-- VU Meters -->
+            <div class="component-card">
+                <h3>VU Meters</h3>
+                <p class="description">Animated volume unit meters</p>
+                <div class="layers">
+                    <span class="layer-tag webgl2">WebGL2 Bars</span>
+                    <span class="layer-tag svg">SVG Scale</span>
+                </div>
+                <div class="indicator-showcase" id="vu-meters">
+                    <!-- VU meters will be created by JS -->
+                </div>
+            </div>
+            
+            <!-- Gauge Meters -->
+            <div class="component-card">
+                <h3>Gauge Meters</h3>
+                <p class="description">Analog-style gauge indicators</p>
+                <div class="layers">
+                    <span class="layer-tag svg">SVG Dial</span>
+                    <span class="layer-tag webgl">WebGL Needle</span>
+                    <span class="layer-tag css">CSS Animate</span>
+                </div>
+                <div class="indicator-showcase" id="gauge-meters">
+                    <!-- Gauge meters will be created by JS -->
+                </div>
+            </div>
+            
+            <!-- Seven Segment Displays -->
+            <div class="component-card">
+                <h3>Seven Segment Display</h3>
+                <p class="description">Digital number displays with LED segments</p>
+                <div class="layers">
+                    <span class="layer-tag webgl2">WebGL2 Segment</span>
+                    <span class="layer-tag css">CSS Glow</span>
+                </div>
+                <div class="indicator-showcase" id="seven-segment">
+                    <!-- Seven segment displays will be created by JS -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Status Panel Demo -->
+        <section class="status-panel-section">
+            <h2>Status Dashboard</h2>
+            <p class="description">Real-time status indicators and monitoring displays</p>
+            
+            <div class="status-dashboard" id="status-dashboard">
+                <!-- Dashboard will be created by JS -->
+            </div>
+        </section>
+        
+        <!-- Advanced Indicators -->
+        <section class="advanced-indicators-section">
+            <h2>Advanced Indicators</h2>
+            <div class="component-grid">
+                <!-- Ring Meters -->
+                <div class="component-card">
+                    <h3>Ring Meters</h3>
+                    <p class="description">Circular progress indicators</p>
+                    <div class="layers">
+                        <span class="layer-tag svg">SVG Arc</span>
+                        <span class="layer-tag webgl2">WebGL2 Glow</span>
+                    </div>
+                    <div class="indicator-showcase" id="ring-meters">
+                        <!-- Ring meters -->
+                    </div>
+                </div>
+                
+                <!-- Oscilloscope -->
+                <div class="component-card">
+                    <h3>Oscilloscope Display</h3>
+                    <p class="description">Animated waveform display</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Wave</span>
+                        <span class="layer-tag svg">SVG Grid</span>
+                    </div>
+                    <div class="indicator-showcase oscilloscope" id="oscilloscope">
+                        <!-- Oscilloscope display -->
+                    </div>
+                </div>
+                
+                <!-- Spectrum Analyzer -->
+                <div class="component-card">
+                    <h3>Spectrum Analyzer</h3>
+                    <p class="description">Frequency spectrum display</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Bars</span>
+                        <span class="layer-tag css">CSS Gradient</span>
+                    </div>
+                    <div class="indicator-showcase spectrum" id="spectrum-analyzer">
+                        <!-- Spectrum analyzer -->
+                    </div>
+                </div>
+                
+                <!-- Matrix Display -->
+                <div class="component-card">
+                    <h3>LED Matrix</h3>
+                    <p class="description">Dot matrix LED display</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl">WebGL Dots</span>
+                        <span class="layer-tag css">CSS Grid</span>
+                    </div>
+                    <div class="indicator-showcase" id="led-matrix">
+                        <!-- LED matrix -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <script src="../js/main.js"></script>
+    <script src="../js/indicators.js"></script>
+</body>
+</html>
