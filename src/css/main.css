@@ -204,6 +204,38 @@ header h1 {
     50% { opacity: 0.7; transform: scale(0.95); }
 }
 
+.demo-composite {
+    position: relative;
+    width: 60px;
+    height: 60px;
+}
+
+.demo-composite::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 40px;
+    height: 40px;
+    background: var(--accent-secondary);
+    border-radius: 8px;
+    box-shadow: var(--glow-secondary);
+}
+
+.demo-composite::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 40px;
+    height: 40px;
+    background: var(--accent-primary);
+    border-radius: 8px;
+    mix-blend-mode: hard-light;
+    box-shadow: var(--glow-primary);
+    animation: pulse 3s ease-in-out infinite alternate;
+}
+
 /* Info Section */
 .info-section {
     background: var(--bg-card);
