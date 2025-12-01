@@ -27,8 +27,13 @@
             height: 100%;
         }
 
-        #webgpu-canvas { z-index: 0; }
-        #webgl-canvas { z-index: 1; pointer-events: none; }
+        #backing-canvas { z-index: 0; }
+        #webgpu-canvas { z-index: 1; }
+        #webgl-canvas { z-index: 2; pointer-events: none; }
+        
+        /* Layer order variations */
+        .lab-container.order-gl-gpu #webgpu-canvas { z-index: 2; }
+        .lab-container.order-gl-gpu #webgl-canvas { z-index: 1; }
 
         .lab-controls {
             position: absolute;
@@ -90,6 +95,14 @@
         }
         .active-ok { color: #00e676; }
         .hint { font-size: 0.7rem; color: #888; margin-top: 4px; font-style: italic; }
+        
+        .control-group-row {
+            display: flex;
+            gap: 10px;
+        }
+        .control-group-row .control-group {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -102,12 +115,23 @@
             </div>
         </div>
 
-        <div class="lab-container">
+        <div class="lab-container" id="lab-container">
+            <canvas id="backing-canvas" class="lab-canvas"></canvas>
             <canvas id="webgpu-canvas" class="lab-canvas"></canvas>
             <canvas id="webgl-canvas" class="lab-canvas"></canvas>
 
             <div class="lab-controls" id="ui-overlay">
                 <h2>Controls</h2>
+
+                <div class="control-group">
+                    <label for="layer-order-select">Layer Order</label>
+                    <select id="layer-order-select">
+                        <option value="order-gpu-gl" selected>WebGPU → WebGL2 (default)</option>
+                        <option value="order-gl-gpu">WebGL2 → WebGPU</option>
+                        <option value="order-three-layer">Three Layers (Backing + GPU + GL)</option>
+                    </select>
+                    <div class="hint">Stack order of rendering layers.</div>
+                </div>
 
                 <div class="control-group">
                     <label for="blend-mode-select">Canvas Interaction (CSS)</label>
@@ -116,11 +140,18 @@
                         <option value="screen">Screen (Hologram)</option>
                         <option value="overlay">Overlay (Tinted Glass)</option>
                         <option value="hard-light" selected>Hard Light (Vivid Blink)</option>
+                        <option value="soft-light">Soft Light (Subtle Glow)</option>
                         <option value="difference">Difference (X-Ray)</option>
                         <option value="exclusion">Exclusion (Interference)</option>
                         <option value="plus-lighter">Plus Lighter (Pure Additive)</option>
+                        <option value="multiply">Multiply (Shadow)</option>
+                        <option value="color-dodge">Color Dodge (Intense Light)</option>
+                        <option value="color-burn">Color Burn (Deep Shadow)</option>
+                        <option value="luminosity">Luminosity (Light Transfer)</option>
+                        <option value="saturation">Saturation (Color Intensity)</option>
+                        <option value="hue">Hue (Color Shift)</option>
                     </select>
-                    <div class="hint">How the LED layer mixes with the Circuit.</div>
+                    <div class="hint">How the top layer mixes with lower layers.</div>
                 </div>
 
                 <div class="control-group">
@@ -132,9 +163,21 @@
                     <div class="hint">How the LED geometry blends with itself.</div>
                 </div>
 
+                <div class="control-group">
+                    <label for="backing-style-select">Backing Layer Style</label>
+                    <select id="backing-style-select">
+                        <option value="none">None (Transparent)</option>
+                        <option value="mid-gray">Mid Gray (50%)</option>
+                        <option value="gradient">Radial Gradient</option>
+                        <option value="noise">Animated Noise</option>
+                    </select>
+                    <div class="hint">Background for overlay/soft-light modes.</div>
+                </div>
+
                 <button id="toggle-btn">Toggle WebGL Layer</button>
 
                 <div class="status-row">
+                    <span>Backing: <span id="backing-status" class="active-ok">...</span></span>
                     <span>GPU: <span id="gpu-status" class="active-ok">...</span></span>
                     <span>GL2: <span id="gl-status" class="active-ok">...</span></span>
                 </div>
@@ -145,12 +188,17 @@
         <div style="margin-top: 2rem;">
             <div class="info-section">
                 <h2>Implementation Details</h2>
-                <p>This demo combines two rendering contexts layered via CSS:</p>
+                <p>This demo combines multiple rendering contexts layered via CSS:</p>
                 <ul>
-                    <li><strong>WebGPU (Bottom)</strong> - Renders the "Circuit" background with compute shaders.</li>
+                    <li><strong>Backing Layer (Bottom)</strong> - Optional 2D canvas providing mid-gray backing for overlay/soft-light blend modes to work correctly.</li>
+                    <li><strong>WebGPU (Middle)</strong> - Renders the "Circuit" background with compute shaders.</li>
                     <li><strong>WebGL2 (Top)</strong> - Renders the "LED/Lens" foreground with instanced rendering.</li>
-                    <li><strong>CSS Blend Modes</strong> - Controls how the WebGL2 canvas composites over the WebGPU canvas (Hard Light, Screen, etc).</li>
+                    <li><strong>CSS Blend Modes</strong> - Controls how canvases composite (Hard Light, Screen, Overlay, etc).</li>
                 </ul>
+                <h3>Why Overlay Was Invisible</h3>
+                <p>The <code>overlay</code> blend mode multiplies colors when the base is dark (&lt;0.5) and screens when light (&gt;0.5). 
+                With the original dark background (#050505 ≈ 0.02), overlay multiplied everything to near-black. 
+                The fix adds a mid-gray backing layer that provides values around 0.5, allowing overlay to properly blend.</p>
             </div>
         </div>
     </div>
