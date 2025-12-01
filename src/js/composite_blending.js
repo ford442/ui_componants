@@ -1,131 +1,202 @@
 
-    // --- UI Logic ---
-    const errorLog = document.getElementById('error-log');
-    const logError = (msg) => { if(errorLog) errorLog.textContent = msg; console.error(msg); };
+    // --- Global State & Configuration ---
+    const BLEND_MODES = [
+        'normal', 'screen', 'overlay', 'hard-light', 'soft-light',
+        'difference', 'exclusion', 'plus-lighter', 'multiply',
+        'color-dodge', 'color-burn', 'luminosity', 'saturation', 'hue'
+    ];
 
-    const labContainer = document.getElementById('lab-container');
-    const backingCanvas = document.getElementById('backing-canvas');
-    const webglCanvas = document.getElementById('webgl-canvas');
-    const webgpuCanvas = document.getElementById('webgpu-canvas');
-    const blendSelect = document.getElementById('blend-mode-select');
-    const glBlendSelect = document.getElementById('gl-blend-select');
-    const layerOrderSelect = document.getElementById('layer-order-select');
-    const backingStyleSelect = document.getElementById('backing-style-select');
-    const toggleBtn = document.getElementById('toggle-btn');
-
-    let glContextState = {
-        blendMode: 'additive',
-        backingStyle: 'none'
+    const PRESETS = {
+        'default': {
+            blendMode: 'hard-light',
+            layerOrder: 'order-gpu-gl', // GPU behind, GL in front
+            backing: 'none',
+            ledColors: [[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [1.0, 0.6, 0.0], [0.2, 1.0, 0.2]]
+        },
+        'hologram': {
+            blendMode: 'screen',
+            layerOrder: 'order-gl-gpu', // GL behind GPU (affects blending if transparency used)
+            backing: 'none',
+            ledColors: [[0.0, 0.5, 1.0], [0.0, 0.8, 1.0], [0.0, 0.5, 1.0], [0.0, 0.8, 1.0]]
+        },
+        'xray': {
+            blendMode: 'difference',
+            layerOrder: 'order-gpu-gl',
+            backing: 'mid-gray', // Difference needs contrast
+            ledColors: [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
+        },
+        'interference': {
+            blendMode: 'exclusion',
+            layerOrder: 'order-gpu-gl',
+            backing: 'noise',
+            ledColors: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 1.0, 0.0]]
+        }
     };
 
-    // Layer order control
-    if (layerOrderSelect) {
-        layerOrderSelect.addEventListener('change', (e) => {
-            // Remove all order classes
-            labContainer.classList.remove('order-gpu-gl', 'order-gl-gpu', 'order-three-layer');
-            // Add selected order class
-            labContainer.classList.add(e.target.value);
-            
-            // Show backing canvas only in three-layer mode or when backing style is set
-            updateBackingVisibility();
+    let appState = {
+        blendMode: 'hard-light',
+        layerOrder: 'order-gpu-gl',
+        backingStyle: 'none',
+        glVisible: true,
+        ledColors: PRESETS.default.ledColors,
+        time: 0
+    };
+
+    // --- DOM Elements ---
+    const canvasViewport = document.getElementById('canvas-viewport');
+    const webglCanvas = document.getElementById('webgl-canvas');
+    const webgpuCanvas = document.getElementById('webgpu-canvas');
+    const backingCanvas = document.getElementById('backing-canvas');
+    const displayEl = document.getElementById('main-display');
+
+    // --- UI Initialization ---
+    function initHardwareUI() {
+        const UI = window.UIComponents;
+        if (!UI) {
+            console.error("UIComponents not loaded");
+            return;
+        }
+
+        // 1. Blend Mode Knob
+        const blendKnobContainer = document.getElementById('blend-knob-container');
+        if (blendKnobContainer) {
+            new UI.RotaryKnob(blendKnobContainer, {
+                size: 80,
+                min: 0,
+                max: BLEND_MODES.length - 1,
+                value: BLEND_MODES.indexOf(appState.blendMode),
+                color: '#00ff88',
+                label: 'BLEND',
+                onChange: (val) => {
+                    const idx = Math.round(val);
+                    const mode = BLEND_MODES[idx];
+                    updateBlendMode(mode);
+                }
+            });
+        }
+
+        // 2. Layer Order Switch
+        const layerSwitch = document.getElementById('layer-order-switch');
+        if (layerSwitch) {
+            layerSwitch.addEventListener('click', () => {
+                layerSwitch.classList.toggle('active');
+                const isSwapped = layerSwitch.classList.contains('active');
+                appState.layerOrder = isSwapped ? 'order-gl-gpu' : 'order-gpu-gl';
+                updateLayerOrder();
+                updateDisplay("LAYER ORDER", isSwapped ? "GL -> GPU" : "GPU -> GL");
+            });
+        }
+
+        // 3. GL Toggle Switch
+        const glSwitch = document.getElementById('gl-toggle-switch');
+        if (glSwitch) {
+            glSwitch.addEventListener('click', () => {
+                glSwitch.classList.toggle('active');
+                appState.glVisible = glSwitch.classList.contains('active');
+                webglCanvas.style.opacity = appState.glVisible ? '1' : '0';
+                updateDisplay("GL LAYER", appState.glVisible ? "VISIBLE" : "HIDDEN");
+            });
+        }
+
+        // 4. Preset Buttons
+        const presetBtns = document.querySelectorAll('.preset-btn');
+        presetBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // UI Update
+                presetBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // Logic Update
+                const presetName = btn.dataset.preset;
+                applyPreset(presetName);
+            });
         });
-        // Initialize
-        labContainer.classList.add(layerOrderSelect.value);
     }
 
-    // Backing style control
-    if (backingStyleSelect) {
-        backingStyleSelect.addEventListener('change', (e) => {
-            glContextState.backingStyle = e.target.value;
-            updateBackingVisibility();
-        });
-    }
+    // --- State Update Helpers ---
 
-    function updateBackingVisibility() {
-        const isThreeLayer = layerOrderSelect && layerOrderSelect.value === 'order-three-layer';
-        const hasBackingStyle = glContextState.backingStyle !== 'none';
+    function updateBlendMode(mode) {
+        if (appState.blendMode === mode) return;
+        appState.blendMode = mode;
         
+        // Update CSS
+        if (webglCanvas) webglCanvas.style.mixBlendMode = mode;
+
+        // Update Display
+        updateDisplay("BLEND MODE", mode.toUpperCase());
+
+        // Auto-adjust backing for certain modes if in default preset workflow?
+        // Kept simple: Presets override everything, Manual knob just changes blend mode.
+    }
+
+    function updateLayerOrder() {
+        if (canvasViewport) {
+            canvasViewport.classList.remove('order-gl-gpu', 'order-gpu-gl');
+            canvasViewport.classList.add(appState.layerOrder);
+        }
+    }
+
+    function updateDisplay(line1, line2) {
+        if (displayEl) {
+            displayEl.innerHTML = `${line1}<br><span style="color:#fff">${line2}</span>`;
+        }
+    }
+
+    function applyPreset(name) {
+        const preset = PRESETS[name];
+        if (!preset) return;
+
+        // Apply state
+        appState.blendMode = preset.blendMode;
+        appState.layerOrder = preset.layerOrder;
+        appState.backingStyle = preset.backing;
+        appState.ledColors = preset.ledColors;
+
+        // Sync UI - Canvas
+        if (webglCanvas) webglCanvas.style.mixBlendMode = appState.blendMode;
+        updateLayerOrder();
+        
+        // Sync UI - Controls (This is tricky with the knob, we might need to update the knob instance if we had reference)
+        // For now, the visual knob position might lag behind presets, which is a common "soft takeover" issue in hardware.
+        // We will just update the text display.
+        updateDisplay("PRESET LOADED", name.toUpperCase());
+
+        // Backing Visibility
         if (backingCanvas) {
-            backingCanvas.style.display = (isThreeLayer || hasBackingStyle) ? 'block' : 'none';
+            backingCanvas.style.display = (appState.backingStyle !== 'none') ? 'block' : 'none';
         }
-    }
-
-    // Auto-enable backing for overlay/soft-light modes
-    function autoAdjustForBlendMode(blendMode) {
-        // These blend modes work better with a mid-gray backing
-        const needsBacking = ['overlay', 'soft-light', 'color-dodge', 'color-burn'].includes(blendMode);
         
-        if (needsBacking && glContextState.backingStyle === 'none') {
-            // Automatically set mid-gray backing and trigger UI update
-            glContextState.backingStyle = 'mid-gray';
-            if (backingStyleSelect) {
-                backingStyleSelect.value = 'mid-gray';
-            }
+        // Layer Order Switch Visual
+        const layerSwitch = document.getElementById('layer-order-switch');
+        if (layerSwitch) {
+            if (appState.layerOrder === 'order-gl-gpu') layerSwitch.classList.add('active');
+            else layerSwitch.classList.remove('active');
         }
-        updateBackingVisibility();
     }
 
-    if (blendSelect) {
-        blendSelect.addEventListener('change', (e) => {
-            webglCanvas.style.mixBlendMode = e.target.value;
-            autoAdjustForBlendMode(e.target.value);
-        });
-        // Initialize
-        if (webglCanvas) webglCanvas.style.mixBlendMode = blendSelect.value;
-    }
 
-    if (glBlendSelect) {
-        glBlendSelect.addEventListener('change', (e) => {
-            glContextState.blendMode = e.target.value;
-        });
-    }
-
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', () => {
-            webglCanvas.style.opacity = webglCanvas.style.opacity === '0' ? '1' : '0';
-        });
-    }
-
-    // --- Backing Layer: 2D Canvas for mid-gray/gradient backgrounds ---
+    // --- Backing Layer: 2D Canvas ---
     function initBackingLayer() {
         const canvas = backingCanvas;
-        const statusEl = document.getElementById('backing-status');
-        
-        if (!canvas) {
-            if (statusEl) statusEl.innerText = "N/A";
-            return null;
-        }
+        if (!canvas) return null;
         
         const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            if (statusEl) statusEl.innerText = "N/A";
-            return null;
-        }
-        
-        if (statusEl) statusEl.innerText = "Active";
+        if (!ctx) return null;
         
         // Resize observer
         const observer = new ResizeObserver(entries => {
             for (const entry of entries) {
-                const width = entry.contentBoxSize
-                    ? entry.contentBoxSize[0].inlineSize
-                    : entry.contentRect.width;
-                const height = entry.contentBoxSize
-                    ? entry.contentBoxSize[0].blockSize
-                    : entry.contentRect.height;
-                
+                const width = entry.contentRect.width;
+                const height = entry.contentRect.height;
                 canvas.width = Math.max(1, width);
                 canvas.height = Math.max(1, height);
             }
         });
         observer.observe(canvas);
         
-        // Initially hide backing canvas
-        canvas.style.display = 'none';
-        
         return {
             render: (t) => {
-                const style = glContextState.backingStyle;
+                const style = appState.backingStyle;
                 const w = canvas.width;
                 const h = canvas.height;
                 
@@ -135,34 +206,18 @@
                 }
                 
                 if (style === 'mid-gray') {
-                    // Solid mid-gray for overlay blend mode to work
                     ctx.fillStyle = '#808080';
                     ctx.fillRect(0, 0, w, h);
-                } else if (style === 'gradient') {
-                    // Radial gradient from center
-                    const gradient = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w, h) * 0.6);
-                    gradient.addColorStop(0, '#606060');
-                    gradient.addColorStop(0.5, '#404040');
-                    gradient.addColorStop(1, '#202020');
-                    ctx.fillStyle = gradient;
-                    ctx.fillRect(0, 0, w, h);
                 } else if (style === 'noise') {
-                    // Animated noise pattern
-                    // Noise parameters: base gray level and variation range
-                    const NOISE_BASE_GRAY = 98;  // Base gray level (out of 255)
-                    const NOISE_VARIATION = 60;   // Amount of variation around base
-                    const NOISE_SPEED = 0.01;     // Animation speed factor
-                    
+                    // Simple noise
                     const imageData = ctx.createImageData(w, h);
                     const data = imageData.data;
-                    const seed = t * 1000;
-                    
                     for (let i = 0; i < data.length; i += 4) {
-                        const noise = (Math.sin(seed + i * NOISE_SPEED) * 0.5 + 0.5) * NOISE_VARIATION + NOISE_BASE_GRAY;
-                        data[i] = noise;     // R
-                        data[i+1] = noise;   // G
-                        data[i+2] = noise;   // B
-                        data[i+3] = 255;     // A
+                        const val = Math.random() * 100 + 50;
+                        data[i] = val;
+                        data[i+1] = val;
+                        data[i+2] = val;
+                        data[i+3] = 255;
                     }
                     ctx.putImageData(imageData, 0, 0);
                 }
@@ -217,9 +272,11 @@
                         cUV.x *= aspect;
 
                         var col = vec3f(0.02, 0.02, 0.03);
+                        // Grid
                         let grid = step(0.98, fract(uv * 50.0));
                         col += vec3f(0.05) * grid.x;
 
+                        // Circuit lines
                         let lineY = abs(cUV.y);
                         let rail = smoothstep(0.04, 0.035, abs(lineY - 0.05));
                         col += vec3f(0.2) * rail;
@@ -232,11 +289,9 @@
 
                         let energy = 0.02 / (dist + 0.001);
                         let trail = exp(-10.0 * max(0.0, -dx));
-                        let beam = smoothstep(0.05, 0.0, abs(cUV.y)) * trail * step(dx, 0.0);
 
                         let glowColor = vec3f(0.0, 0.8, 1.0);
                         col += glowColor * (pow(energy, 1.5) * 0.5);
-                        col += glowColor * beam * 2.0;
 
                         return vec4f(col, 1.0);
                     }
@@ -261,17 +316,13 @@
                 ],
             });
 
-            if(statusEl) statusEl.innerText = "Active";
+            if(statusEl) statusEl.innerText = "ACTIVE";
 
+            // Resize Observer
             const observer = new ResizeObserver(entries => {
                 for (const entry of entries) {
-                    const width = entry.contentBoxSize
-                        ? entry.contentBoxSize[0].inlineSize
-                        : entry.contentRect.width;
-                    const height = entry.contentBoxSize
-                        ? entry.contentBoxSize[0].blockSize
-                        : entry.contentRect.height;
-
+                    const width = entry.contentRect.width;
+                    const height = entry.contentRect.height;
                     canvas.width = Math.max(1, width);
                     canvas.height = Math.max(1, height);
                 }
@@ -297,10 +348,10 @@
                     device.queue.submit([enc.finish()]);
                 }
             };
-        } catch(e) { logError(e); }
+        } catch(e) { console.error(e); }
     }
 
-    // --- WebGL2: The Lens / LED (Foreground) ---
+    // --- WebGL2: Multi-Row LED Display ---
     function initWebGL2() {
         const canvas = document.getElementById('webgl-canvas');
         const statusEl = document.getElementById('gl-status');
@@ -310,18 +361,13 @@
             if(statusEl) statusEl.innerText = "N/A";
             return null;
         }
-        if(statusEl) statusEl.innerText = "Active";
+        if(statusEl) statusEl.innerText = "ACTIVE";
 
-        // Modified resize logic to use ResizeObserver
+        // Resize
         const observer = new ResizeObserver(entries => {
             for (const entry of entries) {
-                const width = entry.contentBoxSize
-                    ? entry.contentBoxSize[0].inlineSize
-                    : entry.contentRect.width;
-                const height = entry.contentBoxSize
-                    ? entry.contentBoxSize[0].blockSize
-                    : entry.contentRect.height;
-
+                const width = entry.contentRect.width;
+                const height = entry.contentRect.height;
                 canvas.width = Math.max(1, width);
                 canvas.height = Math.max(1, height);
                 gl.viewport(0, 0, canvas.width, canvas.height);
@@ -331,36 +377,63 @@
 
         const vs = `#version 300 es
         in vec2 a_pos;
+
         uniform float u_time;
         uniform vec2 u_res;
         uniform float u_scale;
+
         out vec4 v_col;
         out vec2 v_uv;
+
+        // Colors for 4 rows
+        uniform vec3 u_rowColors[4];
 
         void main() {
             float aspect = u_res.y / u_res.x;
 
-            float rowWidth = 1.8;
-            float numLeds = 16.0;
-            float idx = float(gl_InstanceID);
-            float xOffset = (idx / (numLeds - 1.0) - 0.5) * rowWidth;
+            // Grid Configuration
+            float rows = 4.0;
+            float cols = 16.0;
 
-            float blipPos = (fract(u_time * 0.5) - 0.5) * rowWidth;
+            float instance = float(gl_InstanceID);
+            float row = floor(instance / cols);
+            float col = mod(instance, cols);
+
+            // Horizontal layout
+            float rowWidth = 1.8; // Normalized width coverage
+            float xOffset = (col / (cols - 1.0) - 0.5) * rowWidth;
+
+            // Vertical layout
+            float ySpacing = 0.3;
+            float yOffset = (row - (rows-1.0)*0.5) * ySpacing * aspect; // Adjust for aspect to keep spacing square-ish
+
+            // Animation Logic per row
+            float speed = 0.5 + row * 0.2;
+            float direction = (mod(row, 2.0) == 0.0) ? 1.0 : -1.0;
+            float blipPos = (fract(u_time * speed * direction) - 0.5) * rowWidth;
+
             float dist = abs(xOffset - blipPos);
 
-            float activeVal = 1.0 - smoothstep(0.0, 0.08, dist);
+            // Activate LED based on proximity to "blip"
+            float activeVal = 1.0 - smoothstep(0.0, 0.15, dist);
 
-            vec3 colOff = vec3(0.2, 0.2, 0.2);
-            vec3 colOn = vec3(0.8, 1.0, 1.0);
+            // Row Color
+            int rIdx = int(row);
+            vec3 baseColor = u_rowColors[rIdx];
+
+            vec3 colOff = vec3(0.1, 0.1, 0.1);
+            vec3 colOn = baseColor; // Use uniform color
             vec3 finalRgb = mix(colOff, colOn, activeVal);
 
-            float alpha = mix(0.5, 1.0, activeVal);
+            float alpha = mix(0.4, 1.0, activeVal);
 
             v_col = vec4(finalRgb, alpha);
-            v_uv = a_pos * 2.0;
+            v_uv = a_pos * 2.0; // Pass Quad UVs (-1 to 1 range approx)
 
-            vec2 pos = a_pos * u_scale + vec2(xOffset, 0.0);
-            pos.x *= aspect;
+            // Final Position
+            vec2 pos = a_pos * u_scale + vec2(xOffset, yOffset);
+            pos.x *= aspect; // Correct aspect ratio distortion
+
             gl_Position = vec4(pos, 0.0, 1.0);
         }`;
 
@@ -372,9 +445,8 @@
 
         void main() {
             float r = length(v_uv);
-
-            float lensR = 0.65;
-            float bezelR = 0.85;
+            float lensR = 0.7;
+            float bezelR = 0.9;
 
             if (r > bezelR) discard;
 
@@ -382,55 +454,26 @@
             float alpha;
 
             if (r > lensR) {
-                // --- PLASTIC BEZEL UPDATED ---
-                // Using lighter Silver/Chrome colors (0.5 - 0.7) to survive Hard Light blend
-                vec3 bezelColor = vec3(0.6, 0.6, 0.65);
-
-                float bezelPos = (r - lensR) / (bezelR - lensR);
-
-                // Rim Lighting
-                vec2 dir = normalize(v_uv);
-                float light = dot(dir, vec2(-0.707, 0.707));
-
-                float highlight = smoothstep(0.0, 1.0, light) * 0.4; // Stronger highlight
-                float shadow = smoothstep(0.0, -1.0, light) * 0.3;
-
-                rgb = bezelColor + highlight - shadow;
+                // Bezel
+                rgb = vec3(0.3); // Dark metal bezel
                 alpha = 1.0;
-
-                alpha *= smoothstep(bezelR, bezelR - 0.02, r);
             } else {
-                // --- GLASS LENS ---
+                // Lens/LED
                 float lensNormR = r / lensR;
                 float z = sqrt(1.0 - lensNormR*lensNormR);
                 vec3 normal = vec3(v_uv / lensR, z);
 
+                // Lighting
                 vec3 lightDir = normalize(vec3(-0.5, 0.5, 1.0));
                 float diffuse = max(0.0, dot(normal, lightDir));
-                float specular = pow(max(0.0, dot(reflect(-lightDir, normal), vec3(0,0,1))), 20.0);
-                float fresnel = pow(1.0 - z, 3.0);
+                float specular = pow(max(0.0, dot(reflect(-lightDir, normal), vec3(0,0,1))), 10.0);
 
-                rgb = v_col.rgb;
-                rgb *= (0.5 + 0.5 * diffuse);
-
-                // LENS FLARE STREAK
-                float brightness = v_col.a;
-                if (brightness > 0.8) {
-                    float hDist = abs(v_uv.y);
-                    float hFade = smoothstep(0.9, 0.0, abs(v_uv.x));
-                    float streak = smoothstep(0.1, 0.0, hDist);
-
-                    vec3 flareCol = vec3(0.5, 0.8, 1.0);
-                    rgb += flareCol * streak * hFade * (brightness - 0.7);
-                }
-
-                rgb += vec3(1.0) * specular * 0.8 * v_col.a;
-                rgb += vec3(1.0, 0.5, 0.0) * fresnel * 0.5;
+                rgb = v_col.rgb * (0.5 + 0.8 * diffuse);
+                rgb += vec3(1.0) * specular * 0.5 * v_col.a;
 
                 alpha = v_col.a;
             }
 
-            // Output premultiplied
             outColor = vec4(rgb * alpha, alpha);
         }`;
 
@@ -440,13 +483,20 @@
         gl.attachShader(p, createS(gl.FRAGMENT_SHADER, fs));
         gl.linkProgram(p);
 
+        if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+            console.error(gl.getProgramInfoLog(p));
+            return null;
+        }
+
         const locs = {
             pos: gl.getAttribLocation(p, 'a_pos'),
             time: gl.getUniformLocation(p, 'u_time'),
             res: gl.getUniformLocation(p, 'u_res'),
-            scale: gl.getUniformLocation(p, 'u_scale')
+            scale: gl.getUniformLocation(p, 'u_scale'),
+            rowColors: gl.getUniformLocation(p, 'u_rowColors')
         };
 
+        // Quad Geometry
         const buf = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buf);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
@@ -457,41 +507,51 @@
         gl.vertexAttribPointer(locs.pos, 2, gl.FLOAT, false, 0, 0);
 
         gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); // Standard Pre-multiplied blend
 
         return {
             render: (t) => {
                 gl.clearColor(0,0,0,0);
                 gl.clear(gl.COLOR_BUFFER_BIT);
 
-                if (glContextState.blendMode === 'additive') {
-                    gl.blendFunc(gl.ONE, gl.ONE);
-                } else {
-                    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-                }
-
                 gl.useProgram(p);
                 gl.uniform2f(locs.res, canvas.width, canvas.height);
                 gl.uniform1f(locs.time, t);
-                gl.uniform1f(locs.scale, 0.18);
+                gl.uniform1f(locs.scale, 0.08); // Smaller scale for more LEDs
 
-                gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, 16);
+                // Upload array of 4 colors
+                const colors = appState.ledColors.flat();
+                gl.uniform3fv(locs.rowColors, new Float32Array(colors));
+
+                // Draw 4 rows * 16 cols = 64 instances
+                gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, 64);
             }
         };
     }
 
     async function main() {
+        initHardwareUI();
+
         const backing = initBackingLayer();
         const gpu = await initWebGPU();
         const gl = initWebGL2();
 
         function frame(now) {
             const t = now * 0.001;
+            appState.time = t;
+
             if (backing) backing.render(t);
             if (gpu) gpu.render(t);
-            if (gl) gl.render(t);
+            if (gl && appState.glVisible) gl.render(t);
+
             requestAnimationFrame(frame);
         }
         requestAnimationFrame(frame);
     }
 
-    main();
+    // Wait for DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', main);
+    } else {
+        main();
+    }

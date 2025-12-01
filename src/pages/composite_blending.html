@@ -5,18 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Compositor Lab - UI Components</title>
     <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/knobs.css">
+    <link rel="stylesheet" href="../css/switches.css">
     <style>
         /* Lab specific styles */
         .lab-container {
-            position: relative;
+            display: flex; /* Flex layout for Side-by-Side */
             width: 100%;
-            height: calc(100vh - 200px); /* Adjust based on header height */
-            min-height: 500px;
+            height: calc(100vh - 200px);
+            min-height: 600px;
             background-color: #050505;
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 0 40px rgba(0,0,0,0.5);
             border: 1px solid #333;
+        }
+
+        .canvas-viewport {
+            position: relative;
+            flex: 1;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
         }
 
         .lab-canvas {
@@ -31,77 +41,108 @@
         #webgpu-canvas { z-index: 1; }
         #webgl-canvas { z-index: 2; pointer-events: none; }
         
-        /* Layer order variations */
-        .lab-container.order-gl-gpu #webgpu-canvas { z-index: 2; }
-        .lab-container.order-gl-gpu #webgl-canvas { z-index: 1; }
+        /* Layer order variations applied to viewport */
+        .canvas-viewport.order-gl-gpu #webgpu-canvas { z-index: 2; }
+        .canvas-viewport.order-gl-gpu #webgl-canvas { z-index: 1; }
+        .canvas-viewport.order-three-layer #backing-canvas { display: block; }
 
-        .lab-controls {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 10;
-            background: rgba(20, 20, 30, 0.9);
-            backdrop-filter: blur(5px);
+        /* Hardware Panel (Sidebar) */
+        .hardware-panel {
+            width: 320px;
+            background: linear-gradient(180deg, #1a1a20 0%, #101015 100%);
+            border-left: 1px solid #333;
             padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #444;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
-            width: 280px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
         }
 
-        .lab-controls h2 {
-            margin: 0 0 15px 0;
-            font-size: 1rem;
+        .panel-section {
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .panel-header {
+            font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #fff;
-            border-bottom: 1px solid #444;
-            padding-bottom: 10px;
+            color: #888;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
         }
 
-        .control-group { margin-bottom: 15px; }
-        .control-group label {
-            display: block;
-            font-size: 0.75rem;
-            color: #aaa;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
-
-        .lab-controls select, .lab-controls button {
-            background: #333;
-            color: #fff;
-            border: 1px solid #555;
-            padding: 8px;
-            width: 100%;
+        .status-display {
+            background: #000;
+            border: 1px solid #333;
+            padding: 10px;
             border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #00ff88;
             font-size: 0.9rem;
-            outline: none;
-            cursor: pointer;
-            transition: all 0.2s;
+            margin-bottom: 10px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            text-shadow: 0 0 5px rgba(0, 255, 136, 0.5);
         }
 
-        .lab-controls select:hover, .lab-controls button:hover {
-            background: #444;
-            border-color: #777;
-        }
-
-        .status-row {
-            font-size: 0.7rem;
-            color: #666;
+        .control-row {
             display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-        }
-        .active-ok { color: #00e676; }
-        .hint { font-size: 0.7rem; color: #888; margin-top: 4px; font-style: italic; }
-        
-        .control-group-row {
-            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            flex-wrap: wrap;
             gap: 10px;
         }
-        .control-group-row .control-group {
-            flex: 1;
+
+        /* Preset Buttons Grid */
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        /* Custom Button Style for Presets */
+        .preset-btn {
+            background: linear-gradient(145deg, #2a2a3a, #1a1a2a);
+            border: 1px solid #333;
+            color: #aaa;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        .preset-btn:hover {
+            color: #fff;
+            border-color: #555;
+            background: linear-gradient(145deg, #3a3a4a, #2a2a2a);
+        }
+        .preset-btn.active {
+            color: #00ff88;
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+        }
+
+        /* Fixes for imports */
+        .knob-wrapper { margin-bottom: 10px; }
+
+        .toggle-switch-wrapper {
+             display:flex;
+             flex-direction:column;
+             align-items:center;
+        }
+        .toggle-label {
+            font-size:0.7rem;
+            color:#666;
+            margin-bottom:5px;
         }
     </style>
 </head>
@@ -116,72 +157,64 @@
         </div>
 
         <div class="lab-container" id="lab-container">
-            <canvas id="backing-canvas" class="lab-canvas"></canvas>
-            <canvas id="webgpu-canvas" class="lab-canvas"></canvas>
-            <canvas id="webgl-canvas" class="lab-canvas"></canvas>
+            <!-- Left: Canvas Area -->
+            <div class="canvas-viewport" id="canvas-viewport">
+                <canvas id="backing-canvas" class="lab-canvas"></canvas>
+                <canvas id="webgpu-canvas" class="lab-canvas"></canvas>
+                <canvas id="webgl-canvas" class="lab-canvas"></canvas>
+            </div>
 
-            <div class="lab-controls" id="ui-overlay">
-                <h2>Controls</h2>
-
-                <div class="control-group">
-                    <label for="layer-order-select">Layer Order</label>
-                    <select id="layer-order-select">
-                        <option value="order-gpu-gl" selected>WebGPU → WebGL2 (default)</option>
-                        <option value="order-gl-gpu">WebGL2 → WebGPU</option>
-                        <option value="order-three-layer">Three Layers (Backing + GPU + GL)</option>
-                    </select>
-                    <div class="hint">Stack order of rendering layers.</div>
+            <!-- Right: Control Panel -->
+            <div class="hardware-panel" id="ui-panel">
+                <div class="status-display" id="main-display">
+                    SYSTEM READY<br>INIT...
                 </div>
 
-                <div class="control-group">
-                    <label for="blend-mode-select">Canvas Interaction (CSS)</label>
-                    <select id="blend-mode-select">
-                        <option value="normal">Normal (Sticker)</option>
-                        <option value="screen">Screen (Hologram)</option>
-                        <option value="overlay">Overlay (Tinted Glass)</option>
-                        <option value="hard-light" selected>Hard Light (Vivid Blink)</option>
-                        <option value="soft-light">Soft Light (Subtle Glow)</option>
-                        <option value="difference">Difference (X-Ray)</option>
-                        <option value="exclusion">Exclusion (Interference)</option>
-                        <option value="plus-lighter">Plus Lighter (Pure Additive)</option>
-                        <option value="multiply">Multiply (Shadow)</option>
-                        <option value="color-dodge">Color Dodge (Intense Light)</option>
-                        <option value="color-burn">Color Burn (Deep Shadow)</option>
-                        <option value="luminosity">Luminosity (Light Transfer)</option>
-                        <option value="saturation">Saturation (Color Intensity)</option>
-                        <option value="hue">Hue (Color Shift)</option>
-                    </select>
-                    <div class="hint">How the top layer mixes with lower layers.</div>
+                <!-- Section: Blend Mode -->
+                <div class="panel-section">
+                    <div class="panel-header">Blend Mode</div>
+                    <div class="control-row" id="blend-knob-container">
+                        <!-- Knob will be injected here -->
+                    </div>
                 </div>
 
-                <div class="control-group">
-                    <label for="gl-blend-select">Internal Render (WebGL)</label>
-                    <select id="gl-blend-select">
-                        <option value="additive">Additive Glow</option>
-                        <option value="alpha">Standard Transparency</option>
-                    </select>
-                    <div class="hint">How the LED geometry blends with itself.</div>
+                <!-- Section: Presets -->
+                <div class="panel-section">
+                    <div class="panel-header">Test Signals</div>
+                    <div class="preset-grid" id="preset-container">
+                        <button class="preset-btn active" data-preset="default">Default</button>
+                        <button class="preset-btn" data-preset="hologram">Hologram</button>
+                        <button class="preset-btn" data-preset="xray">X-Ray</button>
+                        <button class="preset-btn" data-preset="interference">Interference</button>
+                    </div>
                 </div>
 
-                <div class="control-group">
-                    <label for="backing-style-select">Backing Layer Style</label>
-                    <select id="backing-style-select">
-                        <option value="none">None (Transparent)</option>
-                        <option value="mid-gray">Mid Gray (50%)</option>
-                        <option value="gradient">Radial Gradient</option>
-                        <option value="noise">Animated Noise</option>
-                    </select>
-                    <div class="hint">Background for overlay/soft-light modes.</div>
+                <!-- Section: Configuration -->
+                <div class="panel-section">
+                    <div class="panel-header">Configuration</div>
+                    <div class="control-row">
+                         <!-- Layer Order Toggle -->
+                         <div class="toggle-switch-wrapper">
+                            <span class="toggle-label">LAYER SWAP</span>
+                            <div class="toggle-switch" id="layer-order-switch">
+                                <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                            </div>
+                         </div>
+                         <!-- WebGL Toggle -->
+                         <div class="toggle-switch-wrapper">
+                            <span class="toggle-label">GL VISIBLE</span>
+                            <div class="toggle-switch active" id="gl-toggle-switch">
+                                <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                            </div>
+                         </div>
+                    </div>
                 </div>
 
-                <button id="toggle-btn">Toggle WebGL Layer</button>
-
-                <div class="status-row">
-                    <span>Backing: <span id="backing-status" class="active-ok">...</span></span>
-                    <span>GPU: <span id="gpu-status" class="active-ok">...</span></span>
-                    <span>GL2: <span id="gl-status" class="active-ok">...</span></span>
+                <!-- Debug Info -->
+                <div style="font-size: 0.7rem; color: #444; margin-top: auto;">
+                    <div>GPU: <span id="gpu-status">...</span></div>
+                    <div>GL2: <span id="gl-status">...</span></div>
                 </div>
-                <div id="error-log" style="color: #ff5252; font-size: 0.7rem; margin-top: 10px;"></div>
             </div>
         </div>
 
@@ -190,19 +223,17 @@
                 <h2>Implementation Details</h2>
                 <p>This demo combines multiple rendering contexts layered via CSS:</p>
                 <ul>
-                    <li><strong>Backing Layer (Bottom)</strong> - Optional 2D canvas providing mid-gray backing for overlay/soft-light blend modes to work correctly.</li>
-                    <li><strong>WebGPU (Middle)</strong> - Renders the "Circuit" background with compute shaders.</li>
-                    <li><strong>WebGL2 (Top)</strong> - Renders the "LED/Lens" foreground with instanced rendering.</li>
-                    <li><strong>CSS Blend Modes</strong> - Controls how canvases composite (Hard Light, Screen, Overlay, etc).</li>
+                    <li><strong>Backing Layer</strong> - Canvas 2D for background patterns.</li>
+                    <li><strong>WebGPU</strong> - Compute shader "Circuit" simulation.</li>
+                    <li><strong>WebGL2</strong> - Instanced LED rendering (Foreground).</li>
                 </ul>
-                <h3>Why Overlay Was Invisible</h3>
-                <p>The <code>overlay</code> blend mode multiplies colors when the base is dark (&lt;0.5) and screens when light (&gt;0.5). 
-                With the original dark background (#050505 ≈ 0.02), overlay multiplied everything to near-black. 
-                The fix adds a mid-gray backing layer that provides values around 0.5, allowing overlay to properly blend.</p>
             </div>
         </div>
     </div>
 
+    <!-- Load Modules -->
+    <script type="module" src="../js/main.js"></script>
+    <script type="module" src="../js/knobs.js"></script>
     <script type="module" src="../js/composite_blending.js"></script>
 </body>
 </html>
