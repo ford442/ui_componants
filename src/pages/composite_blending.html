@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compositor Lab - UI Components</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        /* Lab specific styles */
+        .lab-container {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 200px); /* Adjust based on header height */
+            min-height: 500px;
+            background-color: #050505;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+        }
+
+        .lab-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #webgpu-canvas { z-index: 0; }
+        #webgl-canvas { z-index: 1; pointer-events: none; }
+
+        .lab-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(20, 20, 30, 0.9);
+            backdrop-filter: blur(5px);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            width: 280px;
+        }
+
+        .lab-controls h2 {
+            margin: 0 0 15px 0;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #fff;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+
+        .control-group { margin-bottom: 15px; }
+        .control-group label {
+            display: block;
+            font-size: 0.75rem;
+            color: #aaa;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .lab-controls select, .lab-controls button {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 8px;
+            width: 100%;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .lab-controls select:hover, .lab-controls button:hover {
+            background: #444;
+            border-color: #777;
+        }
+
+        .status-row {
+            font-size: 0.7rem;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        .active-ok { color: #00e676; }
+        .hint { font-size: 0.7rem; color: #888; margin-top: 4px; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <a href="../index.html" class="back-link">← Back</a>
+            <div>
+                <h1>Compositor Lab</h1>
+                <p class="subtitle">Advanced Blending: WebGPU (Background) + WebGL2 (Foreground)</p>
+            </div>
+        </div>
+
+        <div class="lab-container">
+            <canvas id="webgpu-canvas" class="lab-canvas"></canvas>
+            <canvas id="webgl-canvas" class="lab-canvas"></canvas>
+
+            <div class="lab-controls" id="ui-overlay">
+                <h2>Controls</h2>
+
+                <div class="control-group">
+                    <label for="blend-mode-select">Canvas Interaction (CSS)</label>
+                    <select id="blend-mode-select">
+                        <option value="normal">Normal (Sticker)</option>
+                        <option value="screen">Screen (Hologram)</option>
+                        <option value="overlay">Overlay (Tinted Glass)</option>
+                        <option value="hard-light" selected>Hard Light (Vivid Blink)</option>
+                        <option value="difference">Difference (X-Ray)</option>
+                        <option value="exclusion">Exclusion (Interference)</option>
+                        <option value="plus-lighter">Plus Lighter (Pure Additive)</option>
+                    </select>
+                    <div class="hint">How the LED layer mixes with the Circuit.</div>
+                </div>
+
+                <div class="control-group">
+                    <label for="gl-blend-select">Internal Render (WebGL)</label>
+                    <select id="gl-blend-select">
+                        <option value="additive">Additive Glow</option>
+                        <option value="alpha">Standard Transparency</option>
+                    </select>
+                    <div class="hint">How the LED geometry blends with itself.</div>
+                </div>
+
+                <button id="toggle-btn">Toggle WebGL Layer</button>
+
+                <div class="status-row">
+                    <span>GPU: <span id="gpu-status" class="active-ok">...</span></span>
+                    <span>GL2: <span id="gl-status" class="active-ok">...</span></span>
+                </div>
+                <div id="error-log" style="color: #ff5252; font-size: 0.7rem; margin-top: 10px;"></div>
+            </div>
+        </div>
+
+        <div style="margin-top: 2rem;">
+            <div class="info-section">
+                <h2>Implementation Details</h2>
+                <p>This demo combines two rendering contexts layered via CSS:</p>
+                <ul>
+                    <li><strong>WebGPU (Bottom)</strong> - Renders the "Circuit" background with compute shaders.</li>
+                    <li><strong>WebGL2 (Top)</strong> - Renders the "LED/Lens" foreground with instanced rendering.</li>
+                    <li><strong>CSS Blend Modes</strong> - Controls how the WebGL2 canvas composites over the WebGPU canvas (Hard Light, Screen, etc).</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="../js/composite_blending.js"></script>
+</body>
+</html>
