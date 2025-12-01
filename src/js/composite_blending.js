@@ -3,18 +3,72 @@
     const errorLog = document.getElementById('error-log');
     const logError = (msg) => { if(errorLog) errorLog.textContent = msg; console.error(msg); };
 
+    const labContainer = document.getElementById('lab-container');
+    const backingCanvas = document.getElementById('backing-canvas');
     const webglCanvas = document.getElementById('webgl-canvas');
+    const webgpuCanvas = document.getElementById('webgpu-canvas');
     const blendSelect = document.getElementById('blend-mode-select');
     const glBlendSelect = document.getElementById('gl-blend-select');
+    const layerOrderSelect = document.getElementById('layer-order-select');
+    const backingStyleSelect = document.getElementById('backing-style-select');
     const toggleBtn = document.getElementById('toggle-btn');
 
     let glContextState = {
-        blendMode: 'additive'
+        blendMode: 'additive',
+        backingStyle: 'none'
     };
+
+    // Layer order control
+    if (layerOrderSelect) {
+        layerOrderSelect.addEventListener('change', (e) => {
+            // Remove all order classes
+            labContainer.classList.remove('order-gpu-gl', 'order-gl-gpu', 'order-three-layer');
+            // Add selected order class
+            labContainer.classList.add(e.target.value);
+            
+            // Show backing canvas only in three-layer mode or when backing style is set
+            updateBackingVisibility();
+        });
+        // Initialize
+        labContainer.classList.add(layerOrderSelect.value);
+    }
+
+    // Backing style control
+    if (backingStyleSelect) {
+        backingStyleSelect.addEventListener('change', (e) => {
+            glContextState.backingStyle = e.target.value;
+            updateBackingVisibility();
+        });
+    }
+
+    function updateBackingVisibility() {
+        const isThreeLayer = layerOrderSelect && layerOrderSelect.value === 'order-three-layer';
+        const hasBackingStyle = glContextState.backingStyle !== 'none';
+        
+        if (backingCanvas) {
+            backingCanvas.style.display = (isThreeLayer || hasBackingStyle) ? 'block' : 'none';
+        }
+    }
+
+    // Auto-enable backing for overlay/soft-light modes
+    function autoAdjustForBlendMode(blendMode) {
+        // These blend modes work better with a mid-gray backing
+        const needsBacking = ['overlay', 'soft-light', 'color-dodge', 'color-burn'].includes(blendMode);
+        
+        if (needsBacking && glContextState.backingStyle === 'none') {
+            // Automatically suggest mid-gray backing
+            if (backingStyleSelect) {
+                backingStyleSelect.value = 'mid-gray';
+                glContextState.backingStyle = 'mid-gray';
+            }
+        }
+        updateBackingVisibility();
+    }
 
     if (blendSelect) {
         blendSelect.addEventListener('change', (e) => {
             webglCanvas.style.mixBlendMode = e.target.value;
+            autoAdjustForBlendMode(e.target.value);
         });
         // Initialize
         if (webglCanvas) webglCanvas.style.mixBlendMode = blendSelect.value;
@@ -30,6 +84,85 @@
         toggleBtn.addEventListener('click', () => {
             webglCanvas.style.opacity = webglCanvas.style.opacity === '0' ? '1' : '0';
         });
+    }
+
+    // --- Backing Layer: 2D Canvas for mid-gray/gradient backgrounds ---
+    function initBackingLayer() {
+        const canvas = backingCanvas;
+        const statusEl = document.getElementById('backing-status');
+        
+        if (!canvas) {
+            if (statusEl) statusEl.innerText = "N/A";
+            return null;
+        }
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            if (statusEl) statusEl.innerText = "N/A";
+            return null;
+        }
+        
+        if (statusEl) statusEl.innerText = "Active";
+        
+        // Resize observer
+        const observer = new ResizeObserver(entries => {
+            for (const entry of entries) {
+                const width = entry.contentBoxSize
+                    ? entry.contentBoxSize[0].inlineSize
+                    : entry.contentRect.width;
+                const height = entry.contentBoxSize
+                    ? entry.contentBoxSize[0].blockSize
+                    : entry.contentRect.height;
+                
+                canvas.width = Math.max(1, width);
+                canvas.height = Math.max(1, height);
+            }
+        });
+        observer.observe(canvas);
+        
+        // Initially hide backing canvas
+        canvas.style.display = 'none';
+        
+        return {
+            render: (t) => {
+                const style = glContextState.backingStyle;
+                const w = canvas.width;
+                const h = canvas.height;
+                
+                if (style === 'none') {
+                    ctx.clearRect(0, 0, w, h);
+                    return;
+                }
+                
+                if (style === 'mid-gray') {
+                    // Solid mid-gray for overlay blend mode to work
+                    ctx.fillStyle = '#808080';
+                    ctx.fillRect(0, 0, w, h);
+                } else if (style === 'gradient') {
+                    // Radial gradient from center
+                    const gradient = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w, h) * 0.6);
+                    gradient.addColorStop(0, '#606060');
+                    gradient.addColorStop(0.5, '#404040');
+                    gradient.addColorStop(1, '#202020');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, w, h);
+                } else if (style === 'noise') {
+                    // Animated noise pattern
+                    const imageData = ctx.createImageData(w, h);
+                    const data = imageData.data;
+                    const seed = t * 1000;
+                    
+                    for (let i = 0; i < data.length; i += 4) {
+                        const noise = (Math.sin(seed + i * 0.01) * 0.5 + 0.5) * 60 + 98;
+                        data[i] = noise;     // R
+                        data[i+1] = noise;   // G
+                        data[i+2] = noise;   // B
+                        data[i+3] = 255;     // A
+                    }
+                    ctx.putImageData(imageData, 0, 0);
+                }
+            }
+        };
     }
 
     // --- WebGPU: The Circuit (Background) ---
@@ -342,11 +475,13 @@
     }
 
     async function main() {
+        const backing = initBackingLayer();
         const gpu = await initWebGPU();
         const gl = initWebGL2();
 
         function frame(now) {
             const t = now * 0.001;
+            if (backing) backing.render(t);
             if (gpu) gpu.render(t);
             if (gl) gl.render(t);
             requestAnimationFrame(frame);
