@@ -13,6 +13,22 @@ document.addEventListener('DOMContentLoaded', () => {
     initOscilloscope();
     initSpectrumAnalyzer();
     initLEDMatrix();
+    initButtonPanel();
+    initMultiStateIndicators();
+
+    // WebGPU Advanced Examples
+    checkWebGPUSupport().then(supported => {
+        if (supported) {
+            initHolographicVU();
+            initFluidMeter();
+            initPlasmaGlobe();
+            initWaveformSynth();
+            initCrystallinePanel();
+            initDataVisualization();
+        } else {
+            document.getElementById('webgpu-warning')?.setAttribute('style', 'display: block;');
+        }
+    });
 });
 
 /**
@@ -308,8 +324,7 @@ function initStatusDashboard() {
                 const cpu = Math.floor(30 + Math.random() * 40);
                 value.textContent = `${cpu}%`;
             } else if (status.title === 'FPS') {
-                const fps = Math.floor(55 + Math.random() * 10);
-                value.textContent = fps;
+                value.textContent = Math.floor(55 + Math.random() * 10).toString();
             }
         }, 1000);
     });
@@ -556,3 +571,1293 @@ function initLEDMatrix() {
     
     setInterval(animate, 100);
 }
+
+/**
+ * Check WebGPU Support
+ */
+async function checkWebGPUSupport() {
+    if (!navigator.gpu) {
+        return false;
+    }
+
+    try {
+        const adapter = await navigator.gpu.requestAdapter();
+        return !!adapter;
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * Initialize Interactive Button Panel with Multi-layer Effects
+ */
+function initButtonPanel() {
+    const container = document.getElementById('button-panel');
+    if (!container) return;
+
+    const buttons = [
+        { label: 'Power', color: '#ff3333', icon: '⚡' },
+        { label: 'Start', color: '#00ff88', icon: '▶' },
+        { label: 'Stop', color: '#ff8800', icon: '■' },
+        { label: 'Reset', color: '#00aaff', icon: '↻' },
+        { label: 'Alert', color: '#ffff00', icon: '⚠' },
+        { label: 'Lock', color: '#ff00ff', icon: '🔒' }
+    ];
+
+    buttons.forEach(btn => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'button-wrapper';
+        wrapper.style.cssText = 'position: relative; margin: 0.5rem;';
+
+        const button = document.createElement('button');
+        button.className = 'control-button';
+        button.style.cssText = `
+            padding: 1rem 2rem;
+            background: rgba(30, 30, 40, 0.8);
+            border: 2px solid ${btn.color};
+            border-radius: 8px;
+            color: ${btn.color};
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 0 10px ${btn.color}40;
+        `;
+
+        const icon = document.createElement('span');
+        icon.className = 'button-icon';
+        icon.textContent = btn.icon;
+        icon.style.fontSize = '1.2rem';
+
+        const label = document.createElement('span');
+        label.className = 'button-label';
+        label.textContent = btn.label;
+
+        button.appendChild(icon);
+        button.appendChild(label);
+        wrapper.appendChild(button);
+        container.appendChild(wrapper);
+
+        // Multi-layer press effect
+        button.addEventListener('click', () => {
+            button.style.transform = 'scale(0.95)';
+            button.style.boxShadow = `0 0 20px ${btn.color}80`;
+
+            // Create ripple effect layers
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    const ripple = document.createElement('div');
+                    ripple.style.cssText = `
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        width: 10px;
+                        height: 10px;
+                        background: ${btn.color};
+                        border-radius: 50%;
+                        transform: translate(-50%, -50%);
+                        pointer-events: none;
+                        animation: ripple-expand 0.8s ease-out;
+                        opacity: 0;
+                        animation-delay: ${i * 0.1}s;
+                    `;
+                    button.appendChild(ripple);
+
+                    setTimeout(() => ripple.remove(), 1000);
+                }, i * 100);
+            }
+
+            setTimeout(() => {
+                button.style.transform = 'scale(1)';
+                button.style.boxShadow = `0 0 10px ${btn.color}40`;
+            }, 200);
+        });
+
+        button.addEventListener('mouseenter', () => {
+            button.style.background = `${btn.color}20`;
+            button.style.boxShadow = `0 0 20px ${btn.color}60`;
+        });
+
+        button.addEventListener('mouseleave', () => {
+            button.style.background = 'rgba(30, 30, 40, 0.8)';
+            button.style.boxShadow = `0 0 10px ${btn.color}40`;
+        });
+    });
+
+    // Add CSS animation for ripple
+    if (!document.getElementById('ripple-animation')) {
+        const style = document.createElement('style');
+        style.id = 'ripple-animation';
+        style.textContent = `
+            @keyframes ripple-expand {
+                0% {
+                    width: 10px;
+                    height: 10px;
+                    opacity: 0.8;
+                }
+                100% {
+                    width: 150px;
+                    height: 150px;
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+/**
+ * Initialize Multi-State Indicator Panel
+ */
+function initMultiStateIndicators() {
+    const container = document.getElementById('multi-state-indicators');
+    if (!container) return;
+
+    const indicators = [
+        { label: 'System', states: ['idle', 'active', 'error'], colors: ['#888', '#00ff88', '#ff3333'] },
+        { label: 'Network', states: ['offline', 'connecting', 'online'], colors: ['#666', '#ffaa00', '#00aaff'] },
+        { label: 'Battery', states: ['low', 'charging', 'full'], colors: ['#ff3333', '#ffff00', '#00ff88'] },
+        { label: 'Signal', states: ['weak', 'medium', 'strong'], colors: ['#ff8800', '#ffff00', '#00ff88'] }
+    ];
+
+    indicators.forEach(ind => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'multi-state-indicator';
+        wrapper.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            background: rgba(20, 20, 30, 0.6);
+            border-radius: 8px;
+            margin: 0.5rem;
+            min-width: 120px;
+        `;
+
+        const label = document.createElement('div');
+        label.className = 'indicator-label';
+        label.textContent = ind.label;
+        label.style.cssText = `
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-weight: bold;
+        `;
+
+        const stateDisplay = document.createElement('div');
+        stateDisplay.className = 'state-display';
+        stateDisplay.style.cssText = `
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        `;
+
+        const dots = [];
+        ind.states.forEach((state, idx) => {
+            const dot = document.createElement('div');
+            dot.className = `state-dot state-${state}`;
+            dot.dataset.state = state;
+            dot.style.cssText = `
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                background: ${ind.colors[idx]}40;
+                border: 2px solid ${ind.colors[idx]};
+                transition: all 0.3s;
+                box-shadow: 0 0 5px ${ind.colors[idx]}40;
+            `;
+            dots.push({ element: dot, color: ind.colors[idx] });
+            stateDisplay.appendChild(dot);
+        });
+
+        const statusText = document.createElement('div');
+        statusText.className = 'status-text';
+        statusText.textContent = ind.states[0];
+        statusText.style.cssText = `
+            font-size: 0.9rem;
+            color: ${ind.colors[0]};
+            font-weight: bold;
+            min-height: 1.5rem;
+            transition: color 0.3s;
+        `;
+
+        wrapper.appendChild(label);
+        wrapper.appendChild(stateDisplay);
+        wrapper.appendChild(statusText);
+        container.appendChild(wrapper);
+
+        // Cycle through states
+        let currentState = 0;
+        setInterval(() => {
+            // Reset all dots
+            dots.forEach(d => {
+                d.element.style.background = `${d.color}40`;
+                d.element.style.boxShadow = `0 0 5px ${d.color}40`;
+                d.element.style.transform = 'scale(1)';
+            });
+
+            currentState = (currentState + 1) % ind.states.length;
+
+            // Activate current dot
+            dots[currentState].element.style.background = dots[currentState].color;
+            dots[currentState].element.style.boxShadow = `0 0 15px ${dots[currentState].color}`;
+            dots[currentState].element.style.transform = 'scale(1.2)';
+
+            statusText.textContent = ind.states[currentState];
+            statusText.style.color = ind.colors[currentState];
+        }, 2000 + Math.random() * 1000);
+    });
+}
+
+/**
+ * Initialize WebGPU Holographic VU Meter with Multiple Layers
+ */
+async function initHolographicVU() {
+    const container = document.getElementById('holographic-vu');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 600;
+    canvas.height = 300;
+    canvas.style.cssText = 'width: 100%; max-width: 600px; border-radius: 8px;';
+    container.appendChild(canvas);
+
+    const adapter = await navigator.gpu?.requestAdapter();
+    const device = await adapter?.requestDevice();
+    if (!device) {
+        console.warn('WebGPU not supported for holographic VU');
+        return;
+    }
+
+    const context = canvas.getContext('webgpu');
+    const format = navigator.gpu.getPreferredCanvasFormat();
+
+    context.configure({ device, format });
+
+    // Shader for multi-layer holographic effect
+    const shaderCode = `
+        struct VertexOutput {
+            @builtin(position) position: vec4<f32>,
+            @location(0) uv: vec2<f32>,
+        };
+
+        @vertex
+        fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+            var positions = array<vec2<f32>, 6>(
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>(1.0, -1.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(-1.0, 1.0)
+            );
+            
+            var output: VertexOutput;
+            let pos = positions[vertexIndex];
+            output.position = vec4<f32>(pos, 0.0, 1.0);
+            output.uv = pos * 0.5 + 0.5;
+            return output;
+        }
+
+        struct Uniforms {
+            time: f32,
+            levels: array<f32, 16>,
+        };
+
+        @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+        @fragment
+        fn fragmentMain(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
+            var color = vec3<f32>(0.0);
+            
+            // Multi-layer VU bars with depth
+            for (var i: i32 = 0; i < 16; i++) {
+                let barX = f32(i) / 15.0;
+                let dist = abs(uv.x - barX);
+                let level = uniforms.levels[i];
+                
+                // Layer 1: Main bar
+                if (dist < 0.025 && uv.y > 1.0 - level) {
+                    let hue = f32(i) / 15.0;
+                    color += vec3<f32>(
+                        sin(hue * 6.28 + uniforms.time) * 0.5 + 0.5,
+                        sin(hue * 6.28 + uniforms.time + 2.09) * 0.5 + 0.5,
+                        sin(hue * 6.28 + uniforms.time + 4.18) * 0.5 + 0.5
+                    ) * 1.5;
+                }
+                
+                // Layer 2: Glow effect
+                let glow = exp(-dist * 50.0) * level * 0.3;
+                color += vec3<f32>(0.0, 1.0, 0.5) * glow;
+            }
+            
+            // Layer 3: Scanlines
+            color *= 0.8 + 0.2 * sin(uv.y * 100.0 + uniforms.time * 5.0);
+            
+            // Layer 4: Holographic chromatic aberration
+            let shift = sin(uniforms.time + uv.y * 10.0) * 0.01;
+            color.r += shift;
+            color.b -= shift;
+            
+            return vec4<f32>(color, 1.0);
+        }
+    `;
+
+    const shaderModule = device.createShaderModule({ code: shaderCode });
+
+    // Create uniform buffer
+    const uniformBufferSize = 4 + 16 * 4; // time (f32) + 16 levels (f32 each)
+    const uniformBuffer = device.createBuffer({
+        size: uniformBufferSize,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    const bindGroupLayout = device.createBindGroupLayout({
+        entries: [{
+            binding: 0,
+            visibility: GPUShaderStage.FRAGMENT,
+            buffer: { type: 'uniform' }
+        }]
+    });
+
+    const bindGroup = device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [{
+            binding: 0,
+            resource: { buffer: uniformBuffer }
+        }]
+    });
+
+    const pipelineLayout = device.createPipelineLayout({
+        bindGroupLayouts: [bindGroupLayout]
+    });
+
+    // Create pipeline
+    const pipeline = device.createRenderPipeline({
+        layout: pipelineLayout,
+        vertex: {
+            module: shaderModule,
+            entryPoint: 'vertexMain',
+        },
+        fragment: {
+            module: shaderModule,
+            entryPoint: 'fragmentMain',
+            targets: [{ format }]
+        },
+        primitive: { topology: 'triangle-list' }
+    });
+
+    // Animation loop
+    let time = 0;
+    const uniformData = new Float32Array(17); // time + 16 levels
+
+    const frame = () => {
+        time += 0.016;
+        uniformData[0] = time;
+
+        // Update VU levels with audio-like behavior
+        for (let i = 0; i < 16; i++) {
+            uniformData[i + 1] = (Math.sin(time * 2 + i * 0.5) * 0.5 + 0.5) * 0.8 + 0.2;
+        }
+
+        device.queue.writeBuffer(uniformBuffer, 0, uniformData);
+
+        // Render frame
+        const commandEncoder = device.createCommandEncoder();
+        const textureView = context.getCurrentTexture().createView();
+
+        const renderPass = commandEncoder.beginRenderPass({
+            colorAttachments: [{
+                view: textureView,
+                loadOp: 'clear',
+                storeOp: 'store',
+                clearValue: { r: 0.05, g: 0.05, b: 0.1, a: 1 }
+            }]
+        });
+
+        renderPass.setPipeline(pipeline);
+        renderPass.setBindGroup(0, bindGroup);
+        renderPass.draw(6);
+        renderPass.end();
+
+        device.queue.submit([commandEncoder.finish()]);
+        requestAnimationFrame(frame);
+    };
+
+    frame();
+}
+
+/**
+ * Initialize WebGPU Fluid Simulation Meter
+ */
+async function initFluidMeter() {
+    const container = document.getElementById('fluid-meter');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 400;
+    canvas.style.cssText = 'width: 100%; max-width: 400px; border-radius: 8px;';
+    container.appendChild(canvas);
+
+    const adapter = await navigator.gpu?.requestAdapter();
+    const device = await adapter?.requestDevice();
+    if (!device) {
+        console.warn('WebGPU not supported for fluid meter');
+        return;
+    }
+
+    const context = canvas.getContext('webgpu');
+    const format = navigator.gpu.getPreferredCanvasFormat();
+    context.configure({ device, format });
+
+    // Fluid simulation shader with multiple render passes
+    const shaderCode = `
+        struct VertexOutput {
+            @builtin(position) position: vec4<f32>,
+            @location(0) uv: vec2<f32>,
+        };
+
+        @vertex
+        fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+            var positions = array<vec2<f32>, 6>(
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>(1.0, -1.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(-1.0, 1.0)
+            );
+            
+            var output: VertexOutput;
+            let pos = positions[vertexIndex];
+            output.position = vec4<f32>(pos, 0.0, 1.0);
+            output.uv = pos * 0.5 + 0.5;
+            return output;
+        }
+
+        struct Uniforms {
+            time: f32,
+            value: f32,
+        };
+
+        @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+        @fragment
+        fn fragmentMain(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
+            let center = vec2<f32>(0.5, 0.5);
+            let dist = length(uv - center);
+            
+            // Multi-layer fluid effect
+            var col = vec3<f32>(0.0);
+            
+            // Layer 1: Liquid fill with waves
+            let fillLevel = 0.3 + uniforms.value * 0.4;
+            let wave1 = sin(uv.x * 20.0 - uniforms.time * 3.0) * 0.02;
+            let wave2 = sin(uv.x * 15.0 + uniforms.time * 2.0) * 0.015;
+            let totalWave = wave1 + wave2;
+            
+            if (uv.y > fillLevel + totalWave && dist < 0.45) {
+                col = vec3<f32>(0.0, 0.8, 1.0);
+                
+                // Layer 2: Caustics
+                let caustic1 = sin(uv.x * 30.0 + uniforms.time) * sin(uv.y * 30.0 - uniforms.time * 0.7);
+                let caustic2 = sin(uv.x * 25.0 - uniforms.time * 1.3) * sin(uv.y * 25.0 + uniforms.time * 0.9);
+                col += vec3<f32>((caustic1 + caustic2) * 0.15);
+                
+                // Depth shading
+                let depth = (uv.y - fillLevel) / (1.0 - fillLevel);
+                col *= 0.7 + depth * 0.3;
+            }
+            
+            // Layer 3: Container border with glow
+            if (dist > 0.43 && dist < 0.47) {
+                col = vec3<f32>(0.3, 0.4, 0.5);
+            } else if (dist > 0.47 && dist < 0.48) {
+                col = vec3<f32>(0.2, 0.3, 0.4);
+            }
+            
+            // Add shimmer on liquid surface
+            if (abs(uv.y - fillLevel - totalWave) < 0.01 && dist < 0.45) {
+                col += vec3<f32>(0.5, 0.8, 1.0) * 0.5;
+            }
+            
+            return vec4<f32>(col, 1.0);
+        }
+    `;
+
+    const shaderModule = device.createShaderModule({ code: shaderCode });
+
+    // Create uniform buffer
+    const uniformBuffer = device.createBuffer({
+        size: 8, // 2 floats (time, value)
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    const bindGroupLayout = device.createBindGroupLayout({
+        entries: [{
+            binding: 0,
+            visibility: GPUShaderStage.FRAGMENT,
+            buffer: { type: 'uniform' }
+        }]
+    });
+
+    const bindGroup = device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [{
+            binding: 0,
+            resource: { buffer: uniformBuffer }
+        }]
+    });
+
+    const pipelineLayout = device.createPipelineLayout({
+        bindGroupLayouts: [bindGroupLayout]
+    });
+
+    const pipeline = device.createRenderPipeline({
+        layout: pipelineLayout,
+        vertex: {
+            module: shaderModule,
+            entryPoint: 'vertexMain',
+        },
+        fragment: {
+            module: shaderModule,
+            entryPoint: 'fragmentMain',
+            targets: [{ format }]
+        },
+        primitive: { topology: 'triangle-list' }
+    });
+
+    // Animation loop
+    let time = 0;
+    const uniformData = new Float32Array(2);
+
+    const frame = () => {
+        time += 0.016;
+        const value = Math.sin(time * 0.5) * 0.5 + 0.5; // Oscillating value
+
+        uniformData[0] = time;
+        uniformData[1] = value;
+
+        device.queue.writeBuffer(uniformBuffer, 0, uniformData);
+
+        const commandEncoder = device.createCommandEncoder();
+        const textureView = context.getCurrentTexture().createView();
+
+        const renderPass = commandEncoder.beginRenderPass({
+            colorAttachments: [{
+                view: textureView,
+                loadOp: 'clear',
+                storeOp: 'store',
+                clearValue: { r: 0.05, g: 0.05, b: 0.1, a: 1 }
+            }]
+        });
+
+        renderPass.setPipeline(pipeline);
+        renderPass.setBindGroup(0, bindGroup);
+        renderPass.draw(6);
+        renderPass.end();
+
+        device.queue.submit([commandEncoder.finish()]);
+        requestAnimationFrame(frame);
+    };
+
+    frame();
+}
+
+/**
+ * Initialize WebGPU Plasma Globe Effect
+ */
+async function initPlasmaGlobe() {
+    const container = document.getElementById('plasma-globe');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 400;
+    canvas.style.cssText = 'width: 100%; max-width: 400px; border-radius: 8px;';
+    container.appendChild(canvas);
+
+    const adapter = await navigator.gpu?.requestAdapter();
+    const device = await adapter?.requestDevice();
+    if (!device) {
+        console.warn('WebGPU not supported for plasma globe');
+        return;
+    }
+
+    const context = canvas.getContext('webgpu');
+    const format = navigator.gpu.getPreferredCanvasFormat();
+    context.configure({ device, format });
+
+    const shaderCode = `
+        struct VertexOutput {
+            @builtin(position) position: vec4<f32>,
+            @location(0) uv: vec2<f32>,
+        };
+
+        @vertex
+        fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+            var positions = array<vec2<f32>, 6>(
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>(1.0, -1.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(-1.0, 1.0)
+            );
+            
+            var output: VertexOutput;
+            let pos = positions[vertexIndex];
+            output.position = vec4<f32>(pos, 0.0, 1.0);
+            output.uv = pos * 0.5 + 0.5;
+            return output;
+        }
+
+        @group(0) @binding(0) var<uniform> time: f32;
+
+        @fragment
+        fn fragmentMain(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
+            let center = vec2<f32>(0.5, 0.5);
+            let dist = length(uv - center);
+            
+            var col = vec3<f32>(0.0);
+            
+            // Plasma globe sphere
+            if (dist < 0.4) {
+                // Multiple plasma layers
+                var plasma = 0.0;
+                
+                for (var i: i32 = 0; i < 5; i++) {
+                    let fi = f32(i);
+                    let angle = time * (0.5 + fi * 0.2);
+                    let offset = vec2<f32>(
+                        cos(angle) * 0.2,
+                        sin(angle) * 0.2
+                    );
+                    
+                    let layerDist = length(uv - center - offset);
+                    plasma += 1.0 / (layerDist * 50.0 + 1.0);
+                }
+                
+                // Color mapping
+                col = vec3<f32>(
+                    sin(plasma * 2.0 + time) * 0.5 + 0.5,
+                    sin(plasma * 2.0 + time + 2.0) * 0.5 + 0.5,
+                    sin(plasma * 2.0 + time + 4.0) * 0.5 + 0.5
+                ) * 1.5;
+                
+                // Sphere shading
+                let sphereShade = 1.0 - dist / 0.4;
+                col *= sphereShade;
+            }
+            
+            // Glass sphere border
+            if (dist > 0.38 && dist < 0.42) {
+                col += vec3<f32>(0.3, 0.5, 0.7) * 0.5;
+            }
+            
+            return vec4<f32>(col, 1.0);
+        }
+    `;
+
+    const shaderModule = device.createShaderModule({ code: shaderCode });
+
+    const uniformBuffer = device.createBuffer({
+        size: 4,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    const bindGroupLayout = device.createBindGroupLayout({
+        entries: [{
+            binding: 0,
+            visibility: GPUShaderStage.FRAGMENT,
+            buffer: { type: 'uniform' }
+        }]
+    });
+
+    const bindGroup = device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [{
+            binding: 0,
+            resource: { buffer: uniformBuffer }
+        }]
+    });
+
+    const pipelineLayout = device.createPipelineLayout({
+        bindGroupLayouts: [bindGroupLayout]
+    });
+
+    const pipeline = device.createRenderPipeline({
+        layout: pipelineLayout,
+        vertex: {
+            module: shaderModule,
+            entryPoint: 'vertexMain',
+        },
+        fragment: {
+            module: shaderModule,
+            entryPoint: 'fragmentMain',
+            targets: [{ format }]
+        },
+        primitive: { topology: 'triangle-list' }
+    });
+
+    let time = 0;
+    const uniformData = new Float32Array(1);
+
+    const frame = () => {
+        time += 0.016;
+        uniformData[0] = time;
+
+        device.queue.writeBuffer(uniformBuffer, 0, uniformData);
+
+        const commandEncoder = device.createCommandEncoder();
+        const textureView = context.getCurrentTexture().createView();
+
+        const renderPass = commandEncoder.beginRenderPass({
+            colorAttachments: [{
+                view: textureView,
+                loadOp: 'clear',
+                storeOp: 'store',
+                clearValue: { r: 0.02, g: 0.02, b: 0.08, a: 1 }
+            }]
+        });
+
+        renderPass.setPipeline(pipeline);
+        renderPass.setBindGroup(0, bindGroup);
+        renderPass.draw(6);
+        renderPass.end();
+
+        device.queue.submit([commandEncoder.finish()]);
+        requestAnimationFrame(frame);
+    };
+
+    frame();
+}
+
+/**
+ * Initialize WebGPU Waveform Synthesizer
+ */
+async function initWaveformSynth() {
+    const container = document.getElementById('waveform-synth');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 600;
+    canvas.height = 200;
+    canvas.style.cssText = 'width: 100%; max-width: 600px; border-radius: 8px;';
+    container.appendChild(canvas);
+
+    const adapter = await navigator.gpu?.requestAdapter();
+    const device = await adapter?.requestDevice();
+    if (!device) {
+        console.warn('WebGPU not supported for waveform synth');
+        return;
+    }
+
+    const context = canvas.getContext('webgpu');
+    const format = navigator.gpu.getPreferredCanvasFormat();
+    context.configure({ device, format });
+
+    const shaderCode = `
+        struct VertexOutput {
+            @builtin(position) position: vec4<f32>,
+            @location(0) uv: vec2<f32>,
+        };
+
+        @vertex
+        fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+            var positions = array<vec2<f32>, 6>(
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>(1.0, -1.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(-1.0, 1.0)
+            );
+            
+            var output: VertexOutput;
+            let pos = positions[vertexIndex];
+            output.position = vec4<f32>(pos, 0.0, 1.0);
+            output.uv = pos * 0.5 + 0.5;
+            return output;
+        }
+
+        @group(0) @binding(0) var<uniform> time: f32;
+
+        @fragment
+        fn fragmentMain(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
+            var col = vec3<f32>(0.0);
+            
+            // Multiple waveform layers
+            let waveforms = 4;
+            
+            for (var i: i32 = 0; i < waveforms; i++) {
+                let fi = f32(i);
+                let freq = 5.0 + fi * 2.0;
+                let phase = time * (1.0 + fi * 0.5);
+                let amplitude = 0.1 + fi * 0.03;
+                
+                let wave = sin(uv.x * freq + phase) * amplitude;
+                let waveY = 0.5 + wave;
+                
+                let dist = abs(uv.y - waveY);
+                let intensity = 1.0 / (dist * 200.0 + 1.0);
+                
+                // Color gradient per layer
+                let hue = fi / f32(waveforms);
+                col += vec3<f32>(
+                    sin(hue * 6.28) * 0.5 + 0.5,
+                    sin(hue * 6.28 + 2.09) * 0.5 + 0.5,
+                    sin(hue * 6.28 + 4.18) * 0.5 + 0.5
+                ) * intensity;
+            }
+            
+            // Grid overlay
+            let gridX = fract(uv.x * 20.0);
+            let gridY = fract(uv.y * 10.0);
+            if (gridX < 0.02 || gridY < 0.02) {
+                col += vec3<f32>(0.1, 0.1, 0.15);
+            }
+            
+            return vec4<f32>(col, 1.0);
+        }
+    `;
+
+    const shaderModule = device.createShaderModule({ code: shaderCode });
+
+    const uniformBuffer = device.createBuffer({
+        size: 4,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    const bindGroupLayout = device.createBindGroupLayout({
+        entries: [{
+            binding: 0,
+            visibility: GPUShaderStage.FRAGMENT,
+            buffer: { type: 'uniform' }
+        }]
+    });
+
+    const bindGroup = device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [{
+            binding: 0,
+            resource: { buffer: uniformBuffer }
+        }]
+    });
+
+    const pipelineLayout = device.createPipelineLayout({
+        bindGroupLayouts: [bindGroupLayout]
+    });
+
+    const pipeline = device.createRenderPipeline({
+        layout: pipelineLayout,
+        vertex: {
+            module: shaderModule,
+            entryPoint: 'vertexMain',
+        },
+        fragment: {
+            module: shaderModule,
+            entryPoint: 'fragmentMain',
+            targets: [{ format }]
+        },
+        primitive: { topology: 'triangle-list' }
+    });
+
+    let time = 0;
+    const uniformData = new Float32Array(1);
+
+    const frame = () => {
+        time += 0.016;
+        uniformData[0] = time;
+
+        device.queue.writeBuffer(uniformBuffer, 0, uniformData);
+
+        const commandEncoder = device.createCommandEncoder();
+        const textureView = context.getCurrentTexture().createView();
+
+        const renderPass = commandEncoder.beginRenderPass({
+            colorAttachments: [{
+                view: textureView,
+                loadOp: 'clear',
+                storeOp: 'store',
+                clearValue: { r: 0.05, g: 0.05, b: 0.1, a: 1 }
+            }]
+        });
+
+        renderPass.setPipeline(pipeline);
+        renderPass.setBindGroup(0, bindGroup);
+        renderPass.draw(6);
+        renderPass.end();
+
+        device.queue.submit([commandEncoder.finish()]);
+        requestAnimationFrame(frame);
+    };
+
+    frame();
+}
+
+/**
+ * Initialize WebGPU Crystalline Panel
+ */
+async function initCrystallinePanel() {
+    const container = document.getElementById('crystalline-panel');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 500;
+    canvas.height = 300;
+    canvas.style.cssText = 'width: 100%; max-width: 500px; border-radius: 8px;';
+    container.appendChild(canvas);
+
+    const adapter = await navigator.gpu?.requestAdapter();
+    const device = await adapter?.requestDevice();
+    if (!device) {
+        console.warn('WebGPU not supported for crystalline panel');
+        return;
+    }
+
+    const context = canvas.getContext('webgpu');
+    const format = navigator.gpu.getPreferredCanvasFormat();
+    context.configure({ device, format });
+
+    const shaderCode = `
+        struct VertexOutput {
+            @builtin(position) position: vec4<f32>,
+            @location(0) uv: vec2<f32>,
+        };
+
+        @vertex
+        fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+            var positions = array<vec2<f32>, 6>(
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>(1.0, -1.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(-1.0, 1.0)
+            );
+            
+            var output: VertexOutput;
+            let pos = positions[vertexIndex];
+            output.position = vec4<f32>(pos, 0.0, 1.0);
+            output.uv = pos * 0.5 + 0.5;
+            return output;
+        }
+
+        @group(0) @binding(0) var<uniform> time: f32;
+
+        @fragment
+        fn fragmentMain(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
+            var col = vec3<f32>(0.0);
+            
+            // Voronoi-like crystal pattern
+            let scale = 8.0;
+            let p = uv * scale;
+            let pi = floor(p);
+            let pf = fract(p);
+            
+            var minDist = 1.0;
+            var cellId = vec2<f32>(0.0);
+            
+            for (var y: i32 = -1; y <= 1; y++) {
+                for (var x: i32 = -1; x <= 1; x++) {
+                    let neighbor = vec2<f32>(f32(x), f32(y));
+                    let point = 0.5 + 0.5 * sin(time * 0.5 + 6.2831 * (pi + neighbor));
+                    let diff = neighbor + point - pf;
+                    let dist = length(diff);
+                    
+                    if (dist < minDist) {
+                        minDist = dist;
+                        cellId = pi + neighbor;
+                    }
+                }
+            }
+            
+            // Crystal coloring based on cell
+            let cellColor = sin(cellId.x * 12.9898 + cellId.y * 78.233 + time * 0.2) * 0.5 + 0.5;
+            
+            // Multi-layer crystal effect
+            col = vec3<f32>(
+                0.2 + cellColor * 0.3,
+                0.4 + cellColor * 0.4,
+                0.6 + cellColor * 0.3
+            );
+            
+            // Crystal edges
+            if (minDist < 0.05) {
+                col += vec3<f32>(0.5, 0.7, 1.0);
+            }
+            
+            // Shimmer effect
+            let shimmer = sin(uv.x * 50.0 + time * 3.0) * sin(uv.y * 50.0 - time * 2.0);
+            col += vec3<f32>(shimmer * 0.1);
+            
+            return vec4<f32>(col, 1.0);
+        }
+    `;
+
+    const shaderModule = device.createShaderModule({ code: shaderCode });
+
+    const uniformBuffer = device.createBuffer({
+        size: 4,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    const bindGroupLayout = device.createBindGroupLayout({
+        entries: [{
+            binding: 0,
+            visibility: GPUShaderStage.FRAGMENT,
+            buffer: { type: 'uniform' }
+        }]
+    });
+
+    const bindGroup = device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [{
+            binding: 0,
+            resource: { buffer: uniformBuffer }
+        }]
+    });
+
+    const pipelineLayout = device.createPipelineLayout({
+        bindGroupLayouts: [bindGroupLayout]
+    });
+
+    const pipeline = device.createRenderPipeline({
+        layout: pipelineLayout,
+        vertex: {
+            module: shaderModule,
+            entryPoint: 'vertexMain',
+        },
+        fragment: {
+            module: shaderModule,
+            entryPoint: 'fragmentMain',
+            targets: [{ format }]
+        },
+        primitive: { topology: 'triangle-list' }
+    });
+
+    let time = 0;
+    const uniformData = new Float32Array(1);
+
+    const frame = () => {
+        time += 0.016;
+        uniformData[0] = time;
+
+        device.queue.writeBuffer(uniformBuffer, 0, uniformData);
+
+        const commandEncoder = device.createCommandEncoder();
+        const textureView = context.getCurrentTexture().createView();
+
+        const renderPass = commandEncoder.beginRenderPass({
+            colorAttachments: [{
+                view: textureView,
+                loadOp: 'clear',
+                storeOp: 'store',
+                clearValue: { r: 0.05, g: 0.05, b: 0.1, a: 1 }
+            }]
+        });
+
+        renderPass.setPipeline(pipeline);
+        renderPass.setBindGroup(0, bindGroup);
+        renderPass.draw(6);
+        renderPass.end();
+
+        device.queue.submit([commandEncoder.finish()]);
+        requestAnimationFrame(frame);
+    };
+
+    frame();
+}
+
+/**
+ * Initialize WebGPU Data Visualization
+ */
+async function initDataVisualization() {
+    const container = document.getElementById('data-visualization');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 600;
+    canvas.height = 400;
+    canvas.style.cssText = 'width: 100%; max-width: 600px; border-radius: 8px;';
+    container.appendChild(canvas);
+
+    const adapter = await navigator.gpu?.requestAdapter();
+    const device = await adapter?.requestDevice();
+    if (!device) {
+        console.warn('WebGPU not supported for data visualization');
+        return;
+    }
+
+    const context = canvas.getContext('webgpu');
+    const format = navigator.gpu.getPreferredCanvasFormat();
+    context.configure({ device, format });
+
+    const shaderCode = `
+        struct VertexOutput {
+            @builtin(position) position: vec4<f32>,
+            @location(0) uv: vec2<f32>,
+        };
+
+        @vertex
+        fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+            var positions = array<vec2<f32>, 6>(
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>(1.0, -1.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>(1.0, 1.0),
+                vec2<f32>(-1.0, 1.0)
+            );
+            
+            var output: VertexOutput;
+            let pos = positions[vertexIndex];
+            output.position = vec4<f32>(pos, 0.0, 1.0);
+            output.uv = pos * 0.5 + 0.5;
+            return output;
+        }
+
+        struct Uniforms {
+            time: f32,
+            dataPoints: array<f32, 32>,
+        };
+
+        @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+        @fragment
+        fn fragmentMain(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
+            var col = vec3<f32>(0.0);
+            
+            // 3D bar chart effect with depth
+            let numBars = 32;
+            
+            for (var i: i32 = 0; i < numBars; i++) {
+                let fi = f32(i);
+                let barX = fi / f32(numBars - 1);
+                let barWidth = 0.8 / f32(numBars);
+                
+                let dataValue = uniforms.dataPoints[i];
+                let barHeight = dataValue;
+                
+                // Bar position with depth effect
+                let depth = 1.0 - fi / f32(numBars);
+                let barXStart = barX - barWidth * 0.5 + depth * 0.1;
+                let barXEnd = barX + barWidth * 0.5 + depth * 0.1;
+                
+                if (uv.x > barXStart && uv.x < barXEnd && uv.y > 1.0 - barHeight) {
+                    // Color based on value and position
+                    let hue = fi / f32(numBars);
+                    col = vec3<f32>(
+                        sin(hue * 6.28 + uniforms.time * 0.5) * 0.5 + 0.5,
+                        sin(hue * 6.28 + uniforms.time * 0.5 + 2.09) * 0.5 + 0.5,
+                        sin(hue * 6.28 + uniforms.time * 0.5 + 4.18) * 0.5 + 0.5
+                    );
+                    
+                    // Add depth shading
+                    col *= 0.7 + depth * 0.3;
+                    
+                    // Top edge highlight
+                    if (uv.y < 1.0 - barHeight + 0.01) {
+                        col += vec3<f32>(0.3);
+                    }
+                }
+            }
+            
+            // Grid lines
+            let gridY = fract(uv.y * 10.0);
+            if (gridY < 0.01) {
+                col += vec3<f32>(0.1, 0.1, 0.15);
+            }
+            
+            return vec4<f32>(col, 1.0);
+        }
+    `;
+
+    const shaderModule = device.createShaderModule({ code: shaderCode });
+
+    const uniformBufferSize = 4 + 32 * 4; // time + 32 data points
+    const uniformBuffer = device.createBuffer({
+        size: uniformBufferSize,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    const bindGroupLayout = device.createBindGroupLayout({
+        entries: [{
+            binding: 0,
+            visibility: GPUShaderStage.FRAGMENT,
+            buffer: { type: 'uniform' }
+        }]
+    });
+
+    const bindGroup = device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [{
+            binding: 0,
+            resource: { buffer: uniformBuffer }
+        }]
+    });
+
+    const pipelineLayout = device.createPipelineLayout({
+        bindGroupLayouts: [bindGroupLayout]
+    });
+
+    const pipeline = device.createRenderPipeline({
+        layout: pipelineLayout,
+        vertex: {
+            module: shaderModule,
+            entryPoint: 'vertexMain',
+        },
+        fragment: {
+            module: shaderModule,
+            entryPoint: 'fragmentMain',
+            targets: [{ format }]
+        },
+        primitive: { topology: 'triangle-list' }
+    });
+
+    let time = 0;
+    const uniformData = new Float32Array(33);
+
+    const frame = () => {
+        time += 0.016;
+        uniformData[0] = time;
+
+        // Generate animated data points
+        for (let i = 0; i < 32; i++) {
+            uniformData[i + 1] = (Math.sin(time * 2 + i * 0.3) * 0.3 + 0.5) * 0.8 + 0.2;
+        }
+
+        device.queue.writeBuffer(uniformBuffer, 0, uniformData);
+
+        const commandEncoder = device.createCommandEncoder();
+        const textureView = context.getCurrentTexture().createView();
+
+        const renderPass = commandEncoder.beginRenderPass({
+            colorAttachments: [{
+                view: textureView,
+                loadOp: 'clear',
+                storeOp: 'store',
+                clearValue: { r: 0.05, g: 0.05, b: 0.1, a: 1 }
+            }]
+        });
+
+        renderPass.setPipeline(pipeline);
+        renderPass.setBindGroup(0, bindGroup);
+        renderPass.draw(6);
+        renderPass.end();
+
+        device.queue.submit([commandEncoder.finish()]);
+        requestAnimationFrame(frame);
+    };
+
+    frame();
+}
+

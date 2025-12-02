@@ -91,6 +91,26 @@
             </div>
         </section>
         
+        <!-- Interactive Button Panel -->
+        <section class="button-panel-section">
+            <h2>Interactive Button Panel</h2>
+            <p class="description">Multi-layer button effects with ripple animations</p>
+
+            <div class="button-panel" id="button-panel" style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; padding: 2rem;">
+                <!-- Buttons will be created by JS -->
+            </div>
+        </section>
+
+        <!-- Multi-State Indicators -->
+        <section class="multi-state-section">
+            <h2>Multi-State Indicators</h2>
+            <p class="description">Dynamic state indicators with smooth transitions</p>
+
+            <div class="multi-state-indicators" id="multi-state-indicators" style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; padding: 2rem;">
+                <!-- Multi-state indicators will be created by JS -->
+            </div>
+        </section>
+
         <!-- Advanced Indicators -->
         <section class="advanced-indicators-section">
             <h2>Advanced Indicators</h2>
@@ -146,6 +166,156 @@
                         <!-- LED matrix -->
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- WebGPU Advanced Indicators Section -->
+        <section class="webgpu-advanced-section">
+            <div class="section-header">
+                <h2>🚀 WebGPU Advanced Multi-Layer Indicators</h2>
+                <p class="description">Next-generation volumetric rendering and compute shader visualizations</p>
+                <div class="webgpu-warning" id="webgpu-warning" style="display: none;">
+                    <strong>⚠️ WebGPU Required:</strong> These examples require WebGPU support (Chrome 113+ recommended)
+                </div>
+            </div>
+
+            <div class="component-grid">
+                <!-- Holographic VU Meters -->
+                <div class="component-card">
+                    <h3>3D Holographic VU Meters</h3>
+                    <p class="description">Depth-mapped volumetric audio visualization</p>
+                    <div class="layers">
+                        <span class="layer-tag webgpu">WebGPU Volume</span>
+                        <span class="layer-tag webgl2">WebGL2 Depth</span>
+                        <span class="layer-tag svg">SVG Grid</span>
+                    </div>
+                    <div class="indicator-showcase webgpu-style" id="holographic-vu">
+                        <!-- Holographic VU meters -->
+                    </div>
+                </div>
+
+                <!-- Fluid Dynamics Meter -->
+                <div class="component-card">
+                    <h3>Fluid Dynamics Meter</h3>
+                    <p class="description">Real-time fluid simulation using compute shaders</p>
+                    <div class="layers">
+                        <span class="layer-tag webgpu">WebGPU Compute</span>
+                        <span class="layer-tag webgl2">WebGL2 Render</span>
+                        <span class="layer-tag css">CSS Blend</span>
+                    </div>
+                    <div class="indicator-showcase webgpu-style" id="fluid-meter">
+                        <!-- Fluid meter -->
+                    </div>
+                </div>
+
+                <!-- Plasma Globe Indicator -->
+                <div class="component-card">
+                    <h3>Plasma Globe Indicator</h3>
+                    <p class="description">Raymarched volumetric plasma effects</p>
+                    <div class="layers">
+                        <span class="layer-tag webgpu">WebGPU Raymarch</span>
+                        <span class="layer-tag webgl">WebGL Glow</span>
+                        <span class="layer-tag svg">SVG Frame</span>
+                    </div>
+                    <div class="indicator-showcase webgpu-style" id="plasma-globe">
+                        <!-- Plasma globe -->
+                    </div>
+                </div>
+
+                <!-- Waveform Synthesizer -->
+                <div class="component-card">
+                    <h3>Waveform Synthesizer</h3>
+                    <p class="description">FFT-based spectrum with particle trails</p>
+                    <div class="layers">
+                        <span class="layer-tag webgpu">WebGPU FFT</span>
+                        <span class="layer-tag webgl2">WebGL2 Trails</span>
+                        <span class="layer-tag svg">SVG Markers</span>
+                    </div>
+                    <div class="indicator-showcase webgpu-style" id="waveform-synth">
+                        <!-- Waveform synthesizer -->
+                    </div>
+                </div>
+
+                <!-- Crystalline Status Panel -->
+                <div class="component-card full-width">
+                    <h3>Crystalline Status Panel</h3>
+                    <p class="description">Procedural geometry with multi-layer rendering</p>
+                    <div class="layers">
+                        <span class="layer-tag webgpu">WebGPU Geometry</span>
+                        <span class="layer-tag webgl2">WebGL2 Refract</span>
+                        <span class="layer-tag svg">SVG UI</span>
+                        <span class="layer-tag css">CSS Filter</span>
+                    </div>
+                    <div class="indicator-showcase webgpu-style crystalline-panel" id="crystalline-panel">
+                        <!-- Crystalline panel -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Real-Time Data Visualization -->
+        <section class="data-viz-section">
+            <h2>📈 Real-Time Data Visualization</h2>
+            <p class="description">Live data streaming with GPU-accelerated rendering</p>
+
+            <div class="data-viz-container">
+                <div class="viz-controls">
+                    <h3>Data Source</h3>
+                    <label>
+                        <input type="radio" name="data-source" value="sine" checked>
+                        Sine Wave
+                    </label>
+                    <label>
+                        <input type="radio" name="data-source" value="noise">
+                        Perlin Noise
+                    </label>
+                    <label>
+                        <input type="radio" name="data-source" value="random">
+                        Random Walk
+                    </label>
+
+                    <h3 style="margin-top: 1rem;">Visualization</h3>
+                    <label>
+                        <input type="checkbox" id="viz-particles" checked>
+                        Particle System
+                    </label>
+                    <label>
+                        <input type="checkbox" id="viz-bars" checked>
+                        Bar Graph
+                    </label>
+                    <label>
+                        <input type="checkbox" id="viz-line" checked>
+                        Line Graph
+                    </label>
+                    <label>
+                        <input type="checkbox" id="viz-heatmap">
+                        Heatmap
+                    </label>
+                </div>
+
+                <div class="viz-display" id="data-viz-display">
+                    <!-- Multi-layer visualization -->
+                </div>
+            </div>
+
+            <div class="component-card full-width" style="margin-top: 2rem;">
+                <h3>GPU-Accelerated Data Visualization</h3>
+                <p class="description">WebGPU-powered real-time data charts with 3D depth</p>
+                <div class="layers">
+                    <span class="layer-tag webgpu">WebGPU Compute</span>
+                    <span class="layer-tag webgl2">WebGL2 Render</span>
+                </div>
+                <div class="indicator-showcase webgpu-style" id="data-visualization">
+                    <!-- Data visualization -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Remove duplicate data-viz-container closing tag -->
+        <section style="display: none;">
+            <div class="hidden-placeholder">
+                <!-- Placeholder section removed -->
+            </div>
             </div>
         </section>
     </div>

@@ -905,13 +905,578 @@ class RotaryKnob {
     }
 }
 
+/**
+ * WebGPU Particle System
+ * Manages GPU-accelerated particle simulations using compute shaders
+ */
+class WebGPUParticleSystem {
+    constructor(canvas, options = {}) {
+        this.canvas = canvas;
+        this.options = {
+            particleCount: options.particleCount || 10000,
+            particleSize: options.particleSize || 2,
+            color: options.color || [0, 1, 0.5, 1],
+            physics: options.physics || 'attract', // 'attract', 'repel', 'orbit', 'fluid'
+            ...options
+        };
+
+        this.device = null;
+        this.context = null;
+        this.pipeline = null;
+        this.computePipeline = null;
+        this.particleBuffer = null;
+        this.uniformBuffer = null;
+        this.initialized = false;
+    }
+
+    async init() {
+        if (!navigator.gpu) {
+            console.warn('WebGPU not supported');
+            return false;
+        }
+
+        try {
+            const adapter = await navigator.gpu.requestAdapter();
+            this.device = await adapter.requestDevice();
+
+            this.context = this.canvas.getContext('webgpu');
+            const format = navigator.gpu.getPreferredCanvasFormat();
+
+            this.context.configure({
+                device: this.device,
+                format: format,
+                alphaMode: 'premultiplied'
+            });
+
+            await this.createBuffers();
+            await this.createPipelines(format);
+
+            this.initialized = true;
+            return true;
+        } catch (e) {
+            console.error('WebGPU initialization failed:', e);
+            return false;
+        }
+    }
+
+    async createBuffers() {
+        // Create particle data
+        const particleData = new Float32Array(this.options.particleCount * 8);
+
+        for (let i = 0; i < this.options.particleCount; i++) {
+            const offset = i * 8;
+            // Position (x, y)
+            particleData[offset + 0] = (Math.random() - 0.5) * 2;
+            particleData[offset + 1] = (Math.random() - 0.5) * 2;
+            // Velocity (vx, vy)
+            particleData[offset + 2] = (Math.random() - 0.5) * 0.02;
+            particleData[offset + 3] = (Math.random() - 0.5) * 0.02;
+            // Color (r, g, b, a)
+            particleData[offset + 4] = this.options.color[0];
+            particleData[offset + 5] = this.options.color[1];
+            particleData[offset + 6] = this.options.color[2];
+            particleData[offset + 7] = this.options.color[3];
+        }
+
+        this.particleBuffer = this.device.createBuffer({
+            size: particleData.byteLength,
+            usage: GPUBufferUsage.VERTEX | GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+            mappedAtCreation: true
+        });
+
+        new Float32Array(this.particleBuffer.getMappedRange()).set(particleData);
+        this.particleBuffer.unmap();
+
+        // Create uniform buffer
+        this.uniformBuffer = this.device.createBuffer({
+            size: 64, // 4x4 matrix + extra space
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+    }
+
+    async createPipelines(format) {
+        // Compute shader for particle physics
+        const computeShader = `
+            struct Particle {
+                pos: vec2<f32>,
+                vel: vec2<f32>,
+                color: vec4<f32>
+            }
+            
+            struct Uniforms {
+                time: f32,
+                deltaTime: f32,
+                mouseX: f32,
+                mouseY: f32,
+                attractorStrength: f32,
+                damping: f32
+            }
+            
+            @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
+            @group(0) @binding(1) var<uniform> uniforms: Uniforms;
+            
+            @compute @workgroup_size(64)
+            fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+                let index = global_id.x;
+                if (index >= arrayLength(&particles)) {
+                    return;
+                }
+                
+                var particle = particles[index];
+                
+                // Apply attractor force
+                let mousePos = vec2<f32>(uniforms.mouseX, uniforms.mouseY);
+                let toMouse = mousePos - particle.pos;
+                let dist = length(toMouse);
+                
+                if (dist > 0.01) {
+                    let force = normalize(toMouse) * uniforms.attractorStrength / (dist * dist + 0.1);
+                    particle.vel += force * uniforms.deltaTime;
+                }
+                
+                // Apply damping
+                particle.vel *= uniforms.damping;
+                
+                // Update position
+                particle.pos += particle.vel * uniforms.deltaTime;
+                
+                // Boundary conditions (wrap around)
+                if (particle.pos.x < -1.0) { particle.pos.x = 1.0; }
+                if (particle.pos.x > 1.0) { particle.pos.x = -1.0; }
+                if (particle.pos.y < -1.0) { particle.pos.y = 1.0; }
+                if (particle.pos.y > 1.0) { particle.pos.y = -1.0; }
+                
+                particles[index] = particle;
+            }
+        `;
+
+        this.computePipeline = this.device.createComputePipeline({
+            layout: 'auto',
+            compute: {
+                module: this.device.createShaderModule({ code: computeShader }),
+                entryPoint: 'main'
+            }
+        });
+
+        // Render shader for drawing particles
+        const renderShader = `
+            struct Particle {
+                pos: vec2<f32>,
+                vel: vec2<f32>,
+                color: vec4<f32>
+            }
+            
+            @group(0) @binding(0) var<storage, read> particles: array<Particle>;
+            
+            struct VertexOutput {
+                @builtin(position) position: vec4<f32>,
+                @location(0) color: vec4<f32>
+            }
+            
+            @vertex
+            fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+                let particleIndex = vertexIndex / 6u;
+                let particle = particles[particleIndex];
+                
+                let vertices = array<vec2<f32>, 6>(
+                    vec2<f32>(-1.0, -1.0),
+                    vec2<f32>(1.0, -1.0),
+                    vec2<f32>(1.0, 1.0),
+                    vec2<f32>(-1.0, -1.0),
+                    vec2<f32>(1.0, 1.0),
+                    vec2<f32>(-1.0, 1.0)
+                );
+                
+                let localVertex = vertices[vertexIndex % 6u];
+                let size = 0.005;
+                let pos = particle.pos + localVertex * size;
+                
+                var output: VertexOutput;
+                output.position = vec4<f32>(pos, 0.0, 1.0);
+                output.color = particle.color;
+                return output;
+            }
+            
+            @fragment
+            fn fragmentMain(input: VertexOutput) -> @location(0) vec4<f32> {
+                return input.color;
+            }
+        `;
+
+        this.pipeline = this.device.createRenderPipeline({
+            layout: 'auto',
+            vertex: {
+                module: this.device.createShaderModule({ code: renderShader }),
+                entryPoint: 'vertexMain'
+            },
+            fragment: {
+                module: this.device.createShaderModule({ code: renderShader }),
+                entryPoint: 'fragmentMain',
+                targets: [{
+                    format: format,
+                    blend: {
+                        color: {
+                            srcFactor: 'src-alpha',
+                            dstFactor: 'one-minus-src-alpha'
+                        },
+                        alpha: {
+                            srcFactor: 'one',
+                            dstFactor: 'one-minus-src-alpha'
+                        }
+                    }
+                }]
+            },
+            primitive: {
+                topology: 'triangle-list'
+            }
+        });
+
+        // Create bind groups
+        this.computeBindGroup = this.device.createBindGroup({
+            layout: this.computePipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: this.particleBuffer } },
+                { binding: 1, resource: { buffer: this.uniformBuffer } }
+            ]
+        });
+
+        this.renderBindGroup = this.device.createBindGroup({
+            layout: this.pipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: this.particleBuffer } }
+            ]
+        });
+    }
+
+    updateUniforms(time, deltaTime, mouseX = 0, mouseY = 0) {
+        if (!this.initialized) return;
+
+        const uniformData = new Float32Array([
+            time,
+            deltaTime,
+            mouseX,
+            mouseY,
+            this.options.attractorStrength || 0.5,
+            this.options.damping || 0.99,
+            0, 0 // padding
+        ]);
+
+        this.device.queue.writeBuffer(this.uniformBuffer, 0, uniformData);
+    }
+
+    render(time, deltaTime) {
+        if (!this.initialized) return;
+
+        this.updateUniforms(time, deltaTime);
+
+        const commandEncoder = this.device.createCommandEncoder();
+
+        // Compute pass
+        const computePass = commandEncoder.beginComputePass();
+        computePass.setPipeline(this.computePipeline);
+        computePass.setBindGroup(0, this.computeBindGroup);
+        computePass.dispatchWorkgroups(Math.ceil(this.options.particleCount / 64));
+        computePass.end();
+
+        // Render pass
+        const textureView = this.context.getCurrentTexture().createView();
+        const renderPass = commandEncoder.beginRenderPass({
+            colorAttachments: [{
+                view: textureView,
+                clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                loadOp: 'clear',
+                storeOp: 'store'
+            }]
+        });
+
+        renderPass.setPipeline(this.pipeline);
+        renderPass.setBindGroup(0, this.renderBindGroup);
+        renderPass.draw(this.options.particleCount * 6);
+        renderPass.end();
+
+        this.device.queue.submit([commandEncoder.finish()]);
+    }
+
+    destroy() {
+        if (this.particleBuffer) this.particleBuffer.destroy();
+        if (this.uniformBuffer) this.uniformBuffer.destroy();
+    }
+}
+
+/**
+ * WebGPU Compute Buffer Helper
+ * Simplified buffer management for compute shader operations
+ */
+class WebGPUComputeBuffer {
+    constructor(device, size, usage = GPUBufferUsage.STORAGE) {
+        this.device = device;
+        this.size = size;
+        this.buffer = device.createBuffer({
+            size: size,
+            usage: usage | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC
+        });
+    }
+
+    write(data) {
+        this.device.queue.writeBuffer(this.buffer, 0, data);
+    }
+
+    async read() {
+        const readBuffer = this.device.createBuffer({
+            size: this.size,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
+        });
+
+        const commandEncoder = this.device.createCommandEncoder();
+        commandEncoder.copyBufferToBuffer(this.buffer, 0, readBuffer, 0, this.size);
+        this.device.queue.submit([commandEncoder.finish()]);
+
+        await readBuffer.mapAsync(GPUMapMode.READ);
+        const data = new Float32Array(readBuffer.getMappedRange());
+        const result = new Float32Array(data);
+        readBuffer.unmap();
+        readBuffer.destroy();
+
+        return result;
+    }
+
+    destroy() {
+        this.buffer.destroy();
+    }
+}
+
+/**
+ * WebGPU Volumetric Renderer
+ * Raymarching and volumetric effects using compute shaders
+ */
+class WebGPUVolumetricRenderer {
+    constructor(canvas, options = {}) {
+        this.canvas = canvas;
+        this.options = {
+            volumeSize: options.volumeSize || 128,
+            raySteps: options.raySteps || 64,
+            density: options.density || 0.5,
+            ...options
+        };
+
+        this.device = null;
+        this.context = null;
+        this.pipeline = null;
+        this.initialized = false;
+    }
+
+    async init() {
+        if (!navigator.gpu) {
+            console.warn('WebGPU not supported');
+            return false;
+        }
+
+        try {
+            const adapter = await navigator.gpu.requestAdapter();
+            this.device = await adapter.requestDevice();
+
+            this.context = this.canvas.getContext('webgpu');
+            const format = navigator.gpu.getPreferredCanvasFormat();
+
+            this.context.configure({
+                device: this.device,
+                format: format,
+                alphaMode: 'premultiplied'
+            });
+
+            await this.createPipeline(format);
+
+            this.initialized = true;
+            return true;
+        } catch (e) {
+            console.error('WebGPU volumetric renderer initialization failed:', e);
+            return false;
+        }
+    }
+
+    async createPipeline(format) {
+        const shaderCode = `
+            struct Uniforms {
+                time: f32,
+                density: f32,
+                raySteps: f32,
+                _padding: f32
+            }
+            
+            @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+            
+            struct VertexOutput {
+                @builtin(position) position: vec4<f32>,
+                @location(0) uv: vec2<f32>
+            }
+            
+            @vertex
+            fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+                let pos = array<vec2<f32>, 6>(
+                    vec2<f32>(-1.0, -1.0),
+                    vec2<f32>(1.0, -1.0),
+                    vec2<f32>(1.0, 1.0),
+                    vec2<f32>(-1.0, -1.0),
+                    vec2<f32>(1.0, 1.0),
+                    vec2<f32>(-1.0, 1.0)
+                );
+                
+                var output: VertexOutput;
+                output.position = vec4<f32>(pos[vertexIndex], 0.0, 1.0);
+                output.uv = pos[vertexIndex] * 0.5 + 0.5;
+                return output;
+            }
+            
+            fn noise3D(p: vec3<f32>) -> f32 {
+                let i = floor(p);
+                let f = fract(p);
+                let u = f * f * (3.0 - 2.0 * f);
+                
+                return mix(
+                    mix(
+                        mix(hash(i + vec3<f32>(0.0, 0.0, 0.0)), 
+                            hash(i + vec3<f32>(1.0, 0.0, 0.0)), u.x),
+                        mix(hash(i + vec3<f32>(0.0, 1.0, 0.0)), 
+                            hash(i + vec3<f32>(1.0, 1.0, 0.0)), u.x), u.y),
+                    mix(
+                        mix(hash(i + vec3<f32>(0.0, 0.0, 1.0)), 
+                            hash(i + vec3<f32>(1.0, 0.0, 1.0)), u.x),
+                        mix(hash(i + vec3<f32>(0.0, 1.0, 1.0)), 
+                            hash(i + vec3<f32>(1.0, 1.0, 1.0)), u.x), u.y), u.z);
+            }
+            
+            fn hash(p: vec3<f32>) -> f32 {
+                let p3 = fract(p * 0.1031);
+                let dot_val = dot(p3, vec3<f32>(p3.yz + 19.19, p3.x + 19.19));
+                return fract((p3.x + p3.y) * dot_val);
+            }
+            
+            @fragment
+            fn fragmentMain(input: VertexOutput) -> @location(0) vec4<f32> {
+                let rayOrigin = vec3<f32>(0.0, 0.0, -2.0);
+                let rayDir = normalize(vec3<f32>(input.uv * 2.0 - 1.0, 1.0));
+                
+                var color = vec3<f32>(0.0);
+                var alpha = 0.0;
+                
+                let steps = i32(uniforms.raySteps);
+                let stepSize = 0.05;
+                
+                for (var i = 0; i < steps; i++) {
+                    let t = f32(i) * stepSize;
+                    let pos = rayOrigin + rayDir * t;
+                    
+                    let noiseValue = noise3D(pos * 2.0 + vec3<f32>(uniforms.time * 0.2));
+                    let density = noiseValue * uniforms.density;
+                    
+                    if (density > 0.0) {
+                        let col = vec3<f32>(
+                            0.0,
+                            0.5 + 0.5 * sin(uniforms.time + noiseValue * 3.14),
+                            0.8 + 0.2 * cos(uniforms.time * 0.5)
+                        );
+                        
+                        color += col * density * (1.0 - alpha);
+                        alpha += density * 0.1 * (1.0 - alpha);
+                        
+                        if (alpha > 0.95) {
+                            break;
+                        }
+                    }
+                }
+                
+                return vec4<f32>(color, alpha);
+            }
+        `;
+
+        this.uniformBuffer = this.device.createBuffer({
+            size: 16,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+
+        this.pipeline = this.device.createRenderPipeline({
+            layout: 'auto',
+            vertex: {
+                module: this.device.createShaderModule({ code: shaderCode }),
+                entryPoint: 'vertexMain'
+            },
+            fragment: {
+                module: this.device.createShaderModule({ code: shaderCode }),
+                entryPoint: 'fragmentMain',
+                targets: [{
+                    format: format,
+                    blend: {
+                        color: {
+                            srcFactor: 'src-alpha',
+                            dstFactor: 'one-minus-src-alpha'
+                        },
+                        alpha: {
+                            srcFactor: 'one',
+                            dstFactor: 'one-minus-src-alpha'
+                        }
+                    }
+                }]
+            },
+            primitive: {
+                topology: 'triangle-list'
+            }
+        });
+
+        this.bindGroup = this.device.createBindGroup({
+            layout: this.pipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: this.uniformBuffer } }
+            ]
+        });
+    }
+
+    render(time) {
+        if (!this.initialized) return;
+
+        const uniformData = new Float32Array([
+            time,
+            this.options.density,
+            this.options.raySteps,
+            0 // padding
+        ]);
+
+        this.device.queue.writeBuffer(this.uniformBuffer, 0, uniformData);
+
+        const commandEncoder = this.device.createCommandEncoder();
+        const textureView = this.context.getCurrentTexture().createView();
+
+        const renderPass = commandEncoder.beginRenderPass({
+            colorAttachments: [{
+                view: textureView,
+                clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                loadOp: 'clear',
+                storeOp: 'store'
+            }]
+        });
+
+        renderPass.setPipeline(this.pipeline);
+        renderPass.setBindGroup(0, this.bindGroup);
+        renderPass.draw(6);
+        renderPass.end();
+
+        this.device.queue.submit([commandEncoder.finish()]);
+    }
+
+    destroy() {
+        if (this.uniformBuffer) this.uniformBuffer.destroy();
+    }
+}
+
 // Export for use in other modules
 window.UIComponents = {
     RenderingSupport,
     LayeredCanvas,
     ShaderUtils,
     LEDButton,
-    RotaryKnob
+    RotaryKnob,
+    WebGPUParticleSystem,
+    WebGPUComputeBuffer,
+    WebGPUVolumetricRenderer
 };
 
 // Initialize rendering support detection

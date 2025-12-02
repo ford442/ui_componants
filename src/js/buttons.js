@@ -14,6 +14,19 @@ document.addEventListener('DOMContentLoaded', () => {
     initIndustrialButtons();
     initHolographicButtons();
     initOrganicButtons();
+
+    // WebGPU Advanced Examples
+    checkWebGPUSupport().then(supported => {
+        if (supported) {
+            initParticleSwarmButtons();
+            initQuantumFluxButtons();
+            initMagneticFieldButtons();
+            initNeuralNetworkButtons();
+            initCompositingShowcase();
+        } else {
+            document.getElementById('webgpu-warning')?.setAttribute('style', 'display: block;');
+        }
+    });
 });
 
 /**
@@ -895,3 +908,739 @@ function setupQuadWebGL1(gl, program) {
         gl.vertexAttribPointer(texCoordLoc, 2, gl.FLOAT, false, 16, 8);
     }
 }
+
+/**
+ * Check WebGPU Support
+ */
+async function checkWebGPUSupport() {
+    if (!navigator.gpu) {
+        return false;
+    }
+
+    try {
+        const adapter = await navigator.gpu.requestAdapter();
+        return !!adapter;
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * Initialize Particle Swarm Buttons
+ * WebGPU compute shader with 10K particles that react to mouse interaction
+ */
+function initParticleSwarmButtons() {
+    const container = document.getElementById('particle-swarm-buttons');
+    if (!container) return;
+
+    const configs = [
+        { label: 'ATTRACT', color: [0, 1, 0.5, 0.8], physics: 'attract' },
+        { label: 'REPEL', color: [1, 0.3, 0, 0.8], physics: 'repel' },
+        { label: 'ORBIT', color: [0.3, 0.6, 1, 0.8], physics: 'orbit' }
+    ];
+
+    configs.forEach(async (config) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'particle-button-wrapper';
+        wrapper.style.cssText = `
+            width: 140px;
+            height: 80px;
+            position: relative;
+            margin: 0.5rem;
+        `;
+
+        // WebGPU particle canvas (back layer)
+        const particleCanvas = document.createElement('canvas');
+        particleCanvas.width = 280;
+        particleCanvas.height = 160;
+        particleCanvas.style.cssText = `
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        `;
+
+        // WebGL2 glow canvas (middle layer)
+        const glowCanvas = document.createElement('canvas');
+        glowCanvas.width = 280;
+        glowCanvas.height = 160;
+        glowCanvas.style.cssText = `
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            pointer-events: none;
+        `;
+
+        // CSS button (top layer)
+        const button = document.createElement('button');
+        button.textContent = config.label;
+        button.style.cssText = `
+            width: 100%;
+            height: 100%;
+            background: rgba(20, 20, 30, 0.7);
+            border: 2px solid rgba(${config.color[0] * 255}, ${config.color[1] * 255}, ${config.color[2] * 255}, 0.5);
+            border-radius: 8px;
+            color: rgb(${config.color[0] * 255}, ${config.color[1] * 255}, ${config.color[2] * 255});
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+            z-index: 2;
+            backdrop-filter: blur(2px);
+            transition: all 0.2s;
+        `;
+
+        wrapper.appendChild(particleCanvas);
+        wrapper.appendChild(glowCanvas);
+        wrapper.appendChild(button);
+        container.appendChild(wrapper);
+
+        // Initialize WebGPU particle system
+        const particleSystem = new UIComponents.WebGPUParticleSystem(particleCanvas, {
+            particleCount: 10000,
+            particleSize: 2,
+            color: config.color,
+            attractorStrength: 0.3,
+            damping: 0.98
+        });
+
+        const initialized = await particleSystem.init();
+        if (!initialized) return;
+
+        // Initialize WebGL2 glow effect
+        const gl2 = glowCanvas.getContext('webgl2', { alpha: true, premultipliedAlpha: false });
+        if (gl2) {
+            const glowShader = `#version 300 es
+                precision mediump float;
+                uniform float u_time;
+                uniform vec2 u_resolution;
+                uniform vec3 u_color;
+                uniform float u_active;
+                out vec4 fragColor;
+                
+                void main() {
+                    vec2 uv = gl_FragCoord.xy / u_resolution;
+                    vec2 center = vec2(0.5, 0.5);
+                    float dist = distance(uv, center);
+                    
+                    float glow = 1.0 - smoothstep(0.0, 0.6, dist);
+                    glow = pow(glow, 3.0);
+                    glow *= u_active * 0.5;
+                    glow *= 0.9 + 0.1 * sin(u_time * 3.0);
+                    
+                    fragColor = vec4(u_color * glow, glow * 0.3);
+                }
+            `;
+
+            const vertexShader = `#version 300 es
+                in vec4 a_position;
+                void main() {
+                    gl_Position = a_position;
+                }
+            `;
+
+            const program = createProgram(gl2, vertexShader, glowShader);
+            if (program) {
+                setupQuad(gl2, program);
+
+                gl2.enable(gl2.BLEND);
+                gl2.blendFunc(gl2.SRC_ALPHA, gl2.ONE_MINUS_SRC_ALPHA);
+
+                const uniforms = {
+                    time: gl2.getUniformLocation(program, 'u_time'),
+                    resolution: gl2.getUniformLocation(program, 'u_resolution'),
+                    color: gl2.getUniformLocation(program, 'u_color'),
+                    active: gl2.getUniformLocation(program, 'u_active')
+                };
+
+                let isActive = false;
+                let mouseX = 0;
+                let mouseY = 0;
+
+                button.addEventListener('mouseenter', () => { isActive = true; });
+                button.addEventListener('mouseleave', () => { isActive = false; });
+                button.addEventListener('click', () => {
+                    button.style.transform = 'scale(0.95)';
+                    setTimeout(() => { button.style.transform = 'scale(1)'; }, 100);
+                });
+
+                wrapper.addEventListener('mousemove', (e) => {
+                    const rect = wrapper.getBoundingClientRect();
+                    mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                    mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                });
+
+                let lastTime = 0;
+                const animate = (timestamp) => {
+                    const time = timestamp * 0.001;
+                    const deltaTime = timestamp - lastTime > 0 ? (timestamp - lastTime) * 0.001 : 0.016;
+                    lastTime = timestamp;
+
+                    // Update particle system
+                    particleSystem.updateUniforms(time, deltaTime, mouseX, mouseY);
+                    particleSystem.render(time, deltaTime);
+
+                    // Render glow
+                    gl2.viewport(0, 0, glowCanvas.width, glowCanvas.height);
+                    gl2.clearColor(0, 0, 0, 0);
+                    gl2.clear(gl2.COLOR_BUFFER_BIT);
+
+                    gl2.useProgram(program);
+                    gl2.uniform1f(uniforms.time, time);
+                    gl2.uniform2f(uniforms.resolution, glowCanvas.width, glowCanvas.height);
+                    gl2.uniform3f(uniforms.color, config.color[0], config.color[1], config.color[2]);
+                    gl2.uniform1f(uniforms.active, isActive ? 1.0 : 0.0);
+
+                    gl2.drawArrays(gl2.TRIANGLE_STRIP, 0, 4);
+
+                    requestAnimationFrame(animate);
+                };
+
+                requestAnimationFrame(animate);
+            }
+        }
+    });
+}
+
+/**
+ * Initialize Quantum Flux Buttons
+ * WebGPU rendering with probabilistic shader effects
+ */
+function initQuantumFluxButtons() {
+    const container = document.getElementById('quantum-flux-buttons');
+    if (!container) return;
+
+    const labels = ['QUANTUM A', 'QUANTUM B', 'QUANTUM C'];
+
+    labels.forEach(async (label, index) => {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = `
+            width: 140px;
+            height: 80px;
+            position: relative;
+            margin: 0.5rem;
+        `;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 280;
+        canvas.height = 160;
+        canvas.style.cssText = `
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        `;
+
+        const button = document.createElement('button');
+        button.textContent = label;
+        button.style.cssText = `
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 20, 0.5);
+            border: 2px solid rgba(100, 150, 255, 0.6);
+            border-radius: 8px;
+            color: #6af;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+            z-index: 2;
+            backdrop-filter: blur(3px);
+        `;
+
+        wrapper.appendChild(canvas);
+        wrapper.appendChild(button);
+        container.appendChild(wrapper);
+
+        // Initialize WebGPU volumetric renderer for quantum effects
+        const volumetric = new UIComponents.WebGPUVolumetricRenderer(canvas, {
+            raySteps: 32,
+            density: 0.3 + index * 0.1
+        });
+
+        const initialized = await volumetric.init();
+        if (!initialized) return;
+
+        let isActive = false;
+        button.addEventListener('mouseenter', () => { isActive = true; });
+        button.addEventListener('mouseleave', () => { isActive = false; });
+
+        const animate = (timestamp) => {
+            const time = timestamp * 0.001 * (1 + index * 0.3);
+            volumetric.render(time);
+
+            if (isActive) {
+                button.style.borderColor = `rgba(${100 + Math.sin(time * 5) * 50}, 150, 255, 0.9)`;
+            }
+
+            requestAnimationFrame(animate);
+        };
+
+        requestAnimationFrame(animate);
+    });
+}
+
+/**
+ * Initialize Magnetic Field Buttons
+ * Compute shader field line simulation
+ */
+function initMagneticFieldButtons() {
+    const container = document.getElementById('magnetic-field-buttons');
+    if (!container) return;
+
+    const configs = [
+        { label: 'N', polarity: 1, color: '#f44' },
+        { label: 'S', polarity: -1, color: '#44f' }
+    ];
+
+    configs.forEach((config) => {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = `
+            width: 100px;
+            height: 100px;
+            position: relative;
+            margin: 0.5rem;
+        `;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 200;
+        canvas.height = 200;
+        canvas.style.cssText = `
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        `;
+
+        const button = document.createElement('button');
+        button.textContent = config.label;
+        button.style.cssText = `
+            width: 60%;
+            height: 60%;
+            position: absolute;
+            top: 20%;
+            left: 20%;
+            background: radial-gradient(circle, ${config.color}40, ${config.color}20);
+            border: 3px solid ${config.color};
+            border-radius: 50%;
+            color: ${config.color};
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 2;
+            box-shadow: 0 0 20px ${config.color}80;
+        `;
+
+        wrapper.appendChild(canvas);
+        wrapper.appendChild(button);
+        container.appendChild(wrapper);
+
+        // Draw magnetic field lines with WebGL
+        const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: false });
+        if (gl) {
+            const fragmentShader = `
+                precision mediump float;
+                uniform float u_time;
+                uniform vec2 u_resolution;
+                uniform float u_polarity;
+                
+                void main() {
+                    vec2 uv = gl_FragCoord.xy / u_resolution;
+                    vec2 center = vec2(0.5, 0.5);
+                    vec2 toCenter = uv - center;
+                    float dist = length(toCenter);
+                    float angle = atan(toCenter.y, toCenter.x);
+                    
+                    // Field lines
+                    float fieldLine = sin(angle * 6.0 + u_time) * 0.5 + 0.5;
+                    fieldLine *= smoothstep(0.5, 0.2, dist) * smoothstep(0.05, 0.2, dist);
+                    
+                    vec3 color = u_polarity > 0.0 ? vec3(1.0, 0.3, 0.3) : vec3(0.3, 0.3, 1.0);
+                    gl_FragColor = vec4(color * fieldLine, fieldLine * 0.5);
+                }
+            `;
+
+            const program = UIComponents.ShaderUtils.createProgram(
+                gl,
+                UIComponents.ShaderUtils.vertexShader2D,
+                fragmentShader
+            );
+
+            if (program) {
+                setupQuadWebGL1(gl, program);
+
+                gl.enable(gl.BLEND);
+                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+                const uniforms = {
+                    time: gl.getUniformLocation(program, 'u_time'),
+                    resolution: gl.getUniformLocation(program, 'u_resolution'),
+                    polarity: gl.getUniformLocation(program, 'u_polarity')
+                };
+
+                const animate = (timestamp) => {
+                    const time = timestamp * 0.001;
+
+                    gl.viewport(0, 0, canvas.width, canvas.height);
+                    gl.clearColor(0, 0, 0, 0);
+                    gl.clear(gl.COLOR_BUFFER_BIT);
+
+                    gl.useProgram(program);
+                    gl.uniform1f(uniforms.time, time);
+                    gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+                    gl.uniform1f(uniforms.polarity, config.polarity);
+
+                    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+                    requestAnimationFrame(animate);
+                };
+
+                requestAnimationFrame(animate);
+            }
+        }
+    });
+}
+
+/**
+ * Initialize Neural Network Buttons
+ * Animated node connections with impulse propagation
+ */
+function initNeuralNetworkButtons() {
+    const container = document.getElementById('neural-network-buttons');
+    if (!container) return;
+
+    const labels = ['INPUT', 'PROCESS', 'OUTPUT'];
+
+    labels.forEach((label) => {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = `
+            width: 140px;
+            height: 100px;
+            position: relative;
+            margin: 0.5rem;
+        `;
+
+        // SVG for neural connections
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '100%');
+        svg.setAttribute('height', '100%');
+        svg.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        `;
+
+        // Create neural network structure
+        const nodes = 8;
+        for (let i = 0; i < nodes; i++) {
+            const x = 20 + (i % 4) * 30;
+            const y = 20 + Math.floor(i / 4) * 60;
+
+            // Node circle
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', x);
+            circle.setAttribute('cy', y);
+            circle.setAttribute('r', '5');
+            circle.setAttribute('fill', '#0af');
+            circle.setAttribute('opacity', '0.7');
+            svg.appendChild(circle);
+
+            // Connections
+            if (i < 4) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x);
+                line.setAttribute('y1', y);
+                line.setAttribute('x2', 20 + (i % 4) * 30);
+                line.setAttribute('y2', 80);
+                line.setAttribute('stroke', '#0af');
+                line.setAttribute('stroke-width', '1');
+                line.setAttribute('opacity', '0.3');
+
+                const animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+                animate.setAttribute('attributeName', 'opacity');
+                animate.setAttribute('values', '0.1;0.6;0.1');
+                animate.setAttribute('dur', '2s');
+                animate.setAttribute('begin', `${i * 0.5}s`);
+                animate.setAttribute('repeatCount', 'indefinite');
+                line.appendChild(animate);
+
+                svg.appendChild(line);
+            }
+        }
+
+        const button = document.createElement('button');
+        button.textContent = label;
+        button.style.cssText = `
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 30, 0.8);
+            border: 2px solid #0af;
+            border-radius: 10px;
+            color: #0af;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+            z-index: 2;
+            backdrop-filter: blur(3px);
+        `;
+
+        wrapper.appendChild(svg);
+        wrapper.appendChild(button);
+        container.appendChild(wrapper);
+
+        button.addEventListener('click', () => {
+            button.style.animation = 'none';
+            button.offsetHeight;
+            button.style.animation = 'neuralPulse 0.5s ease';
+        });
+    });
+
+    // Add animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes neuralPulse {
+            0%, 100% { box-shadow: 0 0 10px #0af; }
+            50% { box-shadow: 0 0 30px #0af, 0 0 50px #0af; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+/**
+ * Initialize Multi-Layer Compositing Showcase
+ * Real-time layer management with blend modes
+ */
+function initCompositingShowcase() {
+    const container = document.getElementById('compositing-display');
+    if (!container) return;
+
+    container.style.cssText = `
+        width: 100%;
+        height: 400px;
+        position: relative;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+    `;
+
+    // WebGPU particle layer
+    const gpuCanvas = document.createElement('canvas');
+    gpuCanvas.width = 800;
+    gpuCanvas.height = 400;
+    gpuCanvas.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+    `;
+    gpuCanvas.id = 'comp-gpu-layer';
+
+    // WebGL2 glow layer
+    const gl2Canvas = document.createElement('canvas');
+    gl2Canvas.width = 800;
+    gl2Canvas.height = 400;
+    gl2Canvas.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+        mix-blend-mode: screen;
+    `;
+    gl2Canvas.id = 'comp-gl2-layer';
+
+    // SVG UI layer
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+    svg.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 3;
+        pointer-events: none;
+    `;
+    svg.id = 'comp-svg-layer';
+
+    // Add UI elements to SVG
+    for (let i = 0; i < 3; i++) {
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', 50 + i * 250);
+        rect.setAttribute('y', 150);
+        rect.setAttribute('width', 100);
+        rect.setAttribute('height', 100);
+        rect.setAttribute('fill', 'none');
+        rect.setAttribute('stroke', '#0f8');
+        rect.setAttribute('stroke-width', '2');
+        rect.setAttribute('rx', '10');
+        svg.appendChild(rect);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', 100 + i * 250);
+        text.setAttribute('y', 290);
+        text.setAttribute('fill', '#0f8');
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('font-size', '14');
+        text.textContent = `ZONE ${i + 1}`;
+        svg.appendChild(text);
+    }
+
+    container.appendChild(gpuCanvas);
+    container.appendChild(gl2Canvas);
+    container.appendChild(svg);
+
+    // Initialize particle system
+    (async () => {
+        const particleSystem = new UIComponents.WebGPUParticleSystem(gpuCanvas, {
+            particleCount: 5000,
+            color: [0, 1, 0.5, 0.6],
+            attractorStrength: 0.2,
+            damping: 0.95
+        });
+
+        const initialized = await particleSystem.init();
+        if (initialized) {
+            let lastTime = 0;
+            const animate = (timestamp) => {
+                const time = timestamp * 0.001;
+                const deltaTime = timestamp - lastTime > 0 ? (timestamp - lastTime) * 0.001 : 0.016;
+                lastTime = timestamp;
+
+                particleSystem.render(time, deltaTime);
+                requestAnimationFrame(animate);
+            };
+            requestAnimationFrame(animate);
+        }
+    })();
+
+    // Initialize WebGL2 glow
+    const gl2 = gl2Canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: false });
+    if (gl2) {
+        const shaderCode = `#version 300 es
+            precision mediump float;
+            uniform float u_time;
+            uniform vec2 u_resolution;
+            out vec4 fragColor;
+            
+            void main() {
+                vec2 uv = gl_FragCoord.xy / u_resolution;
+                
+                vec3 color = vec3(0.0);
+                for (int i = 0; i < 3; i++) {
+                    float fi = float(i);
+                    vec2 center = vec2(0.2 + fi * 0.3, 0.5);
+                    center.x += 0.05 * sin(u_time + fi);
+                    center.y += 0.05 * cos(u_time * 0.7 + fi);
+                    
+                    float dist = distance(uv, center);
+                    float glow = 0.05 / (dist * dist + 0.01);
+                    color += vec3(0.0, glow * 0.5, glow) * 0.3;
+                }
+                
+                fragColor = vec4(color, min(length(color), 1.0));
+            }
+        `;
+
+        const vertexShader = `#version 300 es
+            in vec4 a_position;
+            void main() {
+                gl_Position = a_position;
+            }
+        `;
+
+        const program = createProgram(gl2, vertexShader, shaderCode);
+        if (program) {
+            setupQuad(gl2, program);
+
+            gl2.enable(gl2.BLEND);
+            gl2.blendFunc(gl2.SRC_ALPHA, gl2.ONE_MINUS_SRC_ALPHA);
+
+            const uniforms = {
+                time: gl2.getUniformLocation(program, 'u_time'),
+                resolution: gl2.getUniformLocation(program, 'u_resolution')
+            };
+
+            const animate = (timestamp) => {
+                const time = timestamp * 0.001;
+
+                gl2.viewport(0, 0, gl2Canvas.width, gl2Canvas.height);
+                gl2.clearColor(0, 0, 0, 0);
+                gl2.clear(gl2.COLOR_BUFFER_BIT);
+
+                gl2.useProgram(program);
+                gl2.uniform1f(uniforms.time, time);
+                gl2.uniform2f(uniforms.resolution, gl2Canvas.width, gl2Canvas.height);
+
+                gl2.drawArrays(gl2.TRIANGLE_STRIP, 0, 4);
+
+                requestAnimationFrame(animate);
+            };
+
+            requestAnimationFrame(animate);
+        }
+    }
+
+    // Setup layer controls
+    document.getElementById('comp-webgpu')?.addEventListener('change', (e) => {
+        gpuCanvas.style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('comp-webgl2')?.addEventListener('change', (e) => {
+        gl2Canvas.style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('comp-svg')?.addEventListener('change', (e) => {
+        svg.style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    document.getElementById('comp-css')?.addEventListener('change', (e) => {
+        container.style.filter = e.target.checked ? 'contrast(1.1) saturate(1.2)' : 'none';
+    });
+
+    document.getElementById('comp-webgpu-opacity')?.addEventListener('input', (e) => {
+        gpuCanvas.style.opacity = e.target.value / 100;
+    });
+
+    document.getElementById('comp-webgl2-opacity')?.addEventListener('input', (e) => {
+        gl2Canvas.style.opacity = e.target.value / 100;
+    });
+
+    document.getElementById('comp-svg-opacity')?.addEventListener('input', (e) => {
+        svg.style.opacity = e.target.value / 100;
+    });
+
+    document.getElementById('comp-blend-mode')?.addEventListener('change', (e) => {
+        gl2Canvas.style.mixBlendMode = e.target.value;
+    });
+
+    // Layer order controls
+    document.querySelectorAll('.order-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.getAttribute('data-action');
+            if (action === 'swap-gpu-gl2') {
+                const z1 = gpuCanvas.style.zIndex;
+                gpuCanvas.style.zIndex = gl2Canvas.style.zIndex;
+                gl2Canvas.style.zIndex = z1;
+            } else if (action === 'svg-to-back') {
+                svg.style.zIndex = '0';
+            } else if (action === 'reset-order') {
+                gpuCanvas.style.zIndex = '1';
+                gl2Canvas.style.zIndex = '2';
+                svg.style.zIndex = '3';
+            }
+        });
+    });
+}
+

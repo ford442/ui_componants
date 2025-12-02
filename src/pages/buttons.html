@@ -186,6 +186,133 @@
                 </div>
             </div>
         </section>
+
+        <!-- WebGPU Advanced Examples Section -->
+        <section class="webgpu-advanced-section">
+            <div class="section-header">
+                <h2>🚀 WebGPU Advanced Multi-Layer Examples</h2>
+                <p class="description">Next-generation GPU compute shaders and particle systems</p>
+                <div class="webgpu-warning" id="webgpu-warning" style="display: none;">
+                    <strong>⚠️ WebGPU Required:</strong> These examples require WebGPU support (Chrome 113+ recommended)
+                </div>
+            </div>
+
+            <div class="component-grid">
+                <!-- Particle Swarm Button -->
+                <div class="component-card">
+                    <h3>Reactive Particle Swarm</h3>
+                    <p class="description">10K particles with GPU compute shader physics</p>
+                    <div class="layers">
+                        <span class="layer-tag webgpu">WebGPU Compute</span>
+                        <span class="layer-tag webgl2">WebGL2 Glow</span>
+                        <span class="layer-tag css">CSS Button</span>
+                    </div>
+                    <div class="button-showcase webgpu-style" id="particle-swarm-buttons">
+                        <!-- Particle buttons will be created by JS -->
+                    </div>
+                </div>
+
+                <!-- Quantum Flux Button -->
+                <div class="component-card">
+                    <h3>Quantum Flux</h3>
+                    <p class="description">Probabilistic shader effects with wave functions</p>
+                    <div class="layers">
+                        <span class="layer-tag webgpu">WebGPU Render</span>
+                        <span class="layer-tag webgl2">WebGL2 Field</span>
+                        <span class="layer-tag svg">SVG Overlay</span>
+                    </div>
+                    <div class="button-showcase webgpu-style" id="quantum-flux-buttons">
+                        <!-- Quantum buttons will be created by JS -->
+                    </div>
+                </div>
+
+                <!-- Magnetic Field Button -->
+                <div class="component-card">
+                    <h3>Magnetic Field</h3>
+                    <p class="description">Compute shader field lines with force simulation</p>
+                    <div class="layers">
+                        <span class="layer-tag webgpu">WebGPU Field</span>
+                        <span class="layer-tag webgl">WebGL Lines</span>
+                        <span class="layer-tag css">CSS Transform</span>
+                    </div>
+                    <div class="button-showcase webgpu-style" id="magnetic-field-buttons">
+                        <!-- Magnetic buttons will be created by JS -->
+                    </div>
+                </div>
+
+                <!-- Neural Network Button -->
+                <div class="component-card">
+                    <h3>Neural Network</h3>
+                    <p class="description">Animated neural connections with impulse propagation</p>
+                    <div class="layers">
+                        <span class="layer-tag webgpu">WebGPU Nodes</span>
+                        <span class="layer-tag webgl2">WebGL2 Connections</span>
+                        <span class="layer-tag svg">SVG Pulses</span>
+                    </div>
+                    <div class="button-showcase webgpu-style" id="neural-network-buttons">
+                        <!-- Neural buttons will be created by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Multi-Layer Compositing Showcase -->
+        <section class="compositing-showcase-section">
+            <h2>🎨 Multi-Layer Compositing Showcase</h2>
+            <p class="description">Real-time layer management with blend modes and effects</p>
+
+            <div class="compositing-container">
+                <div class="compositing-controls">
+                    <h3>Layer Controls</h3>
+                    <div class="layer-control-group">
+                        <label>
+                            <input type="checkbox" id="comp-webgpu" checked>
+                            <span class="layer-tag webgpu">WebGPU Base (Particles)</span>
+                            <input type="range" id="comp-webgpu-opacity" min="0" max="100" value="100" class="opacity-slider">
+                        </label>
+                        <label>
+                            <input type="checkbox" id="comp-webgl2" checked>
+                            <span class="layer-tag webgl2">WebGL2 Effects (Glow)</span>
+                            <input type="range" id="comp-webgl2-opacity" min="0" max="100" value="80" class="opacity-slider">
+                        </label>
+                        <label>
+                            <input type="checkbox" id="comp-svg" checked>
+                            <span class="layer-tag svg">SVG UI Elements</span>
+                            <input type="range" id="comp-svg-opacity" min="0" max="100" value="100" class="opacity-slider">
+                        </label>
+                        <label>
+                            <input type="checkbox" id="comp-css" checked>
+                            <span class="layer-tag css">CSS Post-Process</span>
+                        </label>
+                    </div>
+
+                    <div class="blend-mode-selector">
+                        <label>
+                            Blend Mode:
+                            <select id="comp-blend-mode">
+                                <option value="normal">Normal</option>
+                                <option value="multiply">Multiply</option>
+                                <option value="screen">Screen</option>
+                                <option value="overlay">Overlay</option>
+                                <option value="soft-light">Soft Light</option>
+                                <option value="color-dodge">Color Dodge</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="layer-order-controls">
+                        <h4>Layer Order</h4>
+                        <button class="order-btn" data-action="swap-gpu-gl2">Swap WebGPU ↔ WebGL2</button>
+                        <button class="order-btn" data-action="svg-to-back">SVG to Back</button>
+                        <button class="order-btn" data-action="reset-order">Reset Order</button>
+                    </div>
+                </div>
+
+                <div class="compositing-display" id="compositing-display">
+                    <!-- Multi-layer canvas will be created by JS -->
+                </div>
+            </div>
+        </section>
     </div>
     
     <script type="module" src="../js/main.js"></script>
