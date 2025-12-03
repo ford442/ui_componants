@@ -12,6 +12,7 @@ export default defineConfig({
         composite: resolve(__dirname, 'src/pages/composite_blending.html'),
         indicators: resolve(__dirname, 'src/pages/indicators.html'),
         knobs: resolve(__dirname, 'src/pages/knobs.html'),
+        surfaces: resolve(__dirname, 'src/pages/surfaces.html'),
         switches: resolve(__dirname, 'src/pages/switches.html'),
       },
     },

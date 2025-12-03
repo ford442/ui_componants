@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surfaces - UI Components</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/surfaces.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <a href="../index.html" class="back-link">← Back</a>
+            <div>
+                <h1>Hardware Surfaces</h1>
+                <p class="subtitle">Material simulation and layered rendering for hardware interfaces</p>
+            </div>
+        </div>
+
+        <!-- Interactive Surface Viewer -->
+        <section class="surface-section">
+            <h2>Interactive Material Viewer</h2>
+            <p class="description">Real-time PBR-style material simulation using WebGL2.</p>
+
+            <div class="viewer-container">
+                <div class="canvas-wrapper" id="surface-viewer">
+                    <!-- Canvas will be injected here -->
+                </div>
+
+                <div class="controls-panel">
+                    <div class="control-group">
+                        <label>Material Preset</label>
+                        <select id="ctrl-material">
+                            <option value="plastic">Matte Plastic</option>
+                            <option value="metal">Brushed Metal</option>
+                            <option value="holographic">Holographic (Made Up)</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Shape</label>
+                        <select id="ctrl-shape">
+                            <option value="box">Case / Box</option>
+                            <option value="rack">Rack Unit</option>
+                            <option value="plate">Faceplate</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Base Color</label>
+                        <input type="color" id="ctrl-color" value="#333333">
+                    </div>
+
+                    <div class="control-divider"></div>
+
+                    <div class="control-group">
+                        <label>Roughness <span id="val-roughness">0.5</span></label>
+                        <input type="range" id="ctrl-roughness" min="0" max="1" step="0.01" value="0.5">
+                    </div>
+
+                    <div class="control-group">
+                        <label>Metallic <span id="val-metallic">0.0</span></label>
+                        <input type="range" id="ctrl-metallic" min="0" max="1" step="0.01" value="0.0">
+                    </div>
+
+                    <div class="control-divider"></div>
+
+                    <div class="control-group">
+                        <label>Light Position X</label>
+                        <input type="range" id="ctrl-light-x" min="-10" max="10" step="0.1" value="2">
+                    </div>
+                    <div class="control-group">
+                        <label>Light Position Y</label>
+                        <input type="range" id="ctrl-light-y" min="-10" max="10" step="0.1" value="2">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Translucency Demo -->
+        <section class="surface-section">
+            <h2>Layering & Translucency</h2>
+            <p class="description">Demonstrating SVG decals rendered <em>behind</em> a semi-transparent WebGL surface (frosted glass effect).</p>
+
+            <div class="viewer-container">
+                <div class="canvas-wrapper" id="translucency-demo" style="height: 300px;">
+                    <!-- Demo content -->
+                </div>
+                <div class="controls-panel">
+                    <div class="control-group">
+                        <label>Glass Opacity</label>
+                        <input type="range" id="ctrl-glass-opacity" min="0" max="1" step="0.01" value="0.3">
+                    </div>
+                     <div class="control-group">
+                        <label>Glass Roughness (Blur)</label>
+                        <input type="range" id="ctrl-glass-roughness" min="0" max="1" step="0.01" value="0.2">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script type="module" src="../js/main.js"></script>
+    <script type="module" src="../js/surfaces.js"></script>
+</body>
+</html>
