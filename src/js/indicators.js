@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initLEDMatrix();
     initButtonPanel();
     initMultiStateIndicators();
+    initBioMeters();
 
     // WebGPU Advanced Examples
     checkWebGPUSupport().then(supported => {
@@ -37,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function initLEDIndicators() {
     const container = document.getElementById('led-indicators');
     if (!container) return;
-    
+
     const leds = [
         { color: 'red', state: 'on' },
         { color: 'green', state: 'on blink' },
@@ -45,22 +46,22 @@ function initLEDIndicators() {
         { color: 'yellow', state: '' },
         { color: 'orange', state: 'on' }
     ];
-    
+
     leds.forEach(led => {
         const wrapper = document.createElement('div');
         wrapper.style.cssText = 'display: flex; flex-direction: column; align-items: center; gap: 0.5rem;';
-        
+
         const indicator = document.createElement('div');
         indicator.className = `led ${led.color} ${led.state}`;
-        
+
         const label = document.createElement('div');
         label.textContent = led.color.charAt(0).toUpperCase() + led.color.slice(1);
         label.style.cssText = 'font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;';
-        
+
         wrapper.appendChild(indicator);
         wrapper.appendChild(label);
         container.appendChild(wrapper);
-        
+
         // Click to toggle
         indicator.addEventListener('click', () => {
             indicator.classList.toggle('on');
@@ -74,36 +75,36 @@ function initLEDIndicators() {
 function initVUMeters() {
     const container = document.getElementById('vu-meters');
     if (!container) return;
-    
+
     const createVUMeter = (label, numBars = 10) => {
         const wrapper = document.createElement('div');
         wrapper.className = 'vu-meter';
-        
+
         const barContainer = document.createElement('div');
         barContainer.className = 'vu-bar-container';
-        
+
         const bars = [];
         for (let i = 0; i < numBars; i++) {
             const bar = document.createElement('div');
             bar.className = 'vu-bar';
-            
+
             const fill = document.createElement('div');
             fill.className = 'vu-bar-fill';
             fill.style.height = '0%';
-            
+
             bar.appendChild(fill);
             barContainer.appendChild(bar);
             bars.push(fill);
         }
-        
+
         const labelEl = document.createElement('div');
         labelEl.className = 'vu-label';
         labelEl.textContent = label;
-        
+
         wrapper.appendChild(barContainer);
         wrapper.appendChild(labelEl);
         container.appendChild(wrapper);
-        
+
         // Animate bars
         const animateBars = () => {
             bars.forEach((fill, i) => {
@@ -114,10 +115,10 @@ function initVUMeters() {
                 }, delay);
             });
         };
-        
+
         setInterval(animateBars, 100);
     };
-    
+
     createVUMeter('Left');
     createVUMeter('Right');
 }
@@ -128,14 +129,14 @@ function initVUMeters() {
 function initGaugeMeters() {
     const container = document.getElementById('gauge-meters');
     if (!container) return;
-    
+
     const createGauge = (label, color) => {
         const wrapper = document.createElement('div');
         wrapper.className = 'gauge-meter';
-        
+
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('viewBox', '0 0 120 80');
-        
+
         // Background arc
         const bgArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         bgArc.setAttribute('d', 'M 20 70 A 50 50 0 0 1 100 70');
@@ -144,7 +145,7 @@ function initGaugeMeters() {
         bgArc.setAttribute('stroke-width', '8');
         bgArc.setAttribute('stroke-linecap', 'round');
         svg.appendChild(bgArc);
-        
+
         // Value arc
         const valueArc = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         valueArc.setAttribute('d', 'M 20 70 A 50 50 0 0 1 100 70');
@@ -154,7 +155,7 @@ function initGaugeMeters() {
         valueArc.setAttribute('stroke-linecap', 'round');
         valueArc.setAttribute('stroke-dasharray', '0 200');
         svg.appendChild(valueArc);
-        
+
         // Needle
         const needle = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         needle.setAttribute('x1', '60');
@@ -168,7 +169,7 @@ function initGaugeMeters() {
         needle.style.transform = 'rotate(-90deg)';
         needle.style.transition = 'transform 0.3s ease';
         svg.appendChild(needle);
-        
+
         // Center dot
         const centerDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         centerDot.setAttribute('cx', '60');
@@ -176,29 +177,29 @@ function initGaugeMeters() {
         centerDot.setAttribute('r', '5');
         centerDot.setAttribute('fill', '#444');
         svg.appendChild(centerDot);
-        
+
         const labelEl = document.createElement('div');
         labelEl.className = 'gauge-label';
         labelEl.textContent = label;
-        
+
         wrapper.appendChild(svg);
         wrapper.appendChild(labelEl);
         container.appendChild(wrapper);
-        
+
         // Animate gauge
         const arcLength = 157; // Approximate arc length
-        
+
         const animateGauge = () => {
             const value = Math.random();
             const rotation = -90 + value * 180;
             needle.style.transform = `rotate(${rotation}deg)`;
             valueArc.setAttribute('stroke-dasharray', `${value * arcLength} 200`);
         };
-        
+
         setInterval(animateGauge, 1000);
         animateGauge();
     };
-    
+
     createGauge('Speed', '#00ff88');
     createGauge('Temp', '#ff8800');
 }
@@ -209,10 +210,10 @@ function initGaugeMeters() {
 function initSevenSegment() {
     const container = document.getElementById('seven-segment');
     if (!container) return;
-    
+
     const display = document.createElement('div');
     display.className = 'seven-segment-display';
-    
+
     // Segment patterns for digits 0-9
     const patterns = {
         0: [1, 1, 1, 1, 1, 1, 0],
@@ -226,37 +227,37 @@ function initSevenSegment() {
         8: [1, 1, 1, 1, 1, 1, 1],
         9: [1, 1, 1, 1, 0, 1, 1]
     };
-    
+
     const digits = [];
-    
+
     for (let d = 0; d < 4; d++) {
         const digit = document.createElement('div');
         digit.className = 'digit';
-        
+
         const segments = [];
         const segmentNames = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
-        
+
         segmentNames.forEach((name, i) => {
             const segment = document.createElement('div');
             segment.className = `segment ${name} ${i < 4 || i === 6 ? 'h' : 'v'}`;
             segments.push(segment);
             digit.appendChild(segment);
         });
-        
+
         digits.push({ element: digit, segments });
         display.appendChild(digit);
     }
-    
+
     container.appendChild(display);
-    
+
     // Update display function
     const updateDisplay = (value) => {
         const str = value.toString().padStart(4, '0');
-        
+
         digits.forEach((digit, i) => {
             const num = parseInt(str[i]);
             const pattern = patterns[num];
-            
+
             digit.segments.forEach((segment, j) => {
                 if (pattern[j]) {
                     segment.classList.add('on');
@@ -266,7 +267,7 @@ function initSevenSegment() {
             });
         });
     };
-    
+
     // Animate counter
     let count = 0;
     setInterval(() => {
@@ -281,7 +282,7 @@ function initSevenSegment() {
 function initStatusDashboard() {
     const container = document.getElementById('status-dashboard');
     if (!container) return;
-    
+
     const statuses = [
         { title: 'CPU', value: '45%', trend: 'up' },
         { title: 'Memory', value: '2.4GB', trend: 'stable' },
@@ -290,34 +291,34 @@ function initStatusDashboard() {
         { title: 'Power', value: '85W', trend: 'stable' },
         { title: 'FPS', value: '60', trend: 'stable' }
     ];
-    
+
     statuses.forEach(status => {
         const item = document.createElement('div');
         item.className = 'status-item';
-        
+
         const header = document.createElement('div');
         header.className = 'status-header';
-        
+
         const title = document.createElement('div');
         title.className = 'status-title';
         title.textContent = status.title;
-        
+
         const led = document.createElement('div');
         led.className = 'led green on';
         led.style.width = '8px';
         led.style.height = '8px';
-        
+
         header.appendChild(title);
         header.appendChild(led);
-        
+
         const value = document.createElement('div');
         value.className = 'status-value';
         value.textContent = status.value;
-        
+
         item.appendChild(header);
         item.appendChild(value);
         container.appendChild(item);
-        
+
         // Simulate value updates
         setInterval(() => {
             if (status.title === 'CPU') {
@@ -336,19 +337,19 @@ function initStatusDashboard() {
 function initRingMeters() {
     const container = document.getElementById('ring-meters');
     if (!container) return;
-    
+
     const createRingMeter = (label, color, value) => {
         const wrapper = document.createElement('div');
         wrapper.className = 'ring-meter';
-        
+
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('width', '100');
         svg.setAttribute('height', '100');
         svg.setAttribute('viewBox', '0 0 100 100');
-        
+
         const radius = 40;
         const circumference = 2 * Math.PI * radius;
-        
+
         // Background circle
         const bgCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         bgCircle.setAttribute('cx', '50');
@@ -358,7 +359,7 @@ function initRingMeters() {
         bgCircle.setAttribute('stroke', '#333');
         bgCircle.setAttribute('stroke-width', '8');
         svg.appendChild(bgCircle);
-        
+
         // Value circle
         const valueCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         valueCircle.setAttribute('cx', '50');
@@ -371,20 +372,20 @@ function initRingMeters() {
         valueCircle.setAttribute('stroke-dasharray', `${value / 100 * circumference} ${circumference}`);
         valueCircle.style.filter = `drop-shadow(0 0 5px ${color})`;
         svg.appendChild(valueCircle);
-        
+
         const valueEl = document.createElement('div');
         valueEl.className = 'ring-meter-value';
         valueEl.textContent = `${value}%`;
-        
+
         const labelEl = document.createElement('div');
         labelEl.className = 'ring-meter-label';
         labelEl.textContent = label;
-        
+
         wrapper.appendChild(svg);
         wrapper.appendChild(valueEl);
         wrapper.appendChild(labelEl);
         container.appendChild(wrapper);
-        
+
         // Animate
         let currentValue = value;
         setInterval(() => {
@@ -393,7 +394,7 @@ function initRingMeters() {
             valueEl.textContent = `${Math.round(currentValue)}%`;
         }, 500);
     };
-    
+
     createRingMeter('CPU', '#00ff88', 65);
     createRingMeter('RAM', '#00aaff', 42);
     createRingMeter('Disk', '#ff8800', 78);
@@ -405,54 +406,54 @@ function initRingMeters() {
 function initOscilloscope() {
     const container = document.getElementById('oscilloscope');
     if (!container) return;
-    
+
     const wrapper = document.createElement('div');
     wrapper.className = 'oscilloscope-display';
     wrapper.style.width = '100%';
-    
+
     const grid = document.createElement('div');
     grid.className = 'oscilloscope-grid';
-    
+
     const canvas = document.createElement('canvas');
     canvas.className = 'oscilloscope-canvas';
     canvas.width = 400;
     canvas.height = 120;
-    
+
     wrapper.appendChild(grid);
     wrapper.appendChild(canvas);
     container.appendChild(wrapper);
-    
+
     const ctx = canvas.getContext('2d');
     let offset = 0;
-    
+
     const draw = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         ctx.strokeStyle = '#00ff88';
         ctx.lineWidth = 2;
         ctx.shadowColor = '#00ff88';
         ctx.shadowBlur = 10;
-        
+
         ctx.beginPath();
-        
+
         for (let x = 0; x < canvas.width; x++) {
-            const y = canvas.height / 2 + 
+            const y = canvas.height / 2 +
                 Math.sin((x + offset) * 0.05) * 30 +
                 Math.sin((x + offset) * 0.02) * 15;
-            
+
             if (x === 0) {
                 ctx.moveTo(x, y);
             } else {
                 ctx.lineTo(x, y);
             }
         }
-        
+
         ctx.stroke();
         offset += 3;
-        
+
         requestAnimationFrame(draw);
     };
-    
+
     draw();
 }
 
@@ -462,13 +463,13 @@ function initOscilloscope() {
 function initSpectrumAnalyzer() {
     const container = document.getElementById('spectrum-analyzer');
     if (!container) return;
-    
+
     const wrapper = document.createElement('div');
     wrapper.className = 'spectrum-display';
-    
+
     const numBars = 32;
     const bars = [];
-    
+
     for (let i = 0; i < numBars; i++) {
         const bar = document.createElement('div');
         bar.className = 'spectrum-bar';
@@ -476,9 +477,9 @@ function initSpectrumAnalyzer() {
         bars.push(bar);
         wrapper.appendChild(bar);
     }
-    
+
     container.appendChild(wrapper);
-    
+
     // Animate spectrum
     const animate = () => {
         bars.forEach((bar, i) => {
@@ -489,7 +490,7 @@ function initSpectrumAnalyzer() {
             bar.style.height = `${baseHeight + randomness}%`;
         });
     };
-    
+
     setInterval(animate, 50);
 }
 
@@ -499,14 +500,14 @@ function initSpectrumAnalyzer() {
 function initLEDMatrix() {
     const container = document.getElementById('led-matrix');
     if (!container) return;
-    
+
     const wrapper = document.createElement('div');
     wrapper.className = 'led-matrix';
-    
+
     const rows = 8;
     const cols = 8;
     const dots = [];
-    
+
     for (let r = 0; r < rows; r++) {
         const row = [];
         for (let c = 0; c < cols; c++) {
@@ -517,42 +518,42 @@ function initLEDMatrix() {
         }
         dots.push(row);
     }
-    
+
     container.appendChild(wrapper);
-    
+
     // Animate matrix with scrolling pattern
     let frame = 0;
-    
+
     const patterns = [
         // Heart
         [
-            [0,1,1,0,0,1,1,0],
-            [1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1],
-            [0,1,1,1,1,1,1,0],
-            [0,0,1,1,1,1,0,0],
-            [0,0,0,1,1,0,0,0],
-            [0,0,0,0,0,0,0,0]
+            [0, 1, 1, 0, 0, 1, 1, 0],
+            [1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 1, 1, 0],
+            [0, 0, 1, 1, 1, 1, 0, 0],
+            [0, 0, 0, 1, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0]
         ],
         // Smile
         [
-            [0,0,1,1,1,1,0,0],
-            [0,1,0,0,0,0,1,0],
-            [1,0,1,0,0,1,0,1],
-            [1,0,0,0,0,0,0,1],
-            [1,0,1,0,0,1,0,1],
-            [1,0,0,1,1,0,0,1],
-            [0,1,0,0,0,0,1,0],
-            [0,0,1,1,1,1,0,0]
+            [0, 0, 1, 1, 1, 1, 0, 0],
+            [0, 1, 0, 0, 0, 0, 1, 0],
+            [1, 0, 1, 0, 0, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 1, 0, 0, 1, 0, 1],
+            [1, 0, 0, 1, 1, 0, 0, 1],
+            [0, 1, 0, 0, 0, 0, 1, 0],
+            [0, 0, 1, 1, 1, 1, 0, 0]
         ]
     ];
-    
+
     let patternIndex = 0;
-    
+
     const animate = () => {
         const pattern = patterns[patternIndex];
-        
+
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 if (pattern[r][c]) {
@@ -562,13 +563,13 @@ function initLEDMatrix() {
                 }
             }
         }
-        
+
         frame++;
         if (frame % 30 === 0) {
             patternIndex = (patternIndex + 1) % patterns.length;
         }
     };
-    
+
     setInterval(animate, 100);
 }
 
@@ -1859,5 +1860,151 @@ async function initDataVisualization() {
     };
 
     frame();
+}
+
+/**
+ * Initialize Bioluminescent Meters
+ */
+function initBioMeters() {
+    const container = document.getElementById('bio-meters');
+    if (!container) return;
+
+    const meters = [
+        { label: 'HEALTH', color: [0.0, 1.0, 0.4] }, // Spring Green
+        { label: 'MANA', color: [0.0, 0.6, 1.0] },   // Dodson Blue
+        { label: 'TOXIN', color: [0.8, 0.0, 1.0] }   // Purple
+    ];
+
+    meters.forEach(m => {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display: flex; flex-direction: column; align-items: center; gap: 0.5rem; position: relative;';
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 100;
+        canvas.height = 100;
+        canvas.style.cssText = 'width: 100px; height: 100px; border-radius: 50%; background: #000; box-shadow: 0 0 10px rgba(0,0,0,0.5);';
+
+        // SVG Overlay for Membrane/Border
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("viewBox", "0 0 100 100");
+        svg.style.cssText = "position: absolute; top: 0; left: 0; width: 100px; height: 100px; pointer-events: none;";
+        const circle = document.createElementNS(svgNS, "circle");
+        circle.setAttribute("cx", "50");
+        circle.setAttribute("cy", "50");
+        circle.setAttribute("r", "48");
+        circle.setAttribute("fill", "none");
+        circle.setAttribute("stroke", `rgba(${m.color[0] * 255}, ${m.color[1] * 255}, ${m.color[2] * 255}, 0.3)`);
+        circle.setAttribute("stroke-width", "2");
+        circle.setAttribute("stroke-dasharray", "5 5");
+        svg.appendChild(circle);
+
+        const label = document.createElement('div');
+        label.textContent = m.label;
+        label.style.cssText = `font-size: 0.7rem; color: rgb(${m.color[0] * 255},${m.color[1] * 255},${m.color[2] * 255}); font-weight: bold; margin-top: 5px;`;
+
+        wrapper.appendChild(canvas);
+        wrapper.appendChild(svg);
+        wrapper.appendChild(label);
+        container.appendChild(wrapper);
+
+        // WebGL Initialization
+        const gl = canvas.getContext('webgl2');
+        if (!gl) return;
+
+        const vs = `#version 300 es
+            in vec4 a_position;
+            out vec2 v_uv;
+            void main() {
+                v_uv = a_position.xy * 0.5 + 0.5;
+                gl_Position = a_position;
+            }
+        `;
+
+        const fs = `#version 300 es
+            precision highp float;
+            in vec2 v_uv;
+            uniform float u_time;
+            uniform vec3 u_color;
+            out vec4 fragColor;
+
+            void main() {
+                vec2 uv =(v_uv - 0.5) * 2.0;
+                float d = length(uv);
+
+                // Organic movement
+                float t = u_time * 0.5;
+                vec2 p = uv;
+                float noise = sin(p.x * 5.0 + t) * cos(p.y * 5.0 - t);
+                noise += sin(p.y * 10.0 + t * 2.0) * 0.2;
+                noise += cos(length(p) * 10.0 - t * 3.0) * 0.2;
+
+                // Core glow
+                float core = 0.05 / (abs(d - 0.5 + noise * 0.2) + 0.01);
+                
+                // Inner fill
+                float fill = smoothstep(0.8, 0.0, d);
+                fill *= 0.5 + 0.5 * sin(u_time * 2.0 + noise * 5.0); // Pulse
+
+                vec3 col = u_color * (core + fill * 0.5);
+                
+                // Darken clear areas
+                col *= smoothstep(1.0, 0.9, d);
+
+                fragColor = vec4(col, 1.0);
+            }
+        `;
+
+        // Create Program (Local helper logic)
+        const createShader = (gl, type, source) => {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                return null;
+            }
+            return shader;
+        };
+
+        const program = gl.createProgram();
+        const vShader = createShader(gl, gl.VERTEX_SHADER, vs);
+        const fShader = createShader(gl, gl.FRAGMENT_SHADER, fs);
+        if (!vShader || !fShader) return;
+
+        gl.attachShader(program, vShader);
+        gl.attachShader(program, fShader);
+        gl.linkProgram(program);
+
+        // Quad setup
+        const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+        const vao = gl.createVertexArray();
+        gl.bindVertexArray(vao);
+        const buf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+        gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+        const loc = gl.getAttribLocation(program, 'a_position');
+        gl.enableVertexAttribArray(loc);
+        gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+        const uTime = gl.getUniformLocation(program, 'u_time');
+        const uColor = gl.getUniformLocation(program, 'u_color');
+
+        function render(time) {
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.useProgram(program);
+            gl.uniform1f(uTime, time * 0.001);
+            gl.uniform3fv(uColor, m.color);
+
+            gl.bindVertexArray(vao);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+            requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+    });
 }
 

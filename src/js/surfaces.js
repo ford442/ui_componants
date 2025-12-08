@@ -118,7 +118,7 @@ const Math3D = {
         // Assuming 'out' starts as identity or is wiped,
         // but for safety in this simple renderer we'll just return a rotation matrix
         // If 'out' is null, create new.
-        if(!out) out = Math3D.createIdentity();
+        if (!out) out = Math3D.createIdentity();
 
         out[0] = c;
         out[1] = 0;
@@ -200,56 +200,56 @@ const Geometry = {
 
         const positions = [
             // Front face
-            -w, -h,  d,   w, -h,  d,   w,  h,  d,  -w,  h,  d,
+            -w, -h, d, w, -h, d, w, h, d, -w, h, d,
             // Back face
-            -w, -h, -d,  -w,  h, -d,   w,  h, -d,   w, -h, -d,
+            -w, -h, -d, -w, h, -d, w, h, -d, w, -h, -d,
             // Top face
-            -w,  h, -d,  -w,  h,  d,   w,  h,  d,   w,  h, -d,
+            -w, h, -d, -w, h, d, w, h, d, w, h, -d,
             // Bottom face
-            -w, -h, -d,   w, -h, -d,   w, -h,  d,  -w, -h,  d,
+            -w, -h, -d, w, -h, -d, w, -h, d, -w, -h, d,
             // Right face
-             w, -h, -d,   w,  h, -d,   w,  h,  d,   w, -h,  d,
+            w, -h, -d, w, h, -d, w, h, d, w, -h, d,
             // Left face
-            -w, -h, -d,  -w, -h,  d,  -w,  h,  d,  -w,  h, -d,
+            -w, -h, -d, -w, -h, d, -w, h, d, -w, h, -d,
         ];
 
         const normals = [
             // Front
-             0,  0,  1,   0,  0,  1,   0,  0,  1,   0,  0,  1,
+            0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1,
             // Back
-             0,  0, -1,   0,  0, -1,   0,  0, -1,   0,  0, -1,
+            0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1,
             // Top
-             0,  1,  0,   0,  1,  0,   0,  1,  0,   0,  1,  0,
+            0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0,
             // Bottom
-             0, -1,  0,   0, -1,  0,   0, -1,  0,   0, -1,  0,
+            0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0,
             // Right
-             1,  0,  0,   1,  0,  0,   1,  0,  0,   1,  0,  0,
+            1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0,
             // Left
-            -1,  0,  0,  -1,  0,  0,  -1,  0,  0,  -1,  0,  0,
+            -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0,
         ];
 
         const uvs = [
             // Front
-            0, 0,  1, 0,  1, 1,  0, 1,
+            0, 0, 1, 0, 1, 1, 0, 1,
             // Back
-            1, 0,  1, 1,  0, 1,  0, 0,
+            1, 0, 1, 1, 0, 1, 0, 0,
             // Top
-            0, 1,  0, 0,  1, 0,  1, 1,
+            0, 1, 0, 0, 1, 0, 1, 1,
             // Bottom
-            1, 1,  0, 1,  0, 0,  1, 0,
+            1, 1, 0, 1, 0, 0, 1, 0,
             // Right
-            1, 0,  1, 1,  0, 1,  0, 0,
+            1, 0, 1, 1, 0, 1, 0, 0,
             // Left
-            0, 0,  1, 0,  1, 1,  0, 1,
+            0, 0, 1, 0, 1, 1, 0, 1,
         ];
 
         const indices = [
-             0,  1,  2,      0,  2,  3,    // Front
-             4,  5,  6,      4,  6,  7,    // Back
-             8,  9, 10,      8, 10, 11,    // Top
-            12, 13, 14,     12, 14, 15,    // Bottom
-            16, 17, 18,     16, 18, 19,    // Right
-            20, 21, 22,     20, 22, 23     // Left
+            0, 1, 2, 0, 2, 3,    // Front
+            4, 5, 6, 4, 6, 7,    // Back
+            8, 9, 10, 8, 10, 11,    // Top
+            12, 13, 14, 12, 14, 15,    // Bottom
+            16, 17, 18, 16, 18, 19,    // Right
+            20, 21, 22, 20, 22, 23     // Left
         ];
 
         return { positions: new Float32Array(positions), normals: new Float32Array(normals), uvs: new Float32Array(uvs), indices: new Uint16Array(indices) };
@@ -448,21 +448,6 @@ const Shaders = {
 
             fragColor = vec4(glassColor, clamp(alpha, 0.0, 0.95));
         }
-    `
-};
-
-// --- Initialization ---
-
-document.addEventListener('DOMContentLoaded', () => {
-    initSurfaceViewer();
-    initTranslucencyDemo();
-});
-
-function initSurfaceViewer() {
-    const container = document.getElementById('surface-viewer');
-    if (!container) return;
-
-    // Create LayeredCanvas
     const lc = new UIComponents.LayeredCanvas(container, {
         width: container.clientWidth,
         height: container.clientHeight
@@ -653,12 +638,166 @@ function setupControls(state, uploadGeometryFn) {
     });
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    initSurfaceViewer(); // Assuming this is the original init function
+    initTranslucencyDemo();
+    initLiquidChrome();
+    initForceField();
+});
+
+function initSurfaceViewer() {
+    const container = document.getElementById('surface-viewer');
+    if (!container) return;
+
+    // Create LayeredCanvas
+    const lc = new UIComponents.LayeredCanvas(container, {
+        width: container.clientWidth,
+        height: container.clientHeight
+    });
+
+    // We only need one WebGL2 layer for this demo
+    const layer = lc.addLayer('main', 'webgl2');
+    const gl = layer.context;
+
+    const state = {
+        rotation: 0,
+        materialType: 0, // 0: Plastic, 1: Metal, 2: Holo
+        roughness: 0.5,
+        metallic: 0.0,
+        color: [0.2, 0.2, 0.2],
+        lightPos: [2, 2, 5],
+    };
+
+    // Controls
+    // We setup controls regardless of WebGL support so the UI doesn't break
+    setupControls(state, (geo) => {
+        if (gl && currentGeometry) {
+             uploadGeometry(geo);
+        }
+    });
+
+    if (!gl) {
+        console.error('WebGL2 not supported');
+        const ctx = layer.canvas.getContext('2d');
+        if (ctx) {
+            ctx.fillStyle = '#330000';
+            ctx.fillRect(0, 0, layer.canvas.width, layer.canvas.height);
+            ctx.fillStyle = '#ff0000';
+            ctx.font = '16px monospace';
+            ctx.fillText('WebGL2 Not Supported', 20, 30);
+        }
+        return;
+    }
+
+    // Compile Program
+    const program = createProgram(gl, Shaders.vertex, Shaders.fragmentPBR);
+
+    // Geometry Data Helpers
+    let currentGeometry = Geometry.createBox();
+    let vao = gl.createVertexArray();
+    let buffers = {};
+
+    function uploadGeometry(geo) {
+        gl.bindVertexArray(vao);
+
+        // Positions
+        if(!buffers.pos) buffers.pos = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.pos);
+        gl.bufferData(gl.ARRAY_BUFFER, geo.positions, gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+
+        // Normals
+        if(!buffers.norm) buffers.norm = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.norm);
+        gl.bufferData(gl.ARRAY_BUFFER, geo.normals, gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(1);
+        gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+
+        // UVs
+        if(!buffers.uv) buffers.uv = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.uv);
+        gl.bufferData(gl.ARRAY_BUFFER, geo.uvs, gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(2);
+        gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
+
+        // Indices
+        if(!buffers.idx) buffers.idx = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.idx);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, geo.indices, gl.STATIC_DRAW);
+
+        currentGeometry.count = geo.indices.length;
+    }
+
+    uploadGeometry(currentGeometry);
+
+    // Uniform Locations
+    const uniforms = {
+        model: gl.getUniformLocation(program, 'u_model'),
+        view: gl.getUniformLocation(program, 'u_view'),
+        projection: gl.getUniformLocation(program, 'u_projection'),
+        baseColor: gl.getUniformLocation(program, 'u_baseColor'),
+        roughness: gl.getUniformLocation(program, 'u_roughness'),
+        metallic: gl.getUniformLocation(program, 'u_metallic'),
+        lightPos: gl.getUniformLocation(program, 'u_lightPos'),
+        viewPos: gl.getUniformLocation(program, 'u_viewPos'),
+        materialType: gl.getUniformLocation(program, 'u_materialType')
+    };
+
+    // Render Loop
+    lc.setRenderFunction('main', (layerInfo, time) => {
+        const t = time * 0.001;
+        state.rotation += 0.005;
+
+        gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
+        gl.clearColor(0.05, 0.05, 0.05, 1.0);
+        gl.enable(gl.DEPTH_TEST);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        gl.useProgram(program);
+
+        // Matrices
+        const aspect = layer.canvas.width / layer.canvas.height;
+        const projection = Math3D.createIdentity();
+        Math3D.perspective(projection, 45 * Math.PI / 180, aspect, 0.1, 100.0);
+
+        const view = Math3D.createIdentity();
+        const eye = [0, 0, 5];
+        Math3D.lookAt(view, eye, [0, 0, 0], [0, 1, 0]);
+
+        const model = Math3D.createIdentity();
+        Math3D.rotateY(model, state.rotation);
+
+        // Set Uniforms
+        gl.uniformMatrix4fv(uniforms.projection, false, projection);
+        gl.uniformMatrix4fv(uniforms.view, false, view);
+        gl.uniformMatrix4fv(uniforms.model, false, model);
+
+        gl.uniform3fv(uniforms.baseColor, state.color);
+        gl.uniform1f(uniforms.roughness, state.roughness);
+        gl.uniform1f(uniforms.metallic, state.metallic);
+        gl.uniform3fv(uniforms.lightPos, state.lightPos);
+        gl.uniform3fv(uniforms.viewPos, eye);
+        gl.uniform1i(uniforms.materialType, state.materialType);
+
+        gl.bindVertexArray(vao);
+        gl.drawElements(gl.TRIANGLES, currentGeometry.count, gl.UNSIGNED_SHORT, 0);
+    });
+
+    lc.startAnimation();
+
+    // Resize handling
+    const resizeObserver = new ResizeObserver(() => {
+        lc.resize(container.clientWidth, container.clientHeight);
+    });
+    resizeObserver.observe(container);
+}
+
 function initTranslucencyDemo() {
     const container = document.getElementById('translucency-demo');
     if (!container) return;
 
     // Create LayeredCanvas
-    const lc = new UIComponents.LayeredCanvas(container, {
         width: container.clientWidth,
         height: container.clientHeight
     });
@@ -818,4 +957,387 @@ function createProgram(gl, vertexSource, fragmentSource) {
         return null;
     }
     return program;
+}
+
+function initHolographicSurface() {
+    const container = document.getElementById('holographic-surface');
+    if (!container) return;
+
+    const lc = new UIComponents.LayeredCanvas(container, {
+        width: container.clientWidth,
+        height: container.clientHeight
+    });
+
+    const layer = lc.addLayer('holo', 'webgl2');
+    const gl = layer.context;
+
+    if (!gl) return;
+
+    // Full screen quad shader
+    const vs = `#version 300 es
+        in vec4 a_position;
+    out vec2 v_uv;
+    void main() {
+        v_uv = a_position.xy * 0.5 + 0.5;
+gl_Position = a_position;
+        }
+`;
+
+    const fs = `#version 300 es
+        precision highp float;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+        uniform vec2 u_mouse;
+        out vec4 fragColor;
+
+        // Hash function
+        float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+}
+
+void main() {
+            vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / u_resolution.y;
+            vec2 mouse = (u_mouse - 0.5 * u_resolution.xy) / u_resolution.y;
+            
+            vec3 color = vec3(0.0);
+
+    // 3D Parallax layers
+    for (float i = 0.0; i < 1.0; i += 0.05) {
+                float depth = fract(i + u_time * 0.1);
+                float scale = 3.0 * (1.0 - depth);
+                float fade = depth * smoothstep(1.0, 0.9, depth);
+                
+                vec2 localUV = uv * scale + vec2(i * 10.0, i * 20.0);
+
+        // Mouse interaction
+        localUV += mouse * depth * 0.5;
+                
+                vec2 grid = fract(localUV) - 0.5;
+                vec2 id = floor(localUV);
+                
+                float rnd = hash(id);
+
+        if (rnd > 0.95) {
+                    float d = length(grid);
+                    // Glowing particle
+                    float spark = 0.01 / (d * d * 10.0 + 0.01);
+                    // Color variation
+                    vec3 pColor = mix(vec3(0.0, 1.0, 1.0), vec3(1.0, 0.0, 1.0), rnd);
+            color += pColor * spark * fade * 0.5;
+        }
+    }
+
+    // Background gradient
+    color += vec3(0.0, 0.02, 0.05) * (1.0 - length(uv));
+
+    fragColor = vec4(color, 1.0);
+}
+`;
+
+    const program = createProgram(gl, vs, fs);
+    const quad = createQuad(gl);
+
+    const u = {
+        time: gl.getUniformLocation(program, 'u_time'),
+        resolution: gl.getUniformLocation(program, 'u_resolution'),
+        mouse: gl.getUniformLocation(program, 'u_mouse')
+    };
+
+    let mouseX = 0;
+    let mouseY = 0;
+    container.addEventListener('mousemove', (e) => {
+        const rect = container.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = rect.height - (e.clientY - rect.top);
+    });
+
+    lc.setRenderFunction('holo', (layerInfo, time) => {
+        gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
+        gl.useProgram(program);
+        gl.uniform1f(u.time, time * 0.001);
+        gl.uniform2f(u.resolution, layer.canvas.width, layer.canvas.height);
+        gl.uniform2f(u.mouse, mouseX, mouseY);
+
+        gl.bindVertexArray(quad.vao);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    });
+
+    lc.startAnimation();
+
+    // Resize
+    const resizeObserver = new ResizeObserver(() => {
+        lc.resize(container.clientWidth, container.clientHeight);
+    });
+    resizeObserver.observe(container);
+}
+
+function createQuad(gl) {
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    return { vao };
+}
+
+/**
+ * Liquid Chrome Experiment
+ * WebGL2 shader creating a distorting reflective surface
+ */
+function initLiquidChrome() {
+    const container = document.getElementById('liquid-chrome-demo');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    container.appendChild(canvas);
+
+    const gl = canvas.getContext('webgl2');
+    if (!gl) return;
+
+    const vs = `#version 300 es
+    in vec4 a_position;
+        out vec2 v_uv;
+void main() {
+    v_uv = a_position.xy * 0.5 + 0.5;
+    gl_Position = a_position;
+}
+`;
+
+    const fs = `#version 300 es
+        precision highp float;
+        in vec2 v_uv;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+        uniform vec2 u_mouse;
+        out vec4 fragColor;
+
+        // Psuedo-environment map reflection
+        vec3 getEnv(vec3 dir) {
+            float y = dir.y * 0.5 + 0.5;
+            vec3 sky = mix(vec3(0.1, 0.15, 0.2), vec3(0.8, 0.9, 1.0), pow(y, 0.5));
+            vec3 ground = mix(vec3(0.05), vec3(0.2, 0.1, 0.1), 1.0 - y);
+            float horizon = smoothstep(-0.1, 0.1, dir.y);
+    return mix(ground, sky, horizon);
+}
+
+void main() {
+            vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+            vec2 p = (gl_FragCoord.xy * 2.0 - u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+
+            // Mouse interaction
+            vec2 m = (u_mouse * 2.0 - u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+            float d = length(p - m);
+            float interaction = exp(-d * 3.0) * 0.5 * sin(u_time * 5.0);
+
+            // Fluid distortion based on noise/sine waves
+            float t = u_time * 0.5;
+            float height = sin(p.x * 4.0 + t) * cos(p.y * 4.0 + t * 0.8) * 0.5;
+    height += sin(p.x * 10.0 - t * 2.0) * 0.2;
+    height += interaction;
+
+            // Calculate Normal
+            vec2 e = vec2(0.01, 0.0);
+            float hx = sin((p.x + e.x) * 4.0 + t) * cos(p.y * 4.0 + t * 0.8) * 0.5 - height;
+            float hy = sin(p.x * 4.0 + t) * cos((p.y + e.x) * 4.0 + t * 0.8) * 0.5 - height;
+            
+            vec3 normal = normalize(vec3(-hx, -hy, e.x));
+
+            // Lighting
+            vec3 viewDir = normalize(vec3(p, -2.0)); // Fake orthographic view
+            vec3 reflectDir = reflect(viewDir, normal);
+
+            // Fresnel
+            float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), 3.0);
+
+            // Color composition
+            vec3 reflection = getEnv(reflectDir);
+            vec3 baseColor = vec3(0.1, 0.1, 0.15); // Dark chrome base
+
+            // Add some "dispersion" colors
+            vec3 color = mix(baseColor, reflection, 0.8);
+    color += vec3(0.5, 0.2, 0.1) * fresnel;
+
+            // Specular highlight
+            vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
+            float spec = pow(max(dot(reflectDir, lightDir), 0.0), 30.0);
+    color += vec3(1.0) * spec;
+
+    fragColor = vec4(color, 1.0);
+}
+`;
+
+    const program = createProgram(gl, vs, fs);
+    setupQuad(gl, program);
+
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uRes = gl.getUniformLocation(program, 'u_resolution');
+    const uMouse = gl.getUniformLocation(program, 'u_mouse');
+
+    let mouseX = 0, mouseY = 0;
+    container.addEventListener('mousemove', e => {
+        const rect = canvas.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = rect.height - (e.clientY - rect.top);
+    });
+
+    function render(time) {
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.useProgram(program);
+        gl.uniform1f(uTime, time * 0.001);
+        gl.uniform2f(uRes, canvas.width, canvas.height);
+        gl.uniform2f(uMouse, mouseX, mouseY);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+}
+
+/**
+ * Hex Force Field Experiment
+ */
+function initForceField() {
+    const container = document.getElementById('force-field-demo');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    container.appendChild(canvas);
+
+    const gl = canvas.getContext('webgl2');
+    if (!gl) return;
+
+    const vs = `#version 300 es
+    in vec4 a_position;
+        out vec2 v_uv;
+void main() {
+    v_uv = a_position.xy * 0.5 + 0.5;
+    gl_Position = a_position;
+}
+`;
+
+    const fs = `#version 300 es
+        precision highp float;
+        in vec2 v_uv;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+        uniform vec3 u_impacts[5]; // x,y, time of impact
+        out vec4 fragColor;
+
+        // Hexagon Distance Function
+        float hexDist(vec2 p) {
+    p = abs(p);
+    return max(dot(p, normalize(vec2(1.0, 1.73))), p.x);
+}
+
+        vec4 getHex(vec2 uv) {
+            vec2 r = vec2(1.0, 1.73);
+            vec2 h = r * 0.5;
+            vec2 a = mod(uv, r) - h;
+            vec2 b = mod(uv - h, r) - h;
+            vec2 gv = dot(a, a) < dot(b, b) ? a : b;
+            float x = atan(gv.x, gv.y);
+            float y = 0.5 - hexDist(gv);
+            vec2 id = uv - gv;
+    return vec4(x, y, id.x, id.y);
+}
+
+void main() {
+            vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / u_resolution.y;
+            vec2 gridUV = uv * 10.0;
+            
+            vec4 hex = getHex(gridUV);
+            float distToEdge = smoothstep(0.01, 0.05, hex.y);
+
+            // Base Color
+            vec3 color = vec3(0.0, 0.1, 0.2) * distToEdge;
+
+    // Impact Ripples
+    for (int i = 0; i < 5; i++) {
+                vec3 impact = u_impacts[i]; // x, y, startTime
+                float t = u_time - impact.z;
+
+        if (t > 0.0 && t < 2.0) {
+                    vec2 impactUV = (impact.xy - 0.5 * u_resolution.xy) / u_resolution.y;
+                    float d = length(uv - impactUV);
+
+                    // Wavefront
+                    float wave = sin(d * 20.0 - t * 10.0) * exp(-d * 2.0) * exp(-t * 2.0);
+
+            // Highlight hexes based on wave
+            if (wave > 0.1) {
+                        float highlight = smoothstep(0.0, 0.5, wave) * distToEdge;
+                color += vec3(0.2, 0.6, 1.0) * highlight;
+            }
+        }
+    }
+
+            // Pulse
+            float pulse = sin(u_time + hex.z * 0.5 + hex.w * 0.5) * 0.5 + 0.5;
+    color += vec3(0.0, 0.05, 0.1) * pulse * distToEdge;
+
+    fragColor = vec4(color, 1.0);
+}
+`;
+
+    const program = createProgram(gl, vs, fs);
+    setupQuad(gl, program);
+
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uRes = gl.getUniformLocation(program, 'u_resolution');
+    const uImpacts = gl.getUniformLocation(program, 'u_impacts');
+
+    // Store up to 5 impacts [x, y, time]
+    let impacts = new Float32Array(15).fill(-100.0); 
+    let impactIdx = 0;
+
+    canvas.addEventListener('mousedown', e => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = rect.height - (e.clientY - rect.top);
+        
+        impacts[impactIdx * 3] = x;
+        impacts[impactIdx * 3 + 1] = y;
+        impacts[impactIdx * 3 + 2] = performance.now() * 0.001;
+        
+        impactIdx = (impactIdx + 1) % 5;
+    });
+
+    function render(time) {
+        const t = time * 0.001;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.useProgram(program);
+        gl.uniform1f(uTime, t);
+        gl.uniform2f(uRes, canvas.width, canvas.height);
+        gl.uniform3fv(uImpacts, impacts);
+        
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+}
+
+// Add setupQuad helper if it doesn't exist in your file scope
+function setupQuad(gl, program) {
+    const vertices = new Float32Array([
+        -1, -1, 0, 0,
+         1, -1, 1, 0,
+        -1,  1, 0, 1,
+         1,  1, 1, 1
+    ]);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+    
+    const loc = gl.getAttribLocation(program, 'a_position');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 16, 0); // Stride 16 (4 floats), offset 0
 }

@@ -411,3 +411,40 @@
         padding: 1rem;
     }
 }
+
+/* Mechanical Iris Switch */
+.iris-switch {
+    width: 60px;
+    height: 60px;
+    position: relative;
+    cursor: pointer;
+    border-radius: 50%;
+    background: #111;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.8);
+    overflow: hidden;
+    border: 2px solid #333;
+}
+
+.iris-switch:hover {
+    border-color: #555;
+}
+
+.iris-center-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    transform: translate(-50%, -50%) scale(0);
+    background: radial-gradient(circle, #00ffff, transparent);
+    border-radius: 50%;
+    transition: transform 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+    opacity: 0.8;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.iris-switch.active {
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+    border-color: #00aaaa;
+}

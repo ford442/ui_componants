@@ -97,3 +97,16 @@ input[type="color"] {
     pointer-events: none;
     user-select: none;
 }
+
+/* Liquid Chrome & Force Field specific */
+#liquid-chrome-demo canvas,
+#force-field-demo canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 8px;
+}
+
+#force-field-demo {
+    background: radial-gradient(circle at center, #1a2a3a 0%, #050505 100%);
+}

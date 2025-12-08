@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/switches.css">
 </head>
+
 <body>
     <div class="container">
         <div class="page-header">
@@ -16,7 +18,7 @@
                 <p class="subtitle">Animated switches with WebGL glow and CSS transitions</p>
             </div>
         </div>
-        
+
         <!-- Layer Info Banner -->
         <div class="layer-info-banner">
             <span class="layer-tag webgl">WebGL</span>
@@ -25,7 +27,7 @@
             <span class="layer-tag svg">SVG</span>
             <span class="info-text">Click switches to toggle their state</span>
         </div>
-        
+
         <div class="component-grid">
             <!-- Basic Toggle Switches -->
             <div class="component-card">
@@ -39,7 +41,7 @@
                     <!-- Switches will be created by JS -->
                 </div>
             </div>
-            
+
             <!-- LED Toggle Switches -->
             <div class="component-card">
                 <h3>LED Toggle Switches</h3>
@@ -52,7 +54,7 @@
                     <!-- Switches will be created by JS -->
                 </div>
             </div>
-            
+
             <!-- Rocker Switches -->
             <div class="component-card">
                 <h3>Rocker Switches</h3>
@@ -65,7 +67,7 @@
                     <!-- Switches will be created by JS -->
                 </div>
             </div>
-            
+
             <!-- Slide Switches -->
             <div class="component-card">
                 <h3>Slide Switches</h3>
@@ -79,17 +81,17 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Switch Panel Demo -->
         <section class="switch-panel-section">
             <h2>Control Panel</h2>
             <p class="description">Interactive control panel with various switch types</p>
-            
+
             <div class="control-panel" id="control-panel">
                 <!-- Control panel will be created by JS -->
             </div>
         </section>
-        
+
         <!-- Advanced Switch Styles -->
         <section class="advanced-switches-section">
             <h2>Advanced Switch Styles</h2>
@@ -106,7 +108,7 @@
                         <!-- Neon switches -->
                     </div>
                 </div>
-                
+
                 <!-- Flip Switches -->
                 <div class="component-card">
                     <h3>Flip Switches</h3>
@@ -119,7 +121,7 @@
                         <!-- Flip switches -->
                     </div>
                 </div>
-                
+
                 <!-- Retro Switches -->
                 <div class="component-card">
                     <h3>Retro Style</h3>
@@ -132,7 +134,7 @@
                         <!-- Retro switches -->
                     </div>
                 </div>
-                
+
                 <!-- Segmented Switches -->
                 <div class="component-card">
                     <h3>Segmented Control</h3>
@@ -146,10 +148,37 @@
                     </div>
                 </div>
             </div>
-        </section>
+            <!-- Mechanical Iris Toggle -->
+            <div class="component-card">
+                <h3>Mechanical Iris</h3>
+                <p class="description">Sci-fi style aperture toggle</p>
+                <div class="layers">
+                    <span class="layer-tag svg">SVG Blades</span>
+                    <span class="layer-tag css">CSS Transform</span>
+                </div>
+                <div class="switch-showcase" id="iris-switches">
+                    <!-- Iris switches -->
+                </div>
+            </div>
+
+            <!-- Plasma Switches (High Voltage) -->
+            <div class="component-card">
+                <h3>High Voltage Plasma</h3>
+                <p class="description">Plasma arc connection simulation</p>
+                <div class="layers">
+                    <span class="layer-tag webgl">WebGL Arc</span>
+                    <span class="layer-tag css">CSS Glow</span>
+                </div>
+                <div class="switch-showcase" id="plasma-switches">
+                    <!-- Plasma switches -->
+                </div>
+            </div>
     </div>
-    
+    </section>
+    </div>
+
     <script type="module" src="../js/main.js"></script>
     <script type="module" src="../js/switches.js"></script>
 </body>
+
 </html>
