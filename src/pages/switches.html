@@ -109,6 +109,29 @@
                     </div>
                 </div>
 
+
+                <!-- Portal Toggle Switch -->
+                <div class="component-card">
+                    <h3>Portal Toggle</h3>
+                    <p class="description">Inter‑dimensional gateway with swirling vortex</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Vortex</span>
+                        <span class="layer-tag css">CSS Particles</span>
+                    </div>
+                    <div class="switch-showcase" id="portal-toggle"></div>
+                </div>
+
+                <!-- Circuit Breaker -->
+                <div class="component-card">
+                    <h3>Circuit Breaker</h3>
+                    <p class="description">Industrial breaker with arcing electricity</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Arc</span>
+                        <span class="layer-tag svg">SVG Breaker</span>
+                    </div>
+                    <div class="switch-showcase" id="circuit-breaker"></div>
+                </div>
+
                 <!-- Flip Switches -->
                 <div class="component-card">
                     <h3>Flip Switches</h3>
@@ -173,78 +196,29 @@
                     <!-- Plasma switches -->
                 </div>
             </div>
-    </div>
-    </section>
 
-    <!-- NEW EXPERIMENTS -->
-
-    <!-- Portal Toggle Switch -->
-    <section class="experiment-section">
-        <div class="section-header">
-            <h2>🌀 Portal Toggle Switch</h2>
-            <p class="description">Inter-dimensional gateway with swirling vortex and particle effects</p>
-        </div>
-        <div class="component-grid">
+            <!-- Bio-Mechanical Switch -->
             <div class="component-card">
-                <h3>Dimensional Gateway</h3>
-                <p class="description">Toggle to open/close the portal</p>
-                <div class="layers">
-                    <span class="layer-tag webgl2">WebGL2 Vortex</span>
-                    <span class="layer-tag css">CSS Particles</span>
-                </div>
-                <div class="switch-showcase" id="portal-toggle">
-                    <!-- Portal toggle will be created by JS -->
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Circuit Breaker Animation -->
-    <section class="experiment-section">
-        <div class="section-header">
-            <h2>⚡ Circuit Breaker Animation</h2>
-            <p class="description">Industrial breaker with arcing electricity and mechanical feedback</p>
-        </div>
-        <div class="component-grid">
-            <div class="component-card">
-                <h3>High Voltage Breaker</h3>
-                <p class="description">Click to trip or reset</p>
-                <div class="layers">
-                    <span class="layer-tag webgl2">WebGL2 Arc</span>
-                    <span class="layer-tag svg">SVG Breaker</span>
-                </div>
-                <div class="switch-showcase" id="circuit-breaker">
-                    <!-- Circuit breaker will be created by JS -->
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Bio-Mechanical Switch -->
-    <section class="experiment-section">
-        <div class="section-header">
-            <h2>🧬 Bio-Mechanical Switch</h2>
-            <p class="description">Organic/mechanical fusion with pulsing veins and bioluminescence</p>
-        </div>
-        <div class="component-grid">
-            <div class="component-card">
-                <h3>Organic Interface</h3>
-                <p class="description">Touch to activate neural connection</p>
+                <h3>Bio-Mechanical</h3>
+                <p class="description">Organic interface with pulsing veins</p>
                 <div class="layers">
                     <span class="layer-tag webgl2">WebGL2 Organic</span>
                     <span class="layer-tag css">CSS Pulse</span>
                 </div>
                 <div class="switch-showcase" id="bio-mechanical-switch">
-                    <!-- Bio-mechanical switch will be created by JS -->
+                    <!-- Bio-mechanical switch -->
                 </div>
             </div>
-        </div>
+    </div>
     </section>
 
     </div>
 
-    <script type="module" src="../js/main.js"></script>
-    <script type="module" src="../js/switches.js"></script>
+    <script src="../js/main.js"></script>
+    <script src="../js/switches.js"></script>
+    <script src="../js/portal-toggle-shader.js"></script>
+    <script src="../js/circuit-breaker-shader.js"></script>
+    <script src="../js/switches-experiments.js"></script>
 </body>
 
 </html>

@@ -152,14 +152,111 @@
             </div>
         </div>
 
+        <!-- Liquid Ripple Buttons -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Liquid Ripple Buttons</h2>
+                    <p class="description">Canvas 2D water ripple effect on interaction</p>
+                    <div class="layers">
+                        <span class="layer-tag">Canvas 2D</span>
+                        <span class="layer-tag">Interactive</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <button class="liquid-btn"
+                        style="padding: 1.2rem 2.5rem; background: #3344cc; color: white; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer; overflow: hidden; position: relative;">
+                        Click for Ripple
+                    </button>
+                    <button class="liquid-btn"
+                        style="padding: 1.2rem 2.5rem; background: #cc3344; color: white; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer; overflow: hidden; position: relative;">
+                        Another One
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Switch Experiments Showcase -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Advanced Switches</h2>
+                    <p class="description">Next-gen toggles with CSS, SVG and WebGL2 effects</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2</span>
+                        <span class="layer-tag css">CSS 3D</span>
+                    </div>
+                </div>
+                <!-- Container for switches using IDs expected by switches-experiments.js -->
+                <div class="experiment-showcase" style="flex-direction: column; gap: 2rem;">
+                    <!-- Neon -->
+                    <div id="neon-switches" style="transform: scale(0.8);"></div>
+                    <!-- Portal -->
+                    <div id="portal-toggle"
+                        style="position: relative; width: 120px; height: 60px; transform: scale(0.8);"></div>
+                    <!-- Circuit Breaker -->
+                    <div id="circuit-breaker"
+                        style="position: relative; width: 100px; height: 160px; transform: scale(0.8);"></div>
+                    <!-- Bio-Mech -->
+                    <div id="bio-mechanical-switch" style="transform: scale(0.8);"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3D Knob Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>3D Rotating Knob</h2>
+                    <p class="description">WebGL2 Sphere with Phong lighting and drag rotation</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="knob-3d-container"
+                        style="width: 200px; height: 200px; background: rgba(0,0,0,0.2); border-radius: 12px;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Glitch Scroll Reveal -->
+        <section class="experiment-section"
+            style="min-height: 400px; display: flex; flex-direction: column; align-items: center;">
+            <div class="section-header">
+                <h2>Glitch Scroll Reveal</h2>
+                <p class="description">Scroll down to see element corrupted entry</p>
+                <div class="layers">
+                    <span class="layer-tag css">CSS Keyframes</span>
+                    <span class="layer-tag">Observer</span>
+                </div>
+            </div>
+            <div class="controls-card glitch-reveal" style="max-width: 600px; margin: 2rem auto;">
+                <h3 style="margin-bottom: 1rem;">Corrupted Data Block 01</h3>
+                <p style="columns: #aaa; line-height: 1.6;">
+                    System integrity verification... [FAILED].
+                    Re-routing neural pathways... [COMPLETE].
+                    This content was revealed with a programmed glitch effect triggered by intersection observation.
+                </p>
+            </div>
+            <div class="controls-card glitch-reveal" style="max-width: 600px; margin: 2rem auto;">
+                <h3 style="margin-bottom: 1rem;">Corrupted Data Block 02</h3>
+                <p style="columns: #aaa; line-height: 1.6;">
+                    Anomaly detected in sector 7G. Visual artifacts manifesting in DOM elements.
+                </p>
+            </div>
+        </section>
+
         <!-- Info Section -->
-        <div class="info-section" style="margin-top: 3rem;">
+        <div class="info-section">
             <h2>Implementation Details</h2>
             <ul>
-                <li><strong>Jello-Bounce:</strong> Pure CSS with cubic-bezier spring easing</li>
-                <li><strong>SVG Morph:</strong> Path interpolation with spring physics simulation</li>
-                <li><strong>Aurora:</strong> WebGL2 simplex noise shader (CSS fallback)</li>
-                <li><strong>Particles:</strong> Canvas 2D with Verlet integration & magnetic forces</li>
+                <li><strong>Jello-Bounce:</strong> Pure CSS spring easing</li>
+                <li><strong>SVG Morph:</strong> Path interpolation with physics</li>
+                <li><strong>Liquids:</strong> Canvas 2D particle ripples</li>
+                <li><strong>Switches:</strong> Mixed CSS/WebGL2 shaders for vortex/arcs</li>
+                <li><strong>3D Knob:</strong> Raw WebGL2 vertex/fragment shaders</li>
+                <li><strong>Glitch:</strong> CSS clip-path animation on scroll</li>
             </ul>
         </div>
     </div>
@@ -168,6 +265,12 @@
     <script src="../js/magnetic-particles.js"></script>
     <script src="../js/aurora-background.js"></script>
     <script src="../js/svg-morph.js"></script>
+    <script src="../js/portal-toggle-shader.js"></script>
+    <script src="../js/circuit-breaker-shader.js"></script>
+    <script src="../js/switches-experiments.js"></script>
+    <script src="../js/liquid-ripple.js"></script>
+    <script src="../js/knob-3d.js"></script>
+    <script src="../js/glitch-scroll.js"></script>
 
     <script>
         // Initialize experiments when DOM is ready
