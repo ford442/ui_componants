@@ -335,6 +335,92 @@
             </div>
     </div>
     </section>
+
+    <!-- NEW EXPERIMENTS -->
+
+    <!-- Lava Lamp Status Indicator -->
+    <section class="experiment-section">
+        <div class="section-header">
+            <h2>🫧 Lava Lamp Status Indicator</h2>
+            <p class="description">Metaball physics with temperature-based color mapping for ambient status display</p>
+        </div>
+        <div class="component-grid">
+            <div class="component-card">
+                <h3>Ambient Status</h3>
+                <p class="description">Blobs rise and fall based on system load</p>
+                <div class="layers">
+                    <span class="layer-tag webgl2">WebGL2 Metaballs</span>
+                    <span class="layer-tag css">CSS Glow</span>
+                </div>
+                <div class="indicator-showcase" id="lava-lamp-indicator">
+                    <!-- Lava lamp will be created by JS -->
+                </div>
+                <div class="controls-panel">
+                    <label>Temperature: <input type="range" id="ctrl-lava-temp" min="0" max="100" value="50"></label>
+                    <label>Viscosity: <input type="range" id="ctrl-lava-viscosity" min="1" max="10" value="5"></label>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- DNA Helix Progress Meter -->
+    <section class="experiment-section">
+        <div class="section-header">
+            <h2>🧬 DNA Helix Progress Meter</h2>
+            <p class="description">Double helix animation with base-pair highlighting for progress visualization</p>
+        </div>
+        <div class="component-grid">
+            <div class="component-card">
+                <h3>Genetic Progress</h3>
+                <p class="description">Progress illuminates base pairs along the helix</p>
+                <div class="layers">
+                    <span class="layer-tag webgl2">WebGL2 3D Helix</span>
+                    <span class="layer-tag svg">SVG Markers</span>
+                </div>
+                <div class="indicator-showcase" id="dna-helix-indicator">
+                    <!-- DNA helix will be created by JS -->
+                </div>
+                <div class="controls-panel">
+                    <label>Progress: <input type="range" id="ctrl-dna-progress" min="0" max="100" value="0"> <span
+                            id="val-dna-progress">0</span>%</label>
+                    <label>Rotation Speed: <input type="range" id="ctrl-dna-speed" min="0" max="10" value="5"></label>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cybernetic Eye Status Display -->
+    <section class="experiment-section">
+        <div class="section-header">
+            <h2>👁️ Cybernetic Eye Status Display</h2>
+            <p class="description">Mechanical iris with scanning laser and pupil dilation based on intensity</p>
+        </div>
+        <div class="component-grid">
+            <div class="component-card">
+                <h3>System Monitor</h3>
+                <p class="description">Pupil dilates with activity, iris segments show subsystem status</p>
+                <div class="layers">
+                    <span class="layer-tag webgl2">WebGL2 Iris</span>
+                    <span class="layer-tag svg">SVG Segments</span>
+                    <span class="layer-tag css">CSS Scanline</span>
+                </div>
+                <div class="indicator-showcase" id="cybernetic-eye-indicator">
+                    <!-- Cybernetic eye will be created by JS -->
+                </div>
+                <div class="controls-panel">
+                    <label>Intensity: <input type="range" id="ctrl-eye-intensity" min="0" max="100" value="50"></label>
+                    <label>Alert Level:
+                        <select id="ctrl-eye-alert">
+                            <option value="normal">Normal</option>
+                            <option value="warning">Warning</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </section>
+
     </div>
 
     <script type="module" src="../js/main.js"></script>

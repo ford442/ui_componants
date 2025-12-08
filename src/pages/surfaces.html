@@ -132,6 +132,95 @@
             </div>
         </section>
 
+        <!-- NEW EXPERIMENTS -->
+
+        <!-- Iridescent Soap Bubble Surface -->
+        <section class="surface-section experiment-section">
+            <h2>🫧 Iridescent Soap Bubble</h2>
+            <p class="description">Thin-film interference simulation with mouse-driven deformation and physics-based
+                wobble.</p>
+            <div class="layers">
+                <span class="layer-tag webgl2">WebGL2 Interference</span>
+                <span class="layer-tag css">CSS Physics</span>
+            </div>
+            <div class="canvas-wrapper" id="soap-bubble-demo"
+                style="height: 450px; cursor: pointer; background: linear-gradient(135deg, #0a0a15 0%, #1a1a2f 100%);">
+            </div>
+        </section>
+
+        <!-- Cyberpunk X-Ray Mode -->
+        <section class="surface-section experiment-section">
+            <h2>🔍 Cyberpunk Wire-Frame X-Ray</h2>
+            <p class="description">Toggle between solid and translucent wireframe views with internal circuitry and
+                electron flow.</p>
+            <div class="layers">
+                <span class="layer-tag webgl2">WebGL2 Wireframe</span>
+                <span class="layer-tag svg">SVG Circuits</span>
+                <span class="layer-tag css">CSS Blend</span>
+            </div>
+            <div class="viewer-container">
+                <div class="canvas-wrapper" id="xray-mode-demo" style="height: 400px; background: #000;">
+                </div>
+                <div class="controls-panel">
+                    <div class="control-group">
+                        <label>View Mode</label>
+                        <select id="ctrl-xray-mode">
+                            <option value="solid">Solid</option>
+                            <option value="xray">X-Ray</option>
+                            <option value="wireframe">Wireframe Only</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Electron Flow Speed</label>
+                        <input type="range" id="ctrl-electron-speed" min="0" max="2" step="0.1" value="1">
+                    </div>
+                    <div class="control-group">
+                        <label>Circuit Density</label>
+                        <input type="range" id="ctrl-circuit-density" min="0.2" max="2" step="0.1" value="1">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Weathered/Aged Material Simulation -->
+        <section class="surface-section experiment-section">
+            <h2>⏳ Weathered Material Aging</h2>
+            <p class="description">Procedural wear patterns with time scrubber and mouse-activated dust blow effect.</p>
+            <div class="layers">
+                <span class="layer-tag webgl2">WebGL2 Procedural</span>
+                <span class="layer-tag css">CSS Particles</span>
+            </div>
+            <div class="viewer-container">
+                <div class="canvas-wrapper" id="weathered-demo" style="height: 400px; cursor: grab;">
+                </div>
+                <div class="controls-panel">
+                    <div class="control-group">
+                        <label>Time (Years): <span id="val-age">0</span></label>
+                        <input type="range" id="ctrl-age" min="0" max="100" step="1" value="0">
+                    </div>
+                    <div class="control-group">
+                        <label>Material Type</label>
+                        <select id="ctrl-weathered-material">
+                            <option value="metal">Metal</option>
+                            <option value="wood">Wood</option>
+                            <option value="stone">Stone</option>
+                            <option value="plastic">Plastic</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>Environment</label>
+                        <select id="ctrl-environment">
+                            <option value="outdoor">Outdoor</option>
+                            <option value="marine">Marine</option>
+                            <option value="desert">Desert</option>
+                            <option value="industrial">Industrial</option>
+                        </select>
+                    </div>
+                    <button id="btn-blow-dust" class="control-btn">💨 Blow Dust</button>
+                </div>
+            </div>
+        </section>
+
     </div>
 
     <script type="module" src="../js/main.js"></script>

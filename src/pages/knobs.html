@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/knobs.css">
 </head>
+
 <body>
     <div class="container">
         <div class="page-header">
@@ -16,7 +18,7 @@
                 <p class="subtitle">Layered canvas effects with WebGL, WebGL2, CSS, and SVG</p>
             </div>
         </div>
-        
+
         <!-- Layer Info Banner -->
         <div class="layer-info-banner">
             <span class="layer-tag webgl">WebGL</span>
@@ -25,7 +27,7 @@
             <span class="layer-tag svg">SVG</span>
             <span class="info-text">Drag up/down on knobs to adjust values</span>
         </div>
-        
+
         <div class="component-grid">
             <!-- Basic Knobs -->
             <div class="component-card">
@@ -39,7 +41,7 @@
                     <!-- Knobs will be created by JS -->
                 </div>
             </div>
-            
+
             <!-- LED Ring Knobs -->
             <div class="component-card">
                 <h3>LED Ring Knobs</h3>
@@ -53,7 +55,7 @@
                     <!-- Knobs will be created by JS -->
                 </div>
             </div>
-            
+
             <!-- Vintage Style Knobs -->
             <div class="component-card">
                 <h3>Vintage Style</h3>
@@ -67,7 +69,7 @@
                     <!-- Knobs will be created by JS -->
                 </div>
             </div>
-            
+
             <!-- Digital Encoders -->
             <div class="component-card">
                 <h3>Digital Encoders</h3>
@@ -81,12 +83,12 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Large Knob Demo -->
         <section class="large-knob-section">
             <h2>Interactive Layered Knob</h2>
             <p class="description">Large-scale demonstration of layered rendering contexts</p>
-            
+
             <div class="large-knob-container">
                 <div class="layer-toggles">
                     <label>
@@ -106,11 +108,11 @@
                         <span class="layer-tag css">CSS Effects</span>
                     </label>
                 </div>
-                
+
                 <div id="large-knob-demo" class="large-knob-wrapper">
                     <!-- Large knob will be created by JS -->
                 </div>
-                
+
                 <div class="knob-info">
                     <div class="knob-stat">
                         <span class="stat-label">Value</span>
@@ -123,17 +125,17 @@
                 </div>
             </div>
         </section>
-        
+
         <!-- Mixer Console -->
         <section class="mixer-section">
             <h2>Virtual Mixer Console</h2>
             <p class="description">Multiple coordinated knobs simulating a mixing console</p>
-            
+
             <div class="mixer-console" id="mixer-console">
                 <!-- Mixer channels will be created by JS -->
             </div>
         </section>
-        
+
         <!-- Advanced Knob Styles -->
         <section class="advanced-knobs-section">
             <h2>Advanced Knob Styles</h2>
@@ -150,7 +152,7 @@
                         <!-- Meter knobs -->
                     </div>
                 </div>
-                
+
                 <!-- Dual Concentric -->
                 <div class="component-card">
                     <h3>Dual Concentric</h3>
@@ -164,7 +166,7 @@
                         <!-- Dual knobs -->
                     </div>
                 </div>
-                
+
                 <!-- Illuminated Knobs -->
                 <div class="component-card">
                     <h3>Illuminated Knobs</h3>
@@ -177,7 +179,7 @@
                         <!-- Illuminated knobs -->
                     </div>
                 </div>
-                
+
                 <!-- Step Knobs -->
                 <div class="component-card">
                     <h3>Step/Detent Knobs</h3>
@@ -192,9 +194,78 @@
                 </div>
             </div>
         </section>
+
+        <!-- NEW EXPERIMENTS -->
+
+        <!-- Ferrofluid Knob -->
+        <section class="experiment-section">
+            <div class="section-header">
+                <h2>🧲 Magnetic Fluid (Ferrofluid) Knob</h2>
+                <p class="description">Magnetic fluid simulation that reacts to the knob's rotation and magnetic field
+                </p>
+            </div>
+            <div class="component-grid">
+                <div class="component-card">
+                    <h3>Ferrofluid Response</h3>
+                    <p class="description">Rotate to see magnetic spikes form</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Fluid Sim</span>
+                        <span class="layer-tag svg">SVG Knob</span>
+                    </div>
+                    <div class="knob-showcase" id="ferrofluid-knob">
+                        <!-- Ferrofluid knob will be created by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Time Warp Knob -->
+        <section class="experiment-section">
+            <div class="section-header">
+                <h2>⏰ Time Warp Knob</h2>
+                <p class="description">Controls time distortion with visual warping and temporal displacement effects
+                </p>
+            </div>
+            <div class="component-grid">
+                <div class="component-card">
+                    <h3>Temporal Control</h3>
+                    <p class="description">Distort time visualization</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Distortion</span>
+                        <span class="layer-tag css">CSS Blur</span>
+                    </div>
+                    <div class="knob-showcase" id="time-warp-knob">
+                        <!-- Time warp knob will be created by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Audio Waveform Ring Knob -->
+        <section class="experiment-section">
+            <div class="section-header">
+                <h2>🔊 Audio Waveform Ring Knob</h2>
+                <p class="description">Circular oscilloscope visualization around the knob perimeter</p>
+            </div>
+            <div class="component-grid">
+                <div class="component-card">
+                    <h3>Waveform Display</h3>
+                    <p class="description">Rotate to change frequency</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Waveform</span>
+                        <span class="layer-tag svg">SVG Ring</span>
+                    </div>
+                    <div class="knob-showcase" id="waveform-ring-knob">
+                        <!-- Waveform ring knob will be created by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </div>
-    
+
     <script type="module" src="../js/main.js"></script>
     <script type="module" src="../js/knobs.js"></script>
 </body>
+
 </html>

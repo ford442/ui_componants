@@ -643,6 +643,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initTranslucencyDemo();
     initLiquidChrome();
     initForceField();
+    // New experiments
+    initSoapBubble();
+    initXRayMode();
+    initWeatheredMaterial();
 });
 
 function initSurfaceViewer() {
@@ -1340,4 +1344,628 @@ function setupQuad(gl, program) {
     const loc = gl.getAttribLocation(program, 'a_position');
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 16, 0); // Stride 16 (4 floats), offset 0
+}
+
+// ============================================================================
+// NEW EXPERIMENTS
+// ============================================================================
+
+/**
+ * Iridescent Soap Bubble Surface
+ * Thin-film interference simulation with mouse deformation
+ */
+function initSoapBubble() {
+    const container = document.getElementById('soap-bubble-demo');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    container.appendChild(canvas);
+
+    const gl = canvas.getContext('webgl2');
+    if (!gl) {
+        container.innerHTML = '<p style="color: #ff6666; padding: 2rem;">WebGL2 required for this experiment</p>';
+        return;
+    }
+
+    const vs = `#version 300 es
+    in vec4 a_position;
+    out vec2 v_uv;
+void main() {
+    v_uv = a_position.xy * 0.5 + 0.5;
+    gl_Position = a_position;
+}
+`;
+
+    const fs = `#version 300 es
+    precision highp float;
+    in vec2 v_uv;
+    uniform float u_time;
+    uniform vec2 u_resolution;
+    uniform vec2 u_mouse;
+    uniform float u_mouseDown;
+    out vec4 fragColor;
+
+    // Thin-film interference - spectral colors based on optical path difference
+    vec3 thinFilmColor(float thickness) {
+        // Simulate interference pattern
+        float n = 1.33; // refractive index of soap film
+        float d = thickness * 400.0; // thickness in nm
+
+        // Calculate interference for RGB wavelengths
+        float r = 0.5 + 0.5 * cos(2.0 * 3.14159 * 2.0 * n * d / 650.0);
+        float g = 0.5 + 0.5 * cos(2.0 * 3.14159 * 2.0 * n * d / 550.0);
+        float b = 0.5 + 0.5 * cos(2.0 * 3.14159 * 2.0 * n * d / 450.0);
+
+    return vec3(r, g, b);
+}
+
+void main() {
+        vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+        vec2 mouse = (u_mouse - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+
+        // Bubble shape - sphere projection
+        float r = length(uv);
+        float bubbleRadius = 0.45;
+
+    if (r > bubbleRadius) {
+        fragColor = vec4(0.0, 0.0, 0.02, 1.0);
+        return;
+    }
+
+        // Sphere normal estimation
+        float z = sqrt(max(0.0, bubbleRadius * bubbleRadius - r * r));
+        vec3 normal = normalize(vec3(uv, z));
+
+        // Mouse deformation
+        float mouseDist = length(uv - mouse);
+        float deformation = exp(-mouseDist * 8.0) * u_mouseDown * 0.3;
+
+        // Wobble animation
+        float wobble = sin(u_time * 2.0 + uv.x * 10.0) * cos(u_time * 1.7 + uv.y * 8.0) * 0.02;
+
+        // Calculate thickness variation for interference
+        float thickness = 0.3 + 0.4 * (1.0 - r / bubbleRadius); // thinner at edges
+    thickness += wobble;
+    thickness += deformation;
+    thickness += sin(u_time * 0.5 + atan(uv.y, uv.x) * 3.0) * 0.05; // swirling
+
+        // Get interference color
+        vec3 iridescence = thinFilmColor(thickness);
+
+        // Fresnel effect - more reflection at edges
+        float fresnel = pow(1.0 - z / bubbleRadius, 2.0);
+
+        // Environment reflection (fake)
+        vec3 envColor = mix(
+        vec3(0.1, 0.15, 0.25),
+        vec3(0.4, 0.5, 0.6),
+        normal.y * 0.5 + 0.5
+    );
+
+        // Specular highlight
+        vec3 lightDir = normalize(vec3(0.5, 0.8, 1.0));
+        float spec = pow(max(dot(reflect(-lightDir, normal), vec3(0.0, 0.0, 1.0)), 0.0), 32.0);
+
+        // Compose final color
+        vec3 color = mix(iridescence * 0.8, envColor, fresnel * 0.5);
+    color += vec3(1.0) * spec * 0.8;
+    color += iridescence * fresnel * 0.3;
+
+        // Edge glow
+        float edge = smoothstep(bubbleRadius, bubbleRadius - 0.02, r);
+    color = mix(vec3(0.5, 0.7, 1.0) * 0.5, color, edge);
+
+        // Transparency
+        float alpha = smoothstep(bubbleRadius, bubbleRadius - 0.01, r) * (0.7 + fresnel * 0.3);
+
+    fragColor = vec4(color, alpha);
+}
+`;
+
+    const program = createProgram(gl, vs, fs);
+    if (!program) return;
+    
+    setupQuad(gl, program);
+
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uRes = gl.getUniformLocation(program, 'u_resolution');
+    const uMouse = gl.getUniformLocation(program, 'u_mouse');
+    const uMouseDown = gl.getUniformLocation(program, 'u_mouseDown');
+
+    let mouseX = canvas.width / 2, mouseY = canvas.height / 2;
+    let mouseDown = 0;
+
+    canvas.addEventListener('mousemove', e => {
+        const rect = canvas.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = rect.height - (e.clientY - rect.top);
+    });
+    
+    canvas.addEventListener('mousedown', () => mouseDown = 1);
+    canvas.addEventListener('mouseup', () => mouseDown = 0);
+    canvas.addEventListener('mouseleave', () => mouseDown = 0);
+
+    function render(time) {
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.clearColor(0.02, 0.02, 0.05, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
+        gl.useProgram(program);
+        gl.uniform1f(uTime, time * 0.001);
+        gl.uniform2f(uRes, canvas.width, canvas.height);
+        gl.uniform2f(uMouse, mouseX, mouseY);
+        gl.uniform1f(uMouseDown, mouseDown);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+    
+    // Resize handler
+    new ResizeObserver(() => {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+    }).observe(container);
+}
+
+/**
+ * Cyberpunk Wire-Frame X-Ray Mode
+ * Toggle between solid and translucent wireframe with circuit patterns
+ */
+function initXRayMode() {
+    const container = document.getElementById('xray-mode-demo');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    container.appendChild(canvas);
+
+    const gl = canvas.getContext('webgl2');
+    if (!gl) return;
+
+    const vs = `#version 300 es
+    in vec4 a_position;
+    out vec2 v_uv;
+void main() {
+    v_uv = a_position.xy * 0.5 + 0.5;
+    gl_Position = a_position;
+}
+`;
+
+    const fs = `#version 300 es
+    precision highp float;
+    in vec2 v_uv;
+    uniform float u_time;
+    uniform vec2 u_resolution;
+    uniform float u_mode; // 0=solid, 1=xray, 2=wireframe
+    uniform float u_electronSpeed;
+    uniform float u_circuitDensity;
+    out vec4 fragColor;
+
+    // Hash for randomness
+    float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+    // Circuit pattern
+    float circuitPattern(vec2 uv, float density) {
+        vec2 grid = floor(uv * 20.0 * density);
+        float rand = hash(grid);
+        vec2 local = fract(uv * 20.0 * density);
+        
+        float line = 0.0;
+
+    // Horizontal traces
+    if (rand > 0.5 && local.y > 0.45 && local.y < 0.55) {
+        line = 1.0;
+    }
+    // Vertical traces
+    if (rand > 0.7 && local.x > 0.45 && local.x < 0.55) {
+        line = 1.0;
+    }
+    // Junction nodes
+    if (rand > 0.85) {
+            float d = length(local - 0.5);
+        if (d < 0.15) line = 1.0;
+    }
+
+    return line;
+}
+
+    // Electron flow animation
+    float electronFlow(vec2 uv, float time, float speed) {
+        float flow = 0.0;
+        vec2 grid = floor(uv * 20.0);
+        float rand = hash(grid);
+        vec2 local = fract(uv * 20.0);
+
+    if (rand > 0.5) {
+            // Horizontal electron
+            float electron = smoothstep(0.1, 0.0, abs(local.y - 0.5));
+        electron *= smoothstep(0.1, 0.0, abs(fract(local.x - time * speed * (0.5 + rand)) - 0.5));
+        flow += electron;
+    }
+    if (rand > 0.7) {
+            // Vertical electron
+            float electron = smoothstep(0.1, 0.0, abs(local.x - 0.5));
+        electron *= smoothstep(0.1, 0.0, abs(fract(local.y - time * speed * (0.3 + rand * 0.5)) - 0.5));
+        flow += electron;
+    }
+
+    return flow;
+}
+
+    // 3D box wireframe projection
+    float boxWireframe(vec2 uv, float rotation) {
+        // Simple rotating cube wireframe
+        float s = sin(rotation);
+        float c = cos(rotation);
+        
+        vec2 p = uv * 2.0 - 1.0;
+    p *= 1.5;
+
+        // 8 vertices of a cube
+        vec3 v[8];
+    v[0] = vec3(-0.5, -0.5, -0.5);
+    v[1] = vec3(0.5, -0.5, -0.5);
+    v[2] = vec3(0.5, 0.5, -0.5);
+    v[3] = vec3(-0.5, 0.5, -0.5);
+    v[4] = vec3(-0.5, -0.5, 0.5);
+    v[5] = vec3(0.5, -0.5, 0.5);
+    v[6] = vec3(0.5, 0.5, 0.5);
+    v[7] = vec3(-0.5, 0.5, 0.5);
+
+        // Rotate and project
+        float line = 0.0;
+    for (int i = 0; i < 8; i++) {
+            float x = v[i].x * c - v[i].z * s;
+            float z = v[i].x * s + v[i].z * c;
+            float depth = 2.0 / (z + 3.0);
+            vec2 proj = vec2(x, v[i].y) * depth;
+            
+            float d = length(p - proj);
+        line += smoothstep(0.05, 0.02, d);
+    }
+
+    // Draw edges (simplified - just corner points glow)
+    return min(line, 1.0);
+}
+
+void main() {
+        vec2 uv = v_uv;
+        vec2 p = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+        
+        vec3 color = vec3(0.0);
+        float alpha = 1.0;
+        
+        float rotation = u_time * 0.3;
+        float wireframe = boxWireframe(uv, rotation);
+        float circuit = circuitPattern(uv, u_circuitDensity);
+        float electrons = electronFlow(uv, u_time, u_electronSpeed);
+
+    if (u_mode < 0.5) {
+        // Solid mode
+        color = vec3(0.2, 0.2, 0.25);
+        color += vec3(0.0, 0.5, 1.0) * circuit * 0.1;
+        color += vec3(0.0, 1.0, 0.5) * electrons * 0.2;
+    } else if (u_mode < 1.5) {
+        // X-Ray mode
+        color = vec3(0.0, 0.1, 0.15);
+        color += vec3(0.0, 0.8, 1.0) * wireframe * 0.5;
+        color += vec3(0.0, 0.5, 0.8) * circuit * 0.4;
+        color += vec3(0.0, 1.0, 0.5) * electrons * 0.8;
+        alpha = 0.9;
+    } else {
+        // Wireframe only
+        color = vec3(0.0, 0.0, 0.02);
+        color += vec3(0.0, 1.0, 0.8) * wireframe;
+        color += vec3(0.0, 1.0, 0.5) * electrons * 1.5;
+    }
+
+        // Scanlines
+        float scanline = sin(gl_FragCoord.y * 2.0) * 0.03 + 0.97;
+    color *= scanline;
+
+        // Vignette
+        float vignette = 1.0 - length(p) * 0.5;
+    color *= vignette;
+
+    fragColor = vec4(color, alpha);
+}
+`;
+
+    const program = createProgram(gl, vs, fs);
+    if (!program) return;
+    
+    setupQuad(gl, program);
+
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uRes = gl.getUniformLocation(program, 'u_resolution');
+    const uMode = gl.getUniformLocation(program, 'u_mode');
+    const uElectronSpeed = gl.getUniformLocation(program, 'u_electronSpeed');
+    const uCircuitDensity = gl.getUniformLocation(program, 'u_circuitDensity');
+
+    let mode = 0;
+    let electronSpeed = 1.0;
+    let circuitDensity = 1.0;
+
+    // Controls
+    const modeSelect = document.getElementById('ctrl-xray-mode');
+    const speedSlider = document.getElementById('ctrl-electron-speed');
+    const densitySlider = document.getElementById('ctrl-circuit-density');
+    
+    if (modeSelect) {
+        modeSelect.addEventListener('change', e => {
+            mode = e.target.value === 'solid' ? 0 : e.target.value === 'xray' ? 1 : 2;
+        });
+    }
+    if (speedSlider) {
+        speedSlider.addEventListener('input', e => electronSpeed = parseFloat(e.target.value));
+    }
+    if (densitySlider) {
+        densitySlider.addEventListener('input', e => circuitDensity = parseFloat(e.target.value));
+    }
+
+    function render(time) {
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0.0, 0.0, 0.02, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
+        gl.useProgram(program);
+        gl.uniform1f(uTime, time * 0.001);
+        gl.uniform2f(uRes, canvas.width, canvas.height);
+        gl.uniform1f(uMode, mode);
+        gl.uniform1f(uElectronSpeed, electronSpeed);
+        gl.uniform1f(uCircuitDensity, circuitDensity);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+}
+
+/**
+ * Weathered/Aged Material Simulation
+ * Procedural wear with time scrubber and dust particles
+ */
+function initWeatheredMaterial() {
+    const container = document.getElementById('weathered-demo');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    container.appendChild(canvas);
+
+    const gl = canvas.getContext('webgl2');
+    if (!gl) return;
+
+    const vs = `#version 300 es
+    in vec4 a_position;
+    out vec2 v_uv;
+void main() {
+    v_uv = a_position.xy * 0.5 + 0.5;
+    gl_Position = a_position;
+}
+`;
+
+    const fs = `#version 300 es
+    precision highp float;
+    in vec2 v_uv;
+    uniform float u_time;
+    uniform vec2 u_resolution;
+    uniform float u_age; // 0-100 years
+    uniform float u_materialType; // 0=metal, 1=wood, 2=stone, 3=plastic
+    uniform float u_environment; // 0=outdoor, 1=marine, 2=desert, 3=industrial
+    uniform float u_blowDust;
+    out vec4 fragColor;
+
+    // Noise functions
+    float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+    
+    float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+        
+        float a = hash(i);
+        float b = hash(i + vec2(1.0, 0.0));
+        float c = hash(i + vec2(0.0, 1.0));
+        float d = hash(i + vec2(1.0, 1.0));
+
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+    
+    float fbm(vec2 p, int octaves) {
+        float value = 0.0;
+        float amplitude = 0.5;
+    for (int i = 0; i < 6; i++) {
+        if (i >= octaves) break;
+        value += amplitude * noise(p);
+        p *= 2.0;
+        amplitude *= 0.5;
+    }
+    return value;
+}
+
+void main() {
+        vec2 uv = v_uv;
+        float age = u_age / 100.0;
+
+        // Base material colors
+        vec3 baseColor;
+        float roughnessBase;
+
+    if (u_materialType < 0.5) {
+        // Metal
+        baseColor = vec3(0.7, 0.7, 0.75);
+        roughnessBase = 0.3;
+    } else if (u_materialType < 1.5) {
+        // Wood
+        baseColor = vec3(0.6, 0.4, 0.25);
+        roughnessBase = 0.5;
+    } else if (u_materialType < 2.5) {
+        // Stone
+        baseColor = vec3(0.5, 0.5, 0.48);
+        roughnessBase = 0.7;
+    } else {
+        // Plastic
+        baseColor = vec3(0.2, 0.2, 0.22);
+        roughnessBase = 0.2;
+    }
+
+        // Weathering effects based on environment
+        vec3 weatherColor;
+        float weatherIntensity = age;
+
+    if (u_environment < 0.5) {
+        // Outdoor - general oxidation
+        weatherColor = vec3(0.6, 0.4, 0.2);
+    } else if (u_environment < 1.5) {
+        // Marine - salt corrosion, green patina on metal
+        weatherColor = u_materialType < 0.5 ? vec3(0.3, 0.6, 0.5) : vec3(0.5, 0.5, 0.4);
+    } else if (u_environment < 2.5) {
+        // Desert - sand erosion, bleaching
+        weatherColor = vec3(0.8, 0.7, 0.5);
+    } else {
+        // Industrial - soot, chemical staining
+        weatherColor = vec3(0.15, 0.12, 0.1);
+    }
+
+        // Procedural wear patterns
+        float scratches = 0.0;
+    for (float i = 0.0; i < 5.0; i++) {
+            float angle = hash(vec2(i, 0.0)) * 3.14159;
+            vec2 dir = vec2(cos(angle), sin(angle));
+            float scratch = smoothstep(0.02, 0.0, abs(dot(uv - vec2(hash(vec2(i, 1.0)), hash(vec2(i, 2.0))), dir)));
+        scratch *= step(0.5, hash(vec2(i, 3.0) + floor(uv * 10.0)));
+        scratches += scratch * age;
+    }
+
+        // Rust/corrosion spots
+        float rust = fbm(uv * 8.0, 4);
+    rust = smoothstep(0.3 - age * 0.3, 0.7, rust) * age;
+
+        // Edge wear
+        float edgeWear = 1.0 - smoothstep(0.0, 0.1, min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y)));
+    edgeWear *= age;
+
+        // Dust accumulation
+        float dust = fbm(uv * 15.0 + u_time * 0.01, 3) * age * 0.5;
+
+    // Dust blow effect
+    if (u_blowDust > 0.0) {
+            float blowTime = u_blowDust;
+            vec2 blowDir = vec2(1.0, 0.3);
+        dust *= smoothstep(0.0, 1.0, 1.0 - blowTime + dot(uv, normalize(blowDir)) * 0.5);
+    }
+
+        // Compose final color
+        vec3 color = baseColor;
+
+    // Apply weathering
+    color = mix(color, weatherColor, rust * 0.8);
+    color = mix(color, color * 0.7, scratches);
+    color = mix(color, weatherColor * 0.8, edgeWear * 0.5);
+    color = mix(color, vec3(0.5, 0.45, 0.4), dust);
+
+        // Add some surface variation
+        float surfaceNoise = fbm(uv * 50.0, 2) * 0.1;
+    color += surfaceNoise - 0.05;
+
+        // Lighting
+        vec3 normal = normalize(vec3(
+        fbm(uv * 20.0 + 0.1, 2) - fbm(uv * 20.0 - 0.1, 2),
+        fbm(uv * 20.0 + vec2(0.0, 0.1), 2) - fbm(uv * 20.0 - vec2(0.0, 0.1), 2),
+        0.3
+    ));
+        vec3 lightDir = normalize(vec3(0.5, 0.7, 1.0));
+        float diffuse = max(dot(normal, lightDir), 0.0) * 0.5 + 0.5;
+    color *= diffuse;
+
+    fragColor = vec4(color, 1.0);
+}
+`;
+
+    const program = createProgram(gl, vs, fs);
+    if (!program) return;
+    
+    setupQuad(gl, program);
+
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uRes = gl.getUniformLocation(program, 'u_resolution');
+    const uAge = gl.getUniformLocation(program, 'u_age');
+    const uMaterialType = gl.getUniformLocation(program, 'u_materialType');
+    const uEnvironment = gl.getUniformLocation(program, 'u_environment');
+    const uBlowDust = gl.getUniformLocation(program, 'u_blowDust');
+
+    let age = 0;
+    let materialType = 0;
+    let environment = 0;
+    let blowDust = 0;
+    let blowStartTime = 0;
+
+    // Controls
+    const ageSlider = document.getElementById('ctrl-age');
+    const ageDisplay = document.getElementById('val-age');
+    const materialSelect = document.getElementById('ctrl-weathered-material');
+    const envSelect = document.getElementById('ctrl-environment');
+    const blowBtn = document.getElementById('btn-blow-dust');
+    
+    if (ageSlider) {
+        ageSlider.addEventListener('input', e => {
+            age = parseFloat(e.target.value);
+            if (ageDisplay) ageDisplay.textContent = age;
+        });
+    }
+    if (materialSelect) {
+        materialSelect.addEventListener('change', e => {
+            materialType = e.target.value === 'metal' ? 0 : 
+                          e.target.value === 'wood' ? 1 :
+                          e.target.value === 'stone' ? 2 : 3;
+        });
+    }
+    if (envSelect) {
+        envSelect.addEventListener('change', e => {
+            environment = e.target.value === 'outdoor' ? 0 :
+                         e.target.value === 'marine' ? 1 :
+                         e.target.value === 'desert' ? 2 : 3;
+        });
+    }
+    if (blowBtn) {
+        blowBtn.addEventListener('click', () => {
+            blowStartTime = performance.now();
+        });
+    }
+
+    function render(time) {
+        // Calculate blow dust animation
+        if (blowStartTime > 0) {
+            blowDust = Math.min(1.0, (time - blowStartTime) / 1000.0);
+            if (blowDust >= 1.0) {
+                blowStartTime = 0;
+                blowDust = 0;
+            }
+        }
+        
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0.1, 0.1, 0.12, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
+        gl.useProgram(program);
+        gl.uniform1f(uTime, time * 0.001);
+        gl.uniform2f(uRes, canvas.width, canvas.height);
+        gl.uniform1f(uAge, age);
+        gl.uniform1f(uMaterialType, materialType);
+        gl.uniform1f(uEnvironment, environment);
+        gl.uniform1f(uBlowDust, blowDust);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
 }

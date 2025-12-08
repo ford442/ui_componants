@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Experiments - UI Components</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        .experiment-showcase {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            padding: 2rem;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .section-header h2 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .experiment-section {
+            margin-bottom: 3rem;
+        }
+
+        .controls-card {
+            background: rgba(20, 20, 31, 0.8);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-top: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .controls-grid {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        .control-label {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .control-label:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent-primary);
+        }
+
+        .control-label input[type="checkbox"] {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="page-header">
+            <a href="../index.html" class="back-link">← Back</a>
+            <div>
+                <h1>🎨 Visual Experiments</h1>
+                <p class="subtitle">Cutting-edge UI effects with Canvas 2D, WebGL2, and spring physics</p>
+            </div>
+        </div>
+
+        <!-- Jello-Bounce Buttons -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Jello-Bounce Buttons</h2>
+                    <p class="description">Click to see satisfying squash-and-stretch spring physics</p>
+                    <div class="layers">
+                        <span class="layer-tag css">CSS Spring Animation</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <button class="jello-btn"
+                        style="padding: 1.2rem 2.5rem; background: linear-gradient(135deg, #00ff88, #00aaff); border: none; border-radius: 16px; color: #0a0a0f; font-weight: bold; font-size: 1.1rem; cursor: pointer; box-shadow: 0 8px 24px rgba(0, 255, 136, 0.3);">
+                        Click Me!
+                    </button>
+                    <button class="jello-btn"
+                        style="padding: 1.2rem 2.5rem; background: linear-gradient(135deg, #ff0088, #ff8800); border: none; border-radius: 16px; color: white; font-weight: bold; font-size: 1.1rem; cursor: pointer; box-shadow: 0 8px 24px rgba(255, 0, 136, 0.3);">
+                        Bounce!
+                    </button>
+                    <button class="jello-btn"
+                        style="padding: 1.2rem 2.5rem; background: linear-gradient(135deg, #8800ff, #0088ff); border: none; border-radius: 16px; color: white; font-weight: bold; font-size: 1.1rem; cursor: pointer; box-shadow: 0 8px 24px rgba(136, 0, 255, 0.3);">
+                        Squish!
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SVG Morphing -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Elastic SVG Morphing</h2>
+                    <p class="description">Click shapes to morph with spring-based elastic overshoot</p>
+                    <div class="layers">
+                        <span class="layer-tag svg">SVG Path Morphing</span>
+                        <span class="layer-tag css">Spring Physics</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase" id="morphing-container">
+                    <!-- Morphing buttons will be created by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Background Effects Controls -->
+        <div class="controls-card">
+            <div class="section-header">
+                <h2>Ambient Background Effects</h2>
+                <p class="description">Toggle full-page visual effects (GPU-accelerated)</p>
+            </div>
+            <div class="controls-grid">
+                <label class="control-label">
+                    <input type="checkbox" id="toggle-aurora">
+                    <div>
+                        <span class="layer-tag webgl2">Aurora Background</span>
+                        <div style="font-size: 0.85rem; color: #888; margin-top: 0.25rem;">WebGL2 shader with flowing
+                            gradients</div>
+                    </div>
+                </label>
+                <label class="control-label">
+                    <input type="checkbox" id="toggle-particles">
+                    <div>
+                        <span class="layer-tag css">Magnetic Particles</span>
+                        <div style="font-size: 0.85rem; color: #888; margin-top: 0.25rem;">Canvas 2D interactive
+                            particle field</div>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Info Section -->
+        <div class="info-section" style="margin-top: 3rem;">
+            <h2>Implementation Details</h2>
+            <ul>
+                <li><strong>Jello-Bounce:</strong> Pure CSS with cubic-bezier spring easing</li>
+                <li><strong>SVG Morph:</strong> Path interpolation with spring physics simulation</li>
+                <li><strong>Aurora:</strong> WebGL2 simplex noise shader (CSS fallback)</li>
+                <li><strong>Particles:</strong> Canvas 2D with Verlet integration & magnetic forces</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Load experiment scripts -->
+    <script src="../js/magnetic-particles.js"></script>
+    <script src="../js/aurora-background.js"></script>
+    <script src="../js/svg-morph.js"></script>
+
+    <script>
+        // Initialize experiments when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            // Create SVG Morphing Buttons
+            const morphingContainer = document.getElementById('morphing-container');
+            if (morphingContainer && window.MorphingButton) {
+                const colors = ['#00ff88', '#00aaff', '#ff0088', '#ffaa00', '#8800ff'];
+                colors.forEach(color => {
+                    new MorphingButton(morphingContainer, {
+                        width: 100,
+                        height: 100,
+                        shape1: 'circle',
+                        shape2: 'square',
+                        fillColor: color
+                    });
+                });
+            }
+
+            // Background effects state
+            let auroraInstance = null;
+            let particlesInstance = null;
+
+            // Aurora Background toggle
+            const auroraToggle = document.getElementById('toggle-aurora');
+            auroraToggle?.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    if (!auroraInstance && window.AuroraBackground) {
+                        auroraInstance = new AuroraBackground(document.body, {
+                            intensity: 0.4,
+                            speed: 0.04,
+                            colors: [
+                                [0.2, 0.8, 0.9],  // cyan
+                                [0.9, 0.2, 0.8],  // magenta
+                                [0.5, 0.3, 0.9]   // purple
+                            ]
+                        });
+                    }
+                } else {
+                    if (auroraInstance) {
+                        auroraInstance.destroy();
+                        auroraInstance = null;
+                    }
+                }
+            });
+
+            // Magnetic Particles toggle
+            const particlesToggle = document.getElementById('toggle-particles');
+            particlesToggle?.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    if (!particlesInstance && window.MagneticParticleField) {
+                        particlesInstance = new MagneticParticleField(document.body, {
+                            particleCount: 1800,
+                            particleSize: 2,
+                            particleColor: 'rgba(0, 255, 136, 0.6)',
+                            lineColor: 'rgba(0, 170, 255, 0.2)',
+                            maxLineDistance: 100,
+                            magneticForce: 0.03,
+                            friction: 0.98,
+                            constellationMode: true
+                        });
+                    }
+                } else {
+                    if (particlesInstance) {
+                        particlesInstance.destroy();
+                        particlesInstance = null;
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

@@ -435,6 +435,47 @@ header h1 {
     color: var(--accent-primary);
 }
 
+/* Jello-Bounce Button Animation */
+.jello-btn {
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+.jello-btn:active {
+    animation: jello 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+@keyframes jello {
+    0% {
+        transform: scale(1, 1);
+    }
+
+    25% {
+        transform: scale(0.9, 1.1);
+    }
+
+    50% {
+        transform: scale(1.1, 0.9);
+    }
+
+    75% {
+        transform: scale(0.95, 1.05);
+    }
+
+    100% {
+        transform: scale(1, 1);
+    }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    .jello-btn:active {
+        animation: none;
+        transform: scale(0.98);
+    }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .container {

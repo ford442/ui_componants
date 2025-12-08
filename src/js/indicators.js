@@ -17,6 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initMultiStateIndicators();
     initBioMeters();
 
+    // New Experiments
+    initLavaLampIndicator();
+    initDNAHelixIndicator();
+    initCyberneticEyeIndicator();
+
     // WebGPU Advanced Examples
     checkWebGPUSupport().then(supported => {
         if (supported) {
@@ -2008,3 +2013,485 @@ function initBioMeters() {
     });
 }
 
+// ============================================================================
+// NEW EXPERIMENTS
+// ============================================================================
+
+/**
+ * Lava Lamp Status Indicator
+ * Metaball physics with temperature-based color mapping
+ */
+function initLavaLampIndicator() {
+    const container = document.getElementById('lava-lamp-indicator');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 200;
+    canvas.height = 400;
+    canvas.style.cssText = `
+        width: 100px;
+        height: 200px;
+        border-radius: 50px;
+        box-shadow: 0 0 30px rgba(255, 100, 50, 0.3);
+    `;
+    container.appendChild(canvas);
+
+    const gl = canvas.getContext('webgl2');
+    if (!gl) return;
+
+    const vs = `#version 300 es
+    in vec4 a_position;
+    out vec2 v_uv;
+    void main() {
+        v_uv = a_position.xy * 0.5 + 0.5;
+        gl_Position = a_position;
+    }
+    `;
+
+    const fs = `#version 300 es
+    precision highp float;
+    in vec2 v_uv;
+    uniform float u_time;
+    uniform float u_temp;
+    uniform float u_viscosity;
+    out vec4 fragColor;
+
+    // Metaball function
+    float metaball(vec2 p, vec2 center, float r) {
+        float d = length(p - center);
+        return r / (d * d + 0.01);
+    }
+
+    // Temperature to color
+    vec3 tempColor(float t) {
+        // Cool to hot: blue -> cyan -> green -> yellow -> orange -> red
+        vec3 colors[6];
+        colors[0] = vec3(0.2, 0.3, 0.8); // Cool blue
+        colors[1] = vec3(0.2, 0.7, 0.8); // Cyan
+        colors[2] = vec3(0.3, 0.8, 0.3); // Green
+        colors[3] = vec3(0.9, 0.9, 0.2); // Yellow
+        colors[4] = vec3(1.0, 0.5, 0.1); // Orange
+        colors[5] = vec3(1.0, 0.2, 0.2); // Hot red
+        
+        float idx = t * 4.0;
+        int i = int(floor(idx));
+        float f = fract(idx);
+        
+        if (i >= 5) return colors[5];
+        if (i < 0) return colors[0];
+        
+        return mix(colors[i], colors[i+1], f);
+    }
+
+    void main() {
+        vec2 uv = v_uv * 2.0 - 1.0;
+        uv.x *= 0.5;
+        
+        float blob = 0.0;
+        float t = u_time / u_viscosity;
+        
+        // Multiple blobs rising and falling
+        for (float i = 0.0; i < 6.0; i++) {
+            float phase = i * 1.047 + t * (0.3 + i * 0.1);
+            float y = sin(phase) * 0.6;
+            float x = sin(phase * 0.7 + i) * 0.15;
+            float size = 0.08 + 0.04 * sin(phase * 0.3);
+            
+            // Temperature affects rise speed
+            y += u_temp * 0.3;
+            
+            blob += metaball(uv, vec2(x, y), size);
+        }
+        
+        // Container shape
+        float container = smoothstep(0.38, 0.35, abs(uv.x));
+        container *= smoothstep(0.95, 0.9, abs(uv.y));
+        
+        // Threshold
+        float surface = smoothstep(0.8, 1.2, blob) * container;
+        
+        if (surface < 0.01) {
+            // Glass background
+            vec3 glass = vec3(0.1, 0.08, 0.12);
+            glass += vec3(0.05) * container;
+            fragColor = vec4(glass, 1.0);
+            return;
+        }
+        
+        // Color based on temperature
+        vec3 color = tempColor(u_temp);
+        
+        // Add glow
+        color += vec3(0.2) * surface;
+        
+        // Edge highlight
+        color += vec3(0.3) * (1.0 - surface) * step(0.5, blob);
+        
+        fragColor = vec4(color * surface, 1.0);
+    }
+    `;
+
+    const program = createProgram(gl, vs, fs);
+    if (!program) return;
+    
+    setupQuad(gl, program);
+
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uTemp = gl.getUniformLocation(program, 'u_temp');
+    const uViscosity = gl.getUniformLocation(program, 'u_viscosity');
+
+    let temp = 0.5;
+    let viscosity = 5;
+
+    document.getElementById('ctrl-lava-temp')?.addEventListener('input', e => {
+        temp = parseFloat(e.target.value) / 100;
+    });
+    document.getElementById('ctrl-lava-viscosity')?.addEventListener('input', e => {
+        viscosity = parseFloat(e.target.value);
+    });
+
+    function render(time) {
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0.1, 0.08, 0.12, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
+        gl.useProgram(program);
+        gl.uniform1f(uTime, time * 0.001);
+        gl.uniform1f(uTemp, temp);
+        gl.uniform1f(uViscosity, viscosity);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+}
+
+/**
+ * DNA Helix Progress Meter
+ * Double helix with illuminated base pairs
+ */
+function initDNAHelixIndicator() {
+    const container = document.getElementById('dna-helix-indicator');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 300;
+    canvas.style.cssText = `
+        width: 200px;
+        height: 150px;
+        border-radius: 8px;
+    `;
+    container.appendChild(canvas);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let progress = 0;
+    let rotationSpeed = 5;
+    let rotation = 0;
+
+    document.getElementById('ctrl-dna-progress')?.addEventListener('input', e => {
+        progress = parseFloat(e.target.value) / 100;
+        const display = document.getElementById('val-dna-progress');
+        if (display) display.textContent = e.target.value;
+    });
+    document.getElementById('ctrl-dna-speed')?.addEventListener('input', e => {
+        rotationSpeed = parseFloat(e.target.value);
+    });
+
+    function animate() {
+        ctx.fillStyle = 'rgba(10, 15, 25, 0.1)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = 60;
+        const basePairs = 20;
+
+        rotation += 0.01 * rotationSpeed;
+
+        // Draw helix strands
+        for (let strand = 0; strand < 2; strand++) {
+            const strandOffset = strand * Math.PI;
+            
+            ctx.beginPath();
+            ctx.strokeStyle = strand === 0 ? '#00aaff' : '#ff6600';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = strand === 0 ? '#00aaff' : '#ff6600';
+            ctx.shadowBlur = 10;
+
+            for (let i = 0; i <= 100; i++) {
+                const t = (i / 100) * Math.PI * 4;
+                const x = centerX + Math.cos(t + rotation + strandOffset) * radius * 0.5;
+                const y = 30 + (i / 100) * (canvas.height - 60);
+                const z = Math.sin(t + rotation + strandOffset);
+                
+                // 3D perspective
+                const scale = 0.8 + z * 0.2;
+                const px = centerX + (x - centerX) * scale;
+                
+                if (i === 0) {
+                    ctx.moveTo(px, y);
+                } else {
+                    ctx.lineTo(px, y);
+                }
+            }
+            ctx.stroke();
+        }
+
+        // Draw base pairs
+        ctx.shadowBlur = 0;
+        for (let i = 0; i < basePairs; i++) {
+            const t = (i / basePairs) * Math.PI * 4;
+            const y = 30 + (i / basePairs) * (canvas.height - 60);
+            
+            const z1 = Math.sin(t + rotation);
+            const z2 = Math.sin(t + rotation + Math.PI);
+            
+            // Only draw if in front
+            if (z1 > 0 || z2 > 0) {
+                const x1 = centerX + Math.cos(t + rotation) * radius * 0.5 * (0.8 + z1 * 0.2);
+                const x2 = centerX + Math.cos(t + rotation + Math.PI) * radius * 0.5 * (0.8 + z2 * 0.2);
+                
+                // Check if this base pair is "lit" based on progress
+                const pairProgress = i / basePairs;
+                const isLit = pairProgress <= progress;
+                
+                ctx.beginPath();
+                ctx.strokeStyle = isLit ? '#00ff88' : '#333';
+                ctx.lineWidth = isLit ? 3 : 2;
+                
+                if (isLit) {
+                    ctx.shadowColor = '#00ff88';
+                    ctx.shadowBlur = 8;
+                }
+                
+                ctx.moveTo(x1, y);
+                ctx.lineTo(x2, y);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                
+                // Draw base nodes
+                ctx.beginPath();
+                ctx.fillStyle = isLit ? '#00ffaa' : '#444';
+                ctx.arc(x1, y, 4, 0, Math.PI * 2);
+                ctx.arc(x2, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    // Initial clear
+    ctx.fillStyle = '#0a0f19';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    animate();
+}
+
+/**
+ * Cybernetic Eye Status Display
+ * Mechanical iris with scanning laser and pupil dilation
+ */
+function initCyberneticEyeIndicator() {
+    const container = document.getElementById('cybernetic-eye-indicator');
+    if (!container) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 400;
+    canvas.style.cssText = `
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+    `;
+    container.appendChild(canvas);
+
+    const gl = canvas.getContext('webgl2');
+    if (!gl) return;
+
+    const vs = `#version 300 es
+    in vec4 a_position;
+    out vec2 v_uv;
+    void main() {
+        v_uv = a_position.xy * 0.5 + 0.5;
+        gl_Position = a_position;
+    }
+    `;
+
+    const fs = `#version 300 es
+    precision highp float;
+    in vec2 v_uv;
+    uniform float u_time;
+    uniform float u_intensity;
+    uniform float u_alert; // 0=normal, 1=warning, 2=critical
+    out vec4 fragColor;
+
+    void main() {
+        vec2 uv = v_uv * 2.0 - 1.0;
+        float dist = length(uv);
+        float angle = atan(uv.y, uv.x);
+        
+        vec3 color = vec3(0.02, 0.03, 0.05);
+        
+        // Eyeball base
+        if (dist < 0.95) {
+            color = vec3(0.15, 0.12, 0.1);
+        }
+        
+        // Iris color based on alert
+        vec3 irisColor;
+        if (u_alert < 0.5) {
+            irisColor = vec3(0.1, 0.6, 0.8); // Normal: cyan
+        } else if (u_alert < 1.5) {
+            irisColor = vec3(0.9, 0.7, 0.1); // Warning: amber
+        } else {
+            irisColor = vec3(1.0, 0.2, 0.2); // Critical: red
+        }
+        
+        // Iris ring
+        float irisOuter = 0.7;
+        float pupilSize = 0.15 + u_intensity * 0.2;
+        
+        if (dist < irisOuter && dist > pupilSize) {
+            // Mechanical iris segments
+            float segments = 16.0;
+            float segAngle = angle + u_time * 0.5;
+            float seg = abs(sin(segAngle * segments)) * 0.5 + 0.5;
+            
+            // Radial gradient
+            float radGrad = 1.0 - smoothstep(pupilSize, irisOuter, dist);
+            
+            color = irisColor * (0.3 + seg * 0.7) * (0.5 + radGrad * 0.5);
+            
+            // Metallic highlights
+            float highlight = pow(seg, 4.0) * radGrad;
+            color += vec3(0.3) * highlight;
+            
+            // Segment gaps
+            float gap = smoothstep(0.02, 0.0, abs(sin(segAngle * segments * 0.5)));
+            color *= 1.0 - gap * 0.5;
+        }
+        
+        // Pupil
+        if (dist < pupilSize) {
+            color = vec3(0.01, 0.01, 0.02);
+            
+            // Inner glow
+            float innerGlow = 1.0 - dist / pupilSize;
+            color += irisColor * 0.2 * pow(innerGlow, 2.0);
+        }
+        
+        // Iris edge glow
+        float edgeGlow = smoothstep(0.05, 0.0, abs(dist - irisOuter));
+        color += irisColor * edgeGlow * 0.5;
+        
+        // Scanning laser
+        float scanAngle = u_time * 2.0;
+        float scan = smoothstep(0.02, 0.0, abs(angle - mod(scanAngle, 6.28) + 3.14));
+        scan *= step(pupilSize, dist) * step(dist, irisOuter);
+        color += irisColor * scan * 2.0;
+        
+        // Outer ring
+        float outerRing = smoothstep(0.03, 0.0, abs(dist - 0.9));
+        color += irisColor * outerRing * 0.3;
+        
+        // Cybernetic overlay patterns
+        if (dist < 0.85 && dist > irisOuter - 0.05) {
+            float pattern = sin(angle * 8.0 + u_time) * sin(dist * 50.0);
+            pattern = step(0.5, pattern);
+            color += irisColor * pattern * 0.1;
+        }
+        
+        // Vignette
+        color *= 1.0 - dist * 0.3;
+        
+        // Clip to circle
+        float alpha = smoothstep(1.0, 0.95, dist);
+        
+        fragColor = vec4(color, alpha);
+    }
+    `;
+
+    const program = createProgram(gl, vs, fs);
+    if (!program) return;
+    
+    setupQuad(gl, program);
+
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uIntensity = gl.getUniformLocation(program, 'u_intensity');
+    const uAlert = gl.getUniformLocation(program, 'u_alert');
+
+    let intensity = 0.5;
+    let alert = 0;
+
+    document.getElementById('ctrl-eye-intensity')?.addEventListener('input', e => {
+        intensity = parseFloat(e.target.value) / 100;
+    });
+    document.getElementById('ctrl-eye-alert')?.addEventListener('change', e => {
+        alert = e.target.value === 'normal' ? 0 : e.target.value === 'warning' ? 1 : 2;
+    });
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    function render(time) {
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0.02, 0.03, 0.05, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
+        gl.useProgram(program);
+        gl.uniform1f(uTime, time * 0.001);
+        gl.uniform1f(uIntensity, intensity);
+        gl.uniform1f(uAlert, alert);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+}
+
+// Helper functions (if not already defined)
+function createProgram(gl, vsSource, fsSource) {
+    const vs = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vs, vsSource);
+    gl.compileShader(vs);
+    if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
+        console.error('Vertex shader:', gl.getShaderInfoLog(vs));
+        return null;
+    }
+
+    const fs = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fs, fsSource);
+    gl.compileShader(fs);
+    if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+        console.error('Fragment shader:', gl.getShaderInfoLog(fs));
+        return null;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error('Program:', gl.getProgramInfoLog(program));
+        return null;
+    }
+
+    return program;
+}
+
+function setupQuad(gl, program) {
+    const vertices = new Float32Array([
+        -1, -1, 0, 0,
+         1, -1, 1, 0,
+        -1,  1, 0, 1,
+         1,  1, 1, 1
+    ]);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+    
+    const loc = gl.getAttribLocation(program, 'a_position');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 16, 0);
+}

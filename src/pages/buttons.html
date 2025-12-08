@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/buttons.css">
 </head>
+
 <body>
     <div class="container">
         <div class="page-header">
@@ -16,7 +18,7 @@
                 <p class="subtitle">Layered canvas effects with WebGL, WebGL2, CSS, and SVG</p>
             </div>
         </div>
-        
+
         <!-- Layer Info Banner -->
         <div class="layer-info-banner">
             <span class="layer-tag webgl">WebGL</span>
@@ -25,7 +27,7 @@
             <span class="layer-tag svg">SVG</span>
             <span class="info-text">Toggle components to see layered effects in action</span>
         </div>
-        
+
         <div class="component-grid">
             <!-- Basic LED Buttons -->
             <div class="component-card">
@@ -39,7 +41,7 @@
                     <!-- Buttons will be created by JS -->
                 </div>
             </div>
-            
+
             <!-- RGB LED Buttons -->
             <div class="component-card">
                 <h3>RGB LED Buttons</h3>
@@ -52,7 +54,7 @@
                     <!-- Buttons will be created by JS -->
                 </div>
             </div>
-            
+
             <!-- Momentary Buttons -->
             <div class="component-card">
                 <h3>Momentary Buttons</h3>
@@ -66,7 +68,7 @@
                     <!-- Buttons will be created by JS -->
                 </div>
             </div>
-            
+
             <!-- Pulsing Buttons -->
             <div class="component-card">
                 <h3>Pulsing Buttons</h3>
@@ -80,7 +82,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Large Button Grid -->
         <section class="button-grid-section">
             <h2>Button Matrix</h2>
@@ -95,12 +97,12 @@
                 <button id="matrix-clear" class="control-btn">Clear All</button>
             </div>
         </section>
-        
+
         <!-- Layered Effects Demo -->
         <section class="layered-demo-section">
             <h2>Layered Effects Demo</h2>
             <p class="description">Interactive demonstration of multiple canvas layers working together</p>
-            
+
             <div class="layered-demo-container">
                 <div class="layer-controls">
                     <label>
@@ -120,13 +122,13 @@
                         <span class="layer-tag css">CSS Filter</span>
                     </label>
                 </div>
-                
+
                 <div class="canvas-container" id="layered-demo">
                     <!-- Canvases will be created by JS -->
                 </div>
             </div>
         </section>
-        
+
         <!-- Advanced Button Styles -->
         <section class="advanced-buttons-section">
             <h2>Advanced Button Styles</h2>
@@ -144,7 +146,7 @@
                         <!-- Arcade buttons -->
                     </div>
                 </div>
-                
+
                 <!-- Industrial Style -->
                 <div class="component-card">
                     <h3>Industrial Style</h3>
@@ -157,7 +159,7 @@
                         <!-- Industrial buttons -->
                     </div>
                 </div>
-                
+
                 <!-- Holographic Style -->
                 <div class="component-card">
                     <h3>Holographic Style</h3>
@@ -171,7 +173,7 @@
                         <!-- Holographic buttons -->
                     </div>
                 </div>
-                
+
                 <!-- Organic Style -->
                 <div class="component-card">
                     <h3>Organic Style</h3>
@@ -268,17 +270,20 @@
                         <label>
                             <input type="checkbox" id="comp-webgpu" checked>
                             <span class="layer-tag webgpu">WebGPU Base (Particles)</span>
-                            <input type="range" id="comp-webgpu-opacity" min="0" max="100" value="100" class="opacity-slider">
+                            <input type="range" id="comp-webgpu-opacity" min="0" max="100" value="100"
+                                class="opacity-slider">
                         </label>
                         <label>
                             <input type="checkbox" id="comp-webgl2" checked>
                             <span class="layer-tag webgl2">WebGL2 Effects (Glow)</span>
-                            <input type="range" id="comp-webgl2-opacity" min="0" max="100" value="80" class="opacity-slider">
+                            <input type="range" id="comp-webgl2-opacity" min="0" max="100" value="80"
+                                class="opacity-slider">
                         </label>
                         <label>
                             <input type="checkbox" id="comp-svg" checked>
                             <span class="layer-tag svg">SVG UI Elements</span>
-                            <input type="range" id="comp-svg-opacity" min="0" max="100" value="100" class="opacity-slider">
+                            <input type="range" id="comp-svg-opacity" min="0" max="100" value="100"
+                                class="opacity-slider">
                         </label>
                         <label>
                             <input type="checkbox" id="comp-css" checked>
@@ -313,9 +318,211 @@
                 </div>
             </div>
         </section>
+
+        <!-- NEW EXPERIMENTS -->
+
+        <!-- Liquid Metal Buttons -->
+        <section class="experiment-section">
+            <div class="section-header">
+                <h2>🪞 Mercury / Liquid Metal Buttons</h2>
+                <p class="description">Morphing liquid metal surfaces with reflective ripples and pooling effects</p>
+            </div>
+            <div class="component-grid">
+                <div class="component-card">
+                    <h3>Liquid Mercury Button</h3>
+                    <p class="description">Click to create ripples, hover to attract the metal</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Raymarching</span>
+                        <span class="layer-tag css">CSS Reflection</span>
+                    </div>
+                    <div class="button-showcase liquid-style" id="liquid-metal-buttons">
+                        <!-- Liquid metal buttons will be created by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Kinetic Typography Buttons -->
+        <section class="experiment-section">
+            <div class="section-header">
+                <h2>✨ Kinetic Typography Buttons</h2>
+                <p class="description">Text explodes into particles on hover and reforms with spring physics</p>
+            </div>
+            <div class="component-grid">
+                <div class="component-card">
+                    <h3>Particle Text Explosion</h3>
+                    <p class="description">Hover to explode, leave to reform</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Particles</span>
+                        <span class="layer-tag css">CSS Typography</span>
+                    </div>
+                    <div class="button-showcase kinetic-style" id="kinetic-typography-buttons">
+                        <!-- Kinetic buttons will be created by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- EMP Buttons -->
+        <section class="experiment-section">
+            <div class="section-header">
+                <h2>⚡ Electromagnetic Pulse Buttons</h2>
+                <p class="description">Shockwave rings emanate on click with glitch interference effects</p>
+            </div>
+            <div class="component-grid">
+                <div class="component-card">
+                    <h3>EMP Shockwave</h3>
+                    <p class="description">Click to send an electromagnetic pulse</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Shockwave</span>
+                        <span class="layer-tag svg">SVG Scanlines</span>
+                        <span class="layer-tag css">CSS Glitch</span>
+                    </div>
+                    <div class="button-showcase emp-style" id="emp-buttons">
+                        <!-- EMP buttons will be created by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- NEW VISUAL EXPERIMENTS -->
+        <section class="experiment-section">
+            <div class="section-header">
+                <h2>🎨 Visual Experiments</h2>
+                <p class="description">Cutting-edge UI experiments combining physics, shaders, and interaction design
+                </p>
+            </div>
+
+            <div class="component-grid">
+                <!-- Jello-Bounce Buttons -->
+                <div class="component-card">
+                    <h3>Jello-Bounce Buttons</h3>
+                    <p class="description">Satisfying squash-and-stretch spring physics on click</p>
+                    <div class="layers">
+                        <span class="layer-tag css">CSS Spring Animation</span>
+                    </div>
+                    <div class="button-showcase" id="jello-buttons"
+                        style="display: flex; gap: 1rem; flex-wrap: wrap; padding: 1rem;">
+                        <button class="jello-btn"
+                            style="padding: 1rem 2rem; background: linear-gradient(135deg, #00ff88, #00aaff); border: none; border-radius: 12px; color: #0a0a0f; font-weight: bold; font-size: 1rem; cursor: pointer;">Click
+                            Me!</button>
+                        <button class="jello-btn"
+                            style="padding: 1rem 2rem; background: linear-gradient(135deg, #ff0088, #ff8800); border: none; border-radius: 12px; color: white; font-weight: bold; font-size: 1rem; cursor: pointer;">Bounce!</button>
+                        <button class="jello-btn"
+                            style="padding: 1rem 2rem; background: linear-gradient(135deg, #8800ff, #0088ff); border: none; border-radius: 12px; color: white; font-weight: bold; font-size: 1rem; cursor: pointer;">Squish!</button>
+                    </div>
+                </div>
+
+                <!-- SVG Morphing Buttons -->
+                <div class="component-card">
+                    <h3>Elastic SVG Morphing</h3>
+                    <p class="description">Click to morph shapes with spring-based overshoot</p>
+                    <div class="layers">
+                        <span class="layer-tag svg">SVG Path Morphing</span>
+                        <span class="layer-tag css">Spring Physics</span>
+                    </div>
+                    <div class="button-showcase" id="morphing-buttons"
+                        style="display: flex; gap: 1.5rem; flex-wrap: wrap; padding: 1rem; align-items: center;">
+                        <!-- Morphing buttons will be created by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Background Effects Controls -->
+            <div class="component-card" style="margin-top: 2rem;">
+                <h3>Background Effects</h3>
+                <p class="description">Toggle ambient visual effects (affects entire page)</p>
+                <div class="button-showcase"
+                    style="display: flex; gap: 1rem; flex-wrap: wrap; padding: 1rem; align-items: center;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="toggle-aurora" style="width: 20px; height: 20px;">
+                        <span class="layer-tag webgl2">Aurora Background</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="toggle-particles" style="width: 20px; height: 20px;">
+                        <span class="layer-tag css">Magnetic Particles</span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
     </div>
-    
-    <script type="module" src="../js/main.js"></script>
-    <script type="module" src="../js/buttons.js"></script>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/buttons.js"></script>
+    <script src="../js/magnetic-particles.js"></script>
+    <script src="../js/aurora-background.js"></script>
+    <script src="../js/svg-morph.js"></script>
+    <script>
+        // Initialize visual experiments
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize SVG Morphing Buttons
+            const morphingContainer = document.getElementById('morphing-buttons');
+            if (morphingContainer && window.MorphingButton) {
+                new MorphingButton(morphingContainer, {
+                    width: 80,
+                    height: 80,
+                    shape1: 'circle',
+                    shape2: 'square',
+                    fillColor: '#00ff88'
+                });
+                new MorphingButton(morphingContainer, {
+                    width: 80,
+                    height: 80,
+                    shape1: 'circle',
+                    shape2: 'square',
+                    fillColor: '#00aaff'
+                });
+                new MorphingButton(morphingContainer, {
+                    width: 80,
+                    height: 80,
+                    shape1: 'circle',
+                    shape2: 'square',
+                    fillColor: '#ff0088'
+                });
+            }
+
+            // Background effects toggles
+            let auroraInstance = null;
+            let particlesInstance = null;
+
+            document.getElementById('toggle-aurora')?.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    if (!auroraInstance && window.AuroraBackground) {
+                        auroraInstance = new AuroraBackground(document.body, {
+                            intensity: 0.3,
+                            speed: 0.03
+                        });
+                    }
+                } else {
+                    if (auroraInstance) {
+                        auroraInstance.destroy();
+                        auroraInstance = null;
+                    }
+                }
+            });
+
+            document.getElementById('toggle-particles')?.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    if (!particlesInstance && window.MagneticParticleField) {
+                        particlesInstance = new MagneticParticleField(document.body, {
+                            particleCount: 1500,
+                            particleSize: 1.5,
+                            particleColor: 'rgba(0, 255, 136, 0.5)',
+                            lineColor: 'rgba(0, 170, 255, 0.15)',
+                            maxLineDistance: 80,
+                            magneticForce: 0.025
+                        });
+                    }
+                } else {
+                    if (particlesInstance) {
+                        particlesInstance.destroy();
+                        particlesInstance = null;
+                    }
+                }
+            });
+        });
+    </script>
 </body>
+
 </html>

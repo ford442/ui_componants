@@ -10,6 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initSegmentedSwitches();
     initPlasmaSwitches();
     initIrisSwitches();
+
+    // New Experiments
+    initPortalToggle();
+    initCircuitBreaker();
+    initBioMechanicalSwitch();
 });
 
 function initBasicSwitches() {
@@ -718,4 +723,524 @@ function setupQuadWebGL1(gl, program) {
         gl.enableVertexAttribArray(texCoordLoc);
         gl.vertexAttribPointer(texCoordLoc, 2, gl.FLOAT, false, 16, 8);
     }
+}
+
+// ============================================================================
+// NEW EXPERIMENTS
+// ============================================================================
+
+/**
+ * Portal Toggle Switch
+ * Inter-dimensional gateway with vortex effect
+ */
+function initPortalToggle() {
+    const container = document.getElementById('portal-toggle');
+    if (!container) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = `
+        width: 150px;
+        height: 150px;
+        position: relative;
+        margin: 1rem auto;
+        cursor: pointer;
+    `;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 300;
+    canvas.height = 300;
+    canvas.style.cssText = `
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+    `;
+
+    wrapper.appendChild(canvas);
+    container.appendChild(wrapper);
+
+    const gl = canvas.getContext('webgl2');
+    if (!gl) return;
+
+    const vs = `#version 300 es
+    in vec4 a_position;
+    out vec2 v_uv;
+    void main() {
+        v_uv = a_position.xy * 0.5 + 0.5;
+        gl_Position = a_position;
+    }
+    `;
+
+    const fs = `#version 300 es
+    precision highp float;
+    in vec2 v_uv;
+    uniform float u_time;
+    uniform float u_open;
+    out vec4 fragColor;
+
+    void main() {
+        vec2 uv = v_uv * 2.0 - 1.0;
+        float dist = length(uv);
+        float angle = atan(uv.y, uv.x);
+        
+        vec3 color = vec3(0.02, 0.02, 0.05);
+        
+        // Portal ring
+        float ringRadius = 0.7 + 0.05 * sin(u_time * 2.0);
+        float ring = smoothstep(0.08, 0.0, abs(dist - ringRadius));
+        
+        vec3 ringColor = mix(
+            vec3(0.5, 0.0, 0.8),  // Purple
+            vec3(0.0, 0.8, 1.0),   // Cyan
+            sin(angle * 3.0 + u_time * 2.0) * 0.5 + 0.5
+        );
+        color += ringColor * ring * 2.0;
+        
+        // Vortex spiral (when open)
+        if (u_open > 0.1) {
+            float spiralDist = dist / u_open;
+            float spiral = sin(angle * 5.0 - spiralDist * 10.0 + u_time * 5.0);
+            spiral *= smoothstep(ringRadius - 0.05, 0.0, dist);
+            spiral = max(0.0, spiral);
+            
+            vec3 spiralColor = mix(
+                vec3(0.2, 0.0, 0.5),
+                vec3(0.0, 0.5, 1.0),
+                spiralDist
+            );
+            color += spiralColor * spiral * u_open;
+            
+            // Core glow
+            float core = 0.1 / (dist + 0.1) * u_open;
+            color += vec3(0.5, 0.3, 1.0) * core * 0.5;
+            
+            // Particles
+            for (float i = 0.0; i < 10.0; i++) {
+                float pAngle = i * 0.628 + u_time * (1.0 + i * 0.1);
+                float pDist = mod(u_time * 0.3 + i * 0.1, 1.0) * ringRadius;
+                vec2 pPos = vec2(cos(pAngle), sin(pAngle)) * pDist;
+                float particle = smoothstep(0.03, 0.0, length(uv - pPos));
+                color += ringColor * particle * u_open;
+            }
+        }
+        
+        // Outer energy field
+        float field = sin(dist * 20.0 - u_time * 3.0) * 0.5 + 0.5;
+        field *= smoothstep(0.9, 0.7, dist) * smoothstep(ringRadius - 0.1, ringRadius + 0.1, dist);
+        color += ringColor * field * 0.2 * u_open;
+        
+        fragColor = vec4(color, 1.0);
+    }
+    `;
+
+    const program = createProgram(gl, vs, fs);
+    if (!program) return;
+
+    setupQuad(gl, program);
+
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uOpen = gl.getUniformLocation(program, 'u_open');
+
+    let isOpen = false;
+    let openAmount = 0;
+
+    wrapper.addEventListener('click', () => {
+        isOpen = !isOpen;
+    });
+
+    function render(time) {
+        // Animate open/close
+        const target = isOpen ? 1.0 : 0.0;
+        openAmount += (target - openAmount) * 0.05;
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0.02, 0.02, 0.05, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.useProgram(program);
+        gl.uniform1f(uTime, time * 0.001);
+        gl.uniform1f(uOpen, openAmount);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+}
+
+/**
+ * Circuit Breaker Animation
+ * Industrial breaker with electrical arc
+ */
+function initCircuitBreaker() {
+    const container = document.getElementById('circuit-breaker');
+    if (!container) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = `
+        width: 120px;
+        height: 200px;
+        position: relative;
+        margin: 1rem auto;
+        cursor: pointer;
+    `;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 240;
+    canvas.height = 400;
+    canvas.style.cssText = `
+        width: 100%;
+        height: 100%;
+        border-radius: 8px;
+    `;
+
+    wrapper.appendChild(canvas);
+    container.appendChild(wrapper);
+
+    const gl = canvas.getContext('webgl2');
+    if (!gl) return;
+
+    const vs = `#version 300 es
+    in vec4 a_position;
+    out vec2 v_uv;
+    void main() {
+        v_uv = a_position.xy * 0.5 + 0.5;
+        gl_Position = a_position;
+    }
+    `;
+
+    const fs = `#version 300 es
+    precision highp float;
+    in vec2 v_uv;
+    uniform float u_time;
+    uniform float u_state; // 0=off, 1=on, 0.5=tripping
+    uniform float u_arc;
+    out vec4 fragColor;
+
+    float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+    }
+
+    void main() {
+        vec2 uv = v_uv;
+        
+        vec3 color = vec3(0.08, 0.08, 0.1);
+        
+        // Breaker body
+        float body = step(0.15, uv.x) * step(uv.x, 0.85);
+        body *= step(0.1, uv.y) * step(uv.y, 0.9);
+        
+        vec3 bodyColor = vec3(0.15, 0.15, 0.18);
+        color = mix(color, bodyColor, body);
+        
+        // Handle position based on state
+        float handleY = 0.4 + u_state * 0.3;
+        float handleWidth = 0.4;
+        float handleHeight = 0.15;
+        
+        float handle = step(0.5 - handleWidth/2.0, uv.x) * step(uv.x, 0.5 + handleWidth/2.0);
+        handle *= step(handleY - handleHeight/2.0, uv.y) * step(uv.y, handleY + handleHeight/2.0);
+        
+        vec3 handleColor = u_state > 0.5 ? vec3(0.1, 0.5, 0.2) : vec3(0.5, 0.1, 0.1);
+        handleColor = mix(handleColor, vec3(0.8, 0.5, 0.0), step(0.3, u_arc) * step(u_arc, 0.7));
+        
+        color = mix(color, handleColor, handle);
+        
+        // ON/OFF labels
+        float onLabel = step(0.7, uv.y) * step(uv.y, 0.75) * step(0.35, uv.x) * step(uv.x, 0.65);
+        float offLabel = step(0.25, uv.y) * step(uv.y, 0.3) * step(0.35, uv.x) * step(uv.x, 0.65);
+        
+        color += vec3(0.0, 0.8, 0.3) * onLabel * u_state;
+        color += vec3(0.8, 0.2, 0.1) * offLabel * (1.0 - u_state);
+        
+        // Electrical arc during transition
+        if (u_arc > 0.0) {
+            float arcY = 0.5;
+            float arcX = 0.5 + (hash(vec2(u_time * 100.0, 0.0)) - 0.5) * 0.2;
+            
+            // Multiple arc branches
+            for (float i = 0.0; i < 5.0; i++) {
+                float branchOffset = hash(vec2(i, u_time * 50.0)) * 0.1;
+                float branchX = arcX + branchOffset;
+                
+                float arcDist = abs(uv.x - branchX);
+                float arcLine = smoothstep(0.02, 0.0, arcDist);
+                arcLine *= smoothstep(0.75, 0.5, uv.y) * smoothstep(0.25, 0.5, uv.y);
+                arcLine *= hash(vec2(uv.y * 100.0, u_time * 100.0 + i));
+                
+                vec3 arcColor = vec3(0.5, 0.7, 1.0) + vec3(0.5, 0.3, 0.0) * hash(vec2(i, u_time));
+                color += arcColor * arcLine * u_arc * 3.0;
+            }
+            
+            // Arc glow
+            float glowDist = length(uv - vec2(0.5, 0.5));
+            color += vec3(0.3, 0.5, 1.0) * (0.1 / (glowDist + 0.1)) * u_arc * 0.3;
+        }
+        
+        // Status LED
+        float ledX = 0.5;
+        float ledY = 0.85;
+        float led = smoothstep(0.03, 0.02, length(uv - vec2(ledX, ledY)));
+        vec3 ledColor = u_state > 0.5 ? vec3(0.0, 1.0, 0.3) : vec3(1.0, 0.2, 0.1);
+        color += ledColor * led;
+        
+        // LED glow
+        float ledGlow = 0.01 / (length(uv - vec2(ledX, ledY)) + 0.01);
+        color += ledColor * ledGlow * 0.1;
+        
+        fragColor = vec4(color, 1.0);
+    }
+    `;
+
+    const program = createProgram(gl, vs, fs);
+    if (!program) return;
+
+    setupQuad(gl, program);
+
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uState = gl.getUniformLocation(program, 'u_state');
+    const uArc = gl.getUniformLocation(program, 'u_arc');
+
+    let state = 0;
+    let targetState = 0;
+    let arcAmount = 0;
+
+    wrapper.addEventListener('click', () => {
+        targetState = targetState > 0.5 ? 0 : 1;
+        arcAmount = 1.0; // Trigger arc
+    });
+
+    function render(time) {
+        // Animate state transition
+        state += (targetState - state) * 0.08;
+
+        // Decay arc
+        arcAmount *= 0.92;
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0.05, 0.05, 0.08, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.useProgram(program);
+        gl.uniform1f(uTime, time * 0.001);
+        gl.uniform1f(uState, state);
+        gl.uniform1f(uArc, arcAmount);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+}
+
+/**
+ * Bio-Mechanical Switch
+ * Organic/mechanical fusion interface
+ */
+function initBioMechanicalSwitch() {
+    const container = document.getElementById('bio-mechanical-switch');
+    if (!container) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = `
+        width: 180px;
+        height: 120px;
+        position: relative;
+        margin: 1rem auto;
+        cursor: pointer;
+    `;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 360;
+    canvas.height = 240;
+    canvas.style.cssText = `
+        width: 100%;
+        height: 100%;
+        border-radius: 12px;
+    `;
+
+    wrapper.appendChild(canvas);
+    container.appendChild(wrapper);
+
+    const gl = canvas.getContext('webgl2');
+    if (!gl) return;
+
+    const vs = `#version 300 es
+    in vec4 a_position;
+    out vec2 v_uv;
+    void main() {
+        v_uv = a_position.xy * 0.5 + 0.5;
+        gl_Position = a_position;
+    }
+    `;
+
+    const fs = `#version 300 es
+    precision highp float;
+    in vec2 v_uv;
+    uniform float u_time;
+    uniform float u_active;
+    out vec4 fragColor;
+
+    float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+    }
+
+    void main() {
+        vec2 uv = v_uv;
+        
+        vec3 color = vec3(0.03, 0.02, 0.04);
+        
+        // Organic base texture
+        float organic = 0.0;
+        for (float i = 1.0; i <= 4.0; i++) {
+            float scale = pow(2.0, i);
+            organic += sin(uv.x * scale * 10.0 + u_time) * sin(uv.y * scale * 8.0 + u_time * 0.7) / i;
+        }
+        organic = organic * 0.5 + 0.5;
+        
+        vec3 fleshColor = mix(
+            vec3(0.15, 0.05, 0.08),
+            vec3(0.25, 0.08, 0.12),
+            organic
+        );
+        color = fleshColor;
+        
+        // Veins
+        for (float i = 0.0; i < 5.0; i++) {
+            float veinX = 0.2 + i * 0.15 + sin(uv.y * 10.0 + i) * 0.05;
+            float veinWidth = 0.01 + 0.005 * sin(uv.y * 20.0 + u_time * 2.0 + i);
+            float vein = smoothstep(veinWidth, 0.0, abs(uv.x - veinX));
+            vein *= smoothstep(0.1, 0.3, uv.y) * smoothstep(0.9, 0.7, uv.y);
+            
+            // Pulse
+            float pulse = 0.7 + 0.3 * sin(u_time * 3.0 - uv.y * 5.0 + i);
+            
+            vec3 veinColor = vec3(0.4, 0.1, 0.15) * pulse;
+            veinColor = mix(veinColor, vec3(0.1, 0.5, 0.3), u_active);
+            
+            color = mix(color, veinColor, vein);
+        }
+        
+        // Central node
+        vec2 nodePos = vec2(0.5, 0.5);
+        float nodeDist = length(uv - nodePos);
+        float node = smoothstep(0.15, 0.1, nodeDist);
+        
+        // Node color changes with activation
+        vec3 nodeColor = mix(
+            vec3(0.3, 0.1, 0.15),
+            vec3(0.1, 0.8, 0.4),
+            u_active
+        );
+        
+        // Bioluminescent glow
+        float glow = 0.05 / (nodeDist + 0.05) * u_active;
+        color += nodeColor * glow;
+        
+        color = mix(color, nodeColor, node);
+        
+        // Pulse rings emanating from node
+        if (u_active > 0.1) {
+            for (float i = 0.0; i < 3.0; i++) {
+                float ringTime = mod(u_time + i * 0.5, 2.0);
+                float ringRadius = ringTime * 0.4;
+                float ring = smoothstep(0.02, 0.0, abs(nodeDist - ringRadius));
+                ring *= smoothstep(2.0, 0.5, ringTime);
+                color += nodeColor * ring * 0.5;
+            }
+        }
+        
+        // Mechanical elements
+        float mechX = step(0.1, uv.x) * step(uv.x, 0.15);
+        mechX += step(0.85, uv.x) * step(uv.x, 0.9);
+        float mech = mechX * step(0.2, uv.y) * step(uv.y, 0.8);
+        
+        vec3 mechColor = vec3(0.2, 0.2, 0.25);
+        mechColor += vec3(0.0, 0.3, 0.2) * u_active * (0.5 + 0.5 * sin(u_time * 5.0));
+        
+        color = mix(color, mechColor, mech);
+        
+        // Neural sparks when active
+        if (u_active > 0.5) {
+            float spark = hash(vec2(floor(uv.x * 50.0), floor(uv.y * 30.0) + u_time * 10.0));
+            spark = step(0.98, spark);
+            color += vec3(0.5, 1.0, 0.7) * spark;
+        }
+        
+        fragColor = vec4(color, 1.0);
+    }
+    `;
+
+    const program = createProgram(gl, vs, fs);
+    if (!program) return;
+
+    setupQuad(gl, program);
+
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    const uActive = gl.getUniformLocation(program, 'u_active');
+
+    let isActive = false;
+    let activeAmount = 0;
+
+    wrapper.addEventListener('click', () => {
+        isActive = !isActive;
+    });
+
+    function render(time) {
+        // Animate activation
+        const target = isActive ? 1.0 : 0.0;
+        activeAmount += (target - activeAmount) * 0.05;
+
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0.03, 0.02, 0.04, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.useProgram(program);
+        gl.uniform1f(uTime, time * 0.001);
+        gl.uniform1f(uActive, activeAmount);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+}
+
+// Helper functions for WebGL2
+function createProgram(gl, vsSource, fsSource) {
+    const vs = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vs, vsSource);
+    gl.compileShader(vs);
+    if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
+        console.error('VS:', gl.getShaderInfoLog(vs));
+        return null;
+    }
+
+    const fs = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fs, fsSource);
+    gl.compileShader(fs);
+    if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+        console.error('FS:', gl.getShaderInfoLog(fs));
+        return null;
+    }
+
+    const program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error('Link:', gl.getProgramInfoLog(program));
+        return null;
+    }
+
+    return program;
+}
+
+function setupQuad(gl, program) {
+    const vertices = new Float32Array([
+        -1, -1,
+        1, -1,
+        -1, 1,
+        1, 1
+    ]);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+    const loc = gl.getAttribLocation(program, 'a_position');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
 }
