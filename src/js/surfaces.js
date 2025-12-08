@@ -448,148 +448,9 @@ const Shaders = {
 
             fragColor = vec4(glassColor, clamp(alpha, 0.0, 0.95));
         }
-    const lc = new UIComponents.LayeredCanvas(container, {
-        width: container.clientWidth,
-        height: container.clientHeight
-    });
+    `,
+};
 
-    // We only need one WebGL2 layer for this demo
-    const layer = lc.addLayer('main', 'webgl2');
-    const gl = layer.context;
-
-    const state = {
-        rotation: 0,
-        materialType: 0, // 0: Plastic, 1: Metal, 2: Holo
-        roughness: 0.5,
-        metallic: 0.0,
-        color: [0.2, 0.2, 0.2],
-        lightPos: [2, 2, 5],
-    };
-
-    // Controls
-    // We setup controls regardless of WebGL support so the UI doesn't break
-    setupControls(state, (geo) => {
-        if (gl && currentGeometry) {
-             uploadGeometry(geo);
-        }
-    });
-
-    if (!gl) {
-        console.error('WebGL2 not supported');
-        const ctx = layer.canvas.getContext('2d');
-        if (ctx) {
-            ctx.fillStyle = '#330000';
-            ctx.fillRect(0, 0, layer.canvas.width, layer.canvas.height);
-            ctx.fillStyle = '#ff0000';
-            ctx.font = '16px monospace';
-            ctx.fillText('WebGL2 Not Supported', 20, 30);
-        }
-        return;
-    }
-
-    // Compile Program
-    const program = createProgram(gl, Shaders.vertex, Shaders.fragmentPBR);
-
-    // Geometry Data Helpers
-    let currentGeometry = Geometry.createBox();
-    let vao = gl.createVertexArray();
-    let buffers = {};
-
-    function uploadGeometry(geo) {
-        gl.bindVertexArray(vao);
-
-        // Positions
-        if(!buffers.pos) buffers.pos = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.pos);
-        gl.bufferData(gl.ARRAY_BUFFER, geo.positions, gl.STATIC_DRAW);
-        gl.enableVertexAttribArray(0);
-        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-
-        // Normals
-        if(!buffers.norm) buffers.norm = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.norm);
-        gl.bufferData(gl.ARRAY_BUFFER, geo.normals, gl.STATIC_DRAW);
-        gl.enableVertexAttribArray(1);
-        gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
-
-        // UVs
-        if(!buffers.uv) buffers.uv = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.uv);
-        gl.bufferData(gl.ARRAY_BUFFER, geo.uvs, gl.STATIC_DRAW);
-        gl.enableVertexAttribArray(2);
-        gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
-
-        // Indices
-        if(!buffers.idx) buffers.idx = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.idx);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, geo.indices, gl.STATIC_DRAW);
-
-        currentGeometry.count = geo.indices.length;
-    }
-
-    uploadGeometry(currentGeometry);
-
-    // Uniform Locations
-    const uniforms = {
-        model: gl.getUniformLocation(program, 'u_model'),
-        view: gl.getUniformLocation(program, 'u_view'),
-        projection: gl.getUniformLocation(program, 'u_projection'),
-        baseColor: gl.getUniformLocation(program, 'u_baseColor'),
-        roughness: gl.getUniformLocation(program, 'u_roughness'),
-        metallic: gl.getUniformLocation(program, 'u_metallic'),
-        lightPos: gl.getUniformLocation(program, 'u_lightPos'),
-        viewPos: gl.getUniformLocation(program, 'u_viewPos'),
-        materialType: gl.getUniformLocation(program, 'u_materialType')
-    };
-
-    // Render Loop
-    lc.setRenderFunction('main', (layerInfo, time) => {
-        const t = time * 0.001;
-        state.rotation += 0.005;
-
-        gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
-        gl.clearColor(0.05, 0.05, 0.05, 1.0);
-        gl.enable(gl.DEPTH_TEST);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-        gl.useProgram(program);
-
-        // Matrices
-        const aspect = layer.canvas.width / layer.canvas.height;
-        const projection = Math3D.createIdentity();
-        Math3D.perspective(projection, 45 * Math.PI / 180, aspect, 0.1, 100.0);
-
-        const view = Math3D.createIdentity();
-        const eye = [0, 0, 5];
-        Math3D.lookAt(view, eye, [0, 0, 0], [0, 1, 0]);
-
-        const model = Math3D.createIdentity();
-        Math3D.rotateY(model, state.rotation);
-
-        // Set Uniforms
-        gl.uniformMatrix4fv(uniforms.projection, false, projection);
-        gl.uniformMatrix4fv(uniforms.view, false, view);
-        gl.uniformMatrix4fv(uniforms.model, false, model);
-
-        gl.uniform3fv(uniforms.baseColor, state.color);
-        gl.uniform1f(uniforms.roughness, state.roughness);
-        gl.uniform1f(uniforms.metallic, state.metallic);
-        gl.uniform3fv(uniforms.lightPos, state.lightPos);
-        gl.uniform3fv(uniforms.viewPos, eye);
-        gl.uniform1i(uniforms.materialType, state.materialType);
-
-        gl.bindVertexArray(vao);
-        gl.drawElements(gl.TRIANGLES, currentGeometry.count, gl.UNSIGNED_SHORT, 0);
-    });
-
-    lc.startAnimation();
-
-    // Resize handling
-    const resizeObserver = new ResizeObserver(() => {
-        lc.resize(container.clientWidth, container.clientHeight);
-    });
-    resizeObserver.observe(container);
-}
 
 function setupControls(state, uploadGeometryFn) {
     // Material Type
@@ -611,9 +472,9 @@ function setupControls(state, uploadGeometryFn) {
     // Color
     document.getElementById('ctrl-color').addEventListener('input', (e) => {
         const hex = e.target.value;
-        const r = parseInt(hex.substr(1,2), 16) / 255;
-        const g = parseInt(hex.substr(3,2), 16) / 255;
-        const b = parseInt(hex.substr(5,2), 16) / 255;
+        const r = parseInt(hex.substr(1, 2), 16) / 255;
+        const g = parseInt(hex.substr(3, 2), 16) / 255;
+        const b = parseInt(hex.substr(5, 2), 16) / 255;
         state.color = [r, g, b];
     });
 
@@ -676,7 +537,7 @@ function initSurfaceViewer() {
     // We setup controls regardless of WebGL support so the UI doesn't break
     setupControls(state, (geo) => {
         if (gl && currentGeometry) {
-             uploadGeometry(geo);
+            uploadGeometry(geo);
         }
     });
 
@@ -705,28 +566,28 @@ function initSurfaceViewer() {
         gl.bindVertexArray(vao);
 
         // Positions
-        if(!buffers.pos) buffers.pos = gl.createBuffer();
+        if (!buffers.pos) buffers.pos = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers.pos);
         gl.bufferData(gl.ARRAY_BUFFER, geo.positions, gl.STATIC_DRAW);
         gl.enableVertexAttribArray(0);
         gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
 
         // Normals
-        if(!buffers.norm) buffers.norm = gl.createBuffer();
+        if (!buffers.norm) buffers.norm = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers.norm);
         gl.bufferData(gl.ARRAY_BUFFER, geo.normals, gl.STATIC_DRAW);
         gl.enableVertexAttribArray(1);
         gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
 
         // UVs
-        if(!buffers.uv) buffers.uv = gl.createBuffer();
+        if (!buffers.uv) buffers.uv = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers.uv);
         gl.bufferData(gl.ARRAY_BUFFER, geo.uvs, gl.STATIC_DRAW);
         gl.enableVertexAttribArray(2);
         gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
 
         // Indices
-        if(!buffers.idx) buffers.idx = gl.createBuffer();
+        if (!buffers.idx) buffers.idx = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.idx);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, geo.indices, gl.STATIC_DRAW);
 
@@ -802,6 +663,7 @@ function initTranslucencyDemo() {
     if (!container) return;
 
     // Create LayeredCanvas
+    const lc = new UIComponents.LayeredCanvas(container, {
         width: container.clientWidth,
         height: container.clientHeight
     });
@@ -1298,18 +1160,18 @@ void main() {
     const uImpacts = gl.getUniformLocation(program, 'u_impacts');
 
     // Store up to 5 impacts [x, y, time]
-    let impacts = new Float32Array(15).fill(-100.0); 
+    let impacts = new Float32Array(15).fill(-100.0);
     let impactIdx = 0;
 
     canvas.addEventListener('mousedown', e => {
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = rect.height - (e.clientY - rect.top);
-        
+
         impacts[impactIdx * 3] = x;
         impacts[impactIdx * 3 + 1] = y;
         impacts[impactIdx * 3 + 2] = performance.now() * 0.001;
-        
+
         impactIdx = (impactIdx + 1) % 5;
     });
 
@@ -1320,7 +1182,7 @@ void main() {
         gl.uniform1f(uTime, t);
         gl.uniform2f(uRes, canvas.width, canvas.height);
         gl.uniform3fv(uImpacts, impacts);
-        
+
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -1333,14 +1195,14 @@ void main() {
 function setupQuad(gl, program) {
     const vertices = new Float32Array([
         -1, -1, 0, 0,
-         1, -1, 1, 0,
-        -1,  1, 0, 1,
-         1,  1, 1, 1
+        1, -1, 1, 0,
+        -1, 1, 0, 1,
+        1, 1, 1, 1
     ]);
     const buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-    
+
     const loc = gl.getAttribLocation(program, 'a_position');
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 16, 0); // Stride 16 (4 floats), offset 0
@@ -1466,7 +1328,7 @@ void main() {
 
     const program = createProgram(gl, vs, fs);
     if (!program) return;
-    
+
     setupQuad(gl, program);
 
     const uTime = gl.getUniformLocation(program, 'u_time');
@@ -1482,7 +1344,7 @@ void main() {
         mouseX = e.clientX - rect.left;
         mouseY = rect.height - (e.clientY - rect.top);
     });
-    
+
     canvas.addEventListener('mousedown', () => mouseDown = 1);
     canvas.addEventListener('mouseup', () => mouseDown = 0);
     canvas.addEventListener('mouseleave', () => mouseDown = 0);
@@ -1493,7 +1355,7 @@ void main() {
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.clearColor(0.02, 0.02, 0.05, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
-        
+
         gl.useProgram(program);
         gl.uniform1f(uTime, time * 0.001);
         gl.uniform2f(uRes, canvas.width, canvas.height);
@@ -1503,7 +1365,7 @@ void main() {
         requestAnimationFrame(render);
     }
     requestAnimationFrame(render);
-    
+
     // Resize handler
     new ResizeObserver(() => {
         canvas.width = container.clientWidth;
@@ -1680,7 +1542,7 @@ void main() {
 
     const program = createProgram(gl, vs, fs);
     if (!program) return;
-    
+
     setupQuad(gl, program);
 
     const uTime = gl.getUniformLocation(program, 'u_time');
@@ -1697,7 +1559,7 @@ void main() {
     const modeSelect = document.getElementById('ctrl-xray-mode');
     const speedSlider = document.getElementById('ctrl-electron-speed');
     const densitySlider = document.getElementById('ctrl-circuit-density');
-    
+
     if (modeSelect) {
         modeSelect.addEventListener('change', e => {
             mode = e.target.value === 'solid' ? 0 : e.target.value === 'xray' ? 1 : 2;
@@ -1714,7 +1576,7 @@ void main() {
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.clearColor(0.0, 0.0, 0.02, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
-        
+
         gl.useProgram(program);
         gl.uniform1f(uTime, time * 0.001);
         gl.uniform2f(uRes, canvas.width, canvas.height);
@@ -1894,7 +1756,7 @@ void main() {
 
     const program = createProgram(gl, vs, fs);
     if (!program) return;
-    
+
     setupQuad(gl, program);
 
     const uTime = gl.getUniformLocation(program, 'u_time');
@@ -1916,7 +1778,7 @@ void main() {
     const materialSelect = document.getElementById('ctrl-weathered-material');
     const envSelect = document.getElementById('ctrl-environment');
     const blowBtn = document.getElementById('btn-blow-dust');
-    
+
     if (ageSlider) {
         ageSlider.addEventListener('input', e => {
             age = parseFloat(e.target.value);
@@ -1925,16 +1787,16 @@ void main() {
     }
     if (materialSelect) {
         materialSelect.addEventListener('change', e => {
-            materialType = e.target.value === 'metal' ? 0 : 
-                          e.target.value === 'wood' ? 1 :
-                          e.target.value === 'stone' ? 2 : 3;
+            materialType = e.target.value === 'metal' ? 0 :
+                e.target.value === 'wood' ? 1 :
+                    e.target.value === 'stone' ? 2 : 3;
         });
     }
     if (envSelect) {
         envSelect.addEventListener('change', e => {
             environment = e.target.value === 'outdoor' ? 0 :
-                         e.target.value === 'marine' ? 1 :
-                         e.target.value === 'desert' ? 2 : 3;
+                e.target.value === 'marine' ? 1 :
+                    e.target.value === 'desert' ? 2 : 3;
         });
     }
     if (blowBtn) {
@@ -1952,11 +1814,11 @@ void main() {
                 blowDust = 0;
             }
         }
-        
+
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.clearColor(0.1, 0.1, 0.12, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
-        
+
         gl.useProgram(program);
         gl.uniform1f(uTime, time * 0.001);
         gl.uniform2f(uRes, canvas.width, canvas.height);
