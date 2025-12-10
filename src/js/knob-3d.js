@@ -112,6 +112,12 @@ class Knob3D {
         gl.enableVertexAttribArray(normalLoc);
         gl.vertexAttribPointer(normalLoc, 3, gl.FLOAT, false, 0, 0);
 
+        // Bind index buffer to VAO
+        const indexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(sphere.indices), gl.STATIC_DRAW);
+        this.numIndices = sphere.indices.length;
+
         this.numVertices = sphere.vertices.length / 3;
         this.vao = vao;
 
@@ -187,39 +193,25 @@ class Knob3D {
                 vertices.push(radius * x, radius * y, radius * z);
             }
         }
-        // Indices not used here, using TRIANGLE_STRIP logic in loop would be better, but simplified to points/triangles might be verbose. 
-        // Actually, for solid sphere we need indices. Let's simplify and just render points for 'tech' look or do proper indexing.
-        // Let's do proper full triangles.
 
-        const indices = []; // Wait, drawArrays can't do indexed without buffer. 
-        // Let's re-generate flat triangles for simplicity in drawArrays or just use indices.
-        // Let's stick to simple wireframe or point cloud? No, requirement said 'realistic lighting'.
-        // Okay, use element buffer.
-
-        // Re-doing createSphere logic properly for drawElements
-        const indexData = [];
+        // Generate indices for triangle rendering
+        const indices = [];
         for (let latNumber = 0; latNumber < latBands; latNumber++) {
             for (let longNumber = 0; longNumber < longBands; longNumber++) {
                 const first = (latNumber * (longBands + 1)) + longNumber;
                 const second = first + longBands + 1;
 
-                indexData.push(first);
-                indexData.push(second);
-                indexData.push(first + 1);
+                indices.push(first);
+                indices.push(second);
+                indices.push(first + 1);
 
-                indexData.push(second);
-                indexData.push(second + 1);
-                indexData.push(first + 1);
+                indices.push(second);
+                indices.push(second + 1);
+                indices.push(first + 1);
             }
         }
 
-        // We need to buffer indices too
-        const indexBuffer = this.gl.createBuffer();
-        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-        this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), this.gl.STATIC_DRAW);
-        this.numIndices = indexData.length;
-
-        return { vertices, normals };
+        return { vertices, normals, indices };
     }
 
     attachEvents() {
