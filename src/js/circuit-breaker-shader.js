@@ -4,8 +4,8 @@
 class CircuitBreakerShader {
     constructor(container, options = {}) {
         this.container = container;
-        this.width = options.width || container.clientWidth;
-        this.height = options.height || container.clientHeight;
+        this.width = options.width || container.clientWidth || 100;
+        this.height = options.height || container.clientHeight || 160;
         this.initGL();
         this.animate = this.animate.bind(this);
         requestAnimationFrame(this.animate);

@@ -49,7 +49,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (portalContainer) {
         createSwitch('portal-toggle', 'portal-toggle');
         // Initialize shader immediately for the vortex effect
-        initShader(document.querySelector('#portal-toggle .portal-toggle'), 'PortalToggleShader');
+        const portalSwitch = document.querySelector('#portal-toggle .portal-toggle');
+        if (portalSwitch) {
+            initShader(portalSwitch, 'PortalToggleShader');
+        }
     }
 
     // Circuit Breaker integration
@@ -57,7 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (circuitContainer) {
         createSwitch('circuit-breaker', 'circuit-breaker');
         // Initialize shader for the arc effect
-        initShader(document.querySelector('#circuit-breaker .circuit-breaker'), 'CircuitBreakerShader');
+        const circuitSwitch = document.querySelector('#circuit-breaker .circuit-breaker');
+        if (circuitSwitch) {
+            initShader(circuitSwitch, 'CircuitBreakerShader');
+        }
     }
 
     createSwitch('neon-switches', 'neon-switch');

@@ -4,8 +4,8 @@
 class PortalToggleShader {
     constructor(container, options = {}) {
         this.container = container;
-        this.width = options.width || container.clientWidth;
-        this.height = options.height || container.clientHeight;
+        this.width = options.width || container.clientWidth || 120;
+        this.height = options.height || container.clientHeight || 60;
         this.initGL();
         this.animate = this.animate.bind(this);
         requestAnimationFrame(this.animate);

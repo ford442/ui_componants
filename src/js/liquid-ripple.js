@@ -54,6 +54,8 @@ class LiquidRipple {
     }
 
     animate() {
+        if (!this.ctx) return;
+        
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         for (let i = 0; i < this.ripples.length; i++) {
