@@ -14,6 +14,7 @@ export default defineConfig({
         knobs: resolve(__dirname, 'src/pages/knobs.html'),
         surfaces: resolve(__dirname, 'src/pages/surfaces.html'),
         switches: resolve(__dirname, 'src/pages/switches.html'),
+        experiments: resolve(__dirname, 'src/pages/experiments.html'),
       },
     },
   },
