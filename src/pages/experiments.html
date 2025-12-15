@@ -265,6 +265,42 @@
             </div>
         </section>
 
+        <!-- Neural Network Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Neural Network Visualization</h2>
+                    <p class="description">3D Graph (WebGL2) with Data Pulses (WebGPU Compute)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Structure</span>
+                        <span class="layer-tag webgpu" style="background: rgba(0, 255, 255, 0.2); border-color: #00ffff; color: #ccffff;">WebGPU Compute</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="neural-network-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #000;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Fluid Simulation Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Fluid Simulation</h2>
+                    <p class="description">Hybrid Fluid Dynamics (WebGPU Physics + WebGL2 Tank)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Tank</span>
+                        <span class="layer-tag webgpu" style="background: rgba(50, 100, 255, 0.2); border-color: #5555ff; color: #aaaaff;">WebGPU Physics</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="fluid-sim-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #000;"></div>
+                </div>
+            </div>
+        </section>
+
         <!-- Force Field Experiment -->
         <section class="experiment-section">
             <div class="component-card">
@@ -309,6 +345,8 @@
     <script src="../js/glitch-scroll.js"></script>
     <script src="../js/hybrid-engine.js"></script>
     <script src="../js/force-field.js"></script>
+    <script src="../js/neural-network.js"></script>
+    <script src="../js/fluid-sim.js"></script>
 
     <script>
         // Initialize experiments when DOM is ready
@@ -317,6 +355,18 @@
             const hybridContainer = document.getElementById('hybrid-engine-container');
             if (hybridContainer && window.HybridEngine) {
                 new HybridEngine(hybridContainer, { numParticles: 20000 });
+            }
+
+            // Initialize Neural Network
+            const neuralNetContainer = document.getElementById('neural-network-container');
+            if (neuralNetContainer && window.NeuralNetworkExperiment) {
+                new NeuralNetworkExperiment(neuralNetContainer, { nodeCount: 150, pulseCount: 2000 });
+            }
+
+            // Initialize Fluid Sim
+            const fluidSimContainer = document.getElementById('fluid-sim-container');
+            if (fluidSimContainer && window.FluidSimulationExperiment) {
+                new FluidSimulationExperiment(fluidSimContainer, { particleCount: 5000 });
             }
 
             // Initialize Force Field
