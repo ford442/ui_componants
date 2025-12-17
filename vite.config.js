@@ -15,6 +15,7 @@ export default defineConfig({
         surfaces: resolve(__dirname, 'src/pages/surfaces.html'),
         switches: resolve(__dirname, 'src/pages/switches.html'),
         experiments: resolve(__dirname, 'src/pages/experiments.html'),
+        portal: resolve(__dirname, 'src/pages/portal_vortex.html'),
       },
     },
   },
