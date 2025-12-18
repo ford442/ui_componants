@@ -241,7 +241,53 @@
                 if(statusEl) statusEl.innerText = "No Adapter";
                 return null;
             }
-            const device = await adapter.requestDevice();
+
+  //  add WebGPU extensions
+        const requiredFeatures: GPUFeatureName[] = [];
+        if (adapter.features.has('float32-filterable')) {
+            requiredFeatures.push('float32-filterable');
+        } else {
+            console.log("Device does not support 'float32-filterable'");
+        }
+        if (adapter.features.has('float32-blendable')) {
+            requiredFeatures.push('float32-blendable');
+        } else {
+            console.log("Device does not support 'float32-blendable'.");
+        }
+        if (adapter.features.has('clip-distances')) {
+            requiredFeatures.push('clip-distances');
+        } else {
+            console.log("Device does not support 'clip-distances'.");
+        }
+        if (adapter.features.has('depth32float-stencil8')) {
+            requiredFeatures.push('depth32float-stencil8');
+        } else {
+            console.log("Device does not support 'depth32float-stencil8'.");
+        }
+        if (adapter.features.has('dual-source-blending')) {
+            requiredFeatures.push('dual-source-blending');
+        } else {
+            console.log("Device does not support 'dual-source-blending'.");
+        }
+                if (adapter.features.has('subgroups')) {
+            requiredFeatures.push('subgroups');
+        } else {
+            console.log("Device does not support 'subgroups'.");
+        }
+        if (adapter.features.has('texture-component-swizzle')) {
+            requiredFeatures.push('texture-component-swizzle');
+        } else {
+            console.log("Device does not support 'texture-component-swizzle'.");
+        }
+        if (adapter.features.has('shader-f16')) {
+            requiredFeatures.push('shader-f16');
+        } else {
+            console.log("Device does not support 'shader-f16'.");
+        }
+        
+        const device = await adapter.requestDevice({
+            requiredFeatures,
+        });
             const context = canvas.getContext('webgpu');
             const format = navigator.gpu.getPreferredCanvasFormat();
             context.configure({ device, format, alphaMode: 'opaque' });
