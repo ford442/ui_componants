@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon City - UI Components</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/knobs.css">
+    <style>
+        .lab-container {
+            display: flex;
+            width: 100%;
+            height: calc(100vh - 200px);
+            min-height: 600px;
+            background-color: #050505;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+            position: relative;
+        }
+
+        #neon-city-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .controls-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 15, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            gap: 30px;
+            z-index: 10;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-label {
+            font-size: 0.8rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <a href="../index.html" class="back-link">← Back</a>
+            <div>
+                <h1>Neon City</h1>
+                <p class="subtitle">Procedural City (WebGL2) with Data Rain (WebGPU)</p>
+            </div>
+        </div>
+
+        <div class="lab-container">
+            <div id="neon-city-container"></div>
+
+            <div class="controls-overlay">
+                <div class="control-group">
+                    <span class="control-label">Speed</span>
+                    <input type="range" id="speed-control" min="0" max="100" value="50">
+                </div>
+                <div class="control-group">
+                    <span class="control-label">Rain Density</span>
+                    <input type="range" id="rain-control" min="0" max="100" value="70">
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 2rem;">
+            <div class="info-section">
+                <h2>Implementation Details</h2>
+                <p>A hybrid rendering experiment:</p>
+                <ul>
+                    <li><strong>WebGL2:</strong> Renders the infinite scrolling cityscape using instanced rendering for performance.</li>
+                    <li><strong>WebGPU:</strong> Simulates and renders thousands of "data rain" particles using compute shaders.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="../js/main.js"></script>
+    <script type="module" src="../js/neon-city.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('neon-city-container');
+            if (container && window.NeonCityExperiment) {
+                new NeonCityExperiment(container, { instanceCount: 2000, numRainDrops: 10000 });
+            }
+        });
+    </script>
+</body>
+</html>
