@@ -243,7 +243,7 @@
             }
 
   //  add WebGPU extensions
-        const requiredFeatures: GPUFeatureName[] = [];
+        const requiredFeatures = [];
         if (adapter.features.has('float32-filterable')) {
             requiredFeatures.push('float32-filterable');
         } else {
