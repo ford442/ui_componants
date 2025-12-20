@@ -1,32 +1,41 @@
 from playwright.sync_api import sync_playwright
 
-def verify_experiments():
+def verify_experiments(page):
+    print("Navigating to experiments page...")
+    page.goto("http://localhost:5173/pages/experiments.html")
+
+    print("Checking title...")
+    title = page.title()
+    print(f"Page title: {title}")
+
+    print("Waiting for Cyber-Biology section...")
+    page.wait_for_selector("#cyber-biology-container")
+
+    # Wait a bit for the canvas to initialize and render
+    page.wait_for_timeout(2000)
+
+    print("Taking screenshot...")
+    page.screenshot(path="verification/experiments_page.png", full_page=True)
+
+    print("Checking if Cyber-Biology canvas exists inside container...")
+    canvas_count = page.evaluate("""() => {
+        const container = document.getElementById('cyber-biology-container');
+        return container.querySelectorAll('canvas').length;
+    }""")
+    print(f"Canvas count in cyber-biology-container: {canvas_count}")
+
+    if canvas_count < 1:
+        raise Exception("No canvas found in Cyber-Biology container!")
+
+    print("Verification complete.")
+
+if __name__ == "__main__":
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-
-        # Navigate to experiments page
-        # Note: root is src, so experiments.html is directly at /pages/experiments.html (since src is root)
-        # Wait, if root: 'src', then localhost:5173/pages/experiments.html should work
-        page.goto("http://localhost:5173/pages/experiments.html")
-
-        # Wait for experiments to load
-        page.wait_for_selector("#neural-network-container")
-        page.wait_for_selector("#fluid-sim-container")
-
-        # Scroll to neural network
-        neural_net = page.locator("#neural-network-container")
-        neural_net.scroll_into_view_if_needed()
-        page.wait_for_timeout(1000) # Wait for animation/render
-        page.screenshot(path="verification/neural_net.png")
-
-        # Scroll to fluid sim
-        fluid_sim = page.locator("#fluid-sim-container")
-        fluid_sim.scroll_into_view_if_needed()
-        page.wait_for_timeout(1000)
-        page.screenshot(path="verification/fluid_sim.png")
-
-        browser.close()
-
-if __name__ == "__main__":
-    verify_experiments()
+        try:
+            verify_experiments(page)
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            browser.close()
