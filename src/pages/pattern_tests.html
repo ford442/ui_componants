@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pattern Display Tests - WebGPU</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        .experiment-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .pattern-viewer {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .pattern-label {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(0, 0, 0, 0.6);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            z-index: 10;
+            pointer-events: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .webgpu-error {
+            display: none;
+            color: #ff4444;
+            text-align: center;
+            padding: 2rem;
+            background: rgba(50, 0, 0, 0.5);
+            border: 1px solid #ff4444;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="../index.html" class="back-link">← Back to Library</a>
+            <h1>Pattern Display Tests</h1>
+            <p class="subtitle">High-performance WGSL Pattern Renderers</p>
+        </header>
+
+        <div id="webgpu-error" class="webgpu-error">
+            WebGPU is not supported in this browser. Please use a compatible browser (Chrome/Edge/Canary) to view these experiments.
+        </div>
+
+        <div class="experiment-container">
+            <!-- Radial Pattern -->
+            <div class="pattern-viewer" id="radial-container">
+                <div class="pattern-label">RADIAL PATTERN v0.35 (BLOOM)</div>
+                <canvas id="radial-canvas"></canvas>
+            </div>
+
+            <!-- Horizontal Pattern -->
+            <div class="pattern-viewer" id="horizontal-container">
+                <div class="pattern-label">HORIZONTAL PATTERN v0.21 (PRECISION)</div>
+                <canvas id="horizontal-canvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="../js/pattern_tests.js"></script>
+</body>
+</html>
