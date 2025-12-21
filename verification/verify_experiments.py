@@ -1,33 +1,38 @@
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, expect
+import time
 
 def verify_experiments(page):
-    print("Navigating to experiments page...")
+    # Go to the experiments list
     page.goto("http://localhost:5173/pages/experiments.html")
+    time.sleep(1) # Wait for load
 
-    print("Checking title...")
-    title = page.title()
-    print(f"Page title: {title}")
+    # Check if the new experiment is listed
+    new_exp_link = page.get_by_role("link", name="View Full Page Experiment").nth(-1) # Assuming it's the last one added
 
-    print("Waiting for Cyber-Biology section...")
-    page.wait_for_selector("#cyber-biology-container")
+    # Actually, let's verify by text content or specific ID
+    # The new section has h2 "Gravitational Nebula"
+    header = page.get_by_role("heading", name="Gravitational Nebula")
+    expect(header).to_be_visible()
 
-    # Wait a bit for the canvas to initialize and render
-    page.wait_for_timeout(2000)
+    # Take a screenshot of the experiments list
+    page.screenshot(path="verification/experiments_list.png")
 
-    print("Taking screenshot...")
-    page.screenshot(path="verification/experiments_page.png", full_page=True)
+    # Navigate to the new experiment page
+    # Find the link inside the gravitational nebula section
+    # Use a more specific locator strategy
+    container = page.locator(".component-card", has_text="Gravitational Nebula")
+    link = container.get_by_role("link", name="View Full Page Experiment")
+    link.click()
 
-    print("Checking if Cyber-Biology canvas exists inside container...")
-    canvas_count = page.evaluate("""() => {
-        const container = document.getElementById('cyber-biology-container');
-        return container.querySelectorAll('canvas').length;
-    }""")
-    print(f"Canvas count in cyber-biology-container: {canvas_count}")
+    # Wait for the new page to load
+    time.sleep(2)
 
-    if canvas_count < 1:
-        raise Exception("No canvas found in Cyber-Biology container!")
+    # Check if canvas exists
+    canvas_container = page.locator("#canvas-container")
+    expect(canvas_container).to_be_visible()
 
-    print("Verification complete.")
+    # Take a screenshot of the new experiment
+    page.screenshot(path="verification/gravitational_nebula.png")
 
 if __name__ == "__main__":
     with sync_playwright() as p:

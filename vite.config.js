@@ -19,6 +19,7 @@ export default defineConfig({
         neon_city: resolve(__dirname, 'src/pages/neon_city.html'),
         hologram: resolve(__dirname, 'src/pages/hologram.html'),
         pattern_tests: resolve(__dirname, 'src/pages/pattern_tests.html'),
+        gravitational_nebula: resolve(__dirname, 'src/pages/gravitational-nebula.html'),
       },
     },
   },
