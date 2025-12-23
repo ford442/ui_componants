@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crystal Cavern Experiment</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            gap: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div class="controls">
+        <a href="experiments.html" class="jello-btn" style="text-decoration: none; padding: 0.8rem 1.5rem; background: rgba(255,255,255,0.1); color: white; border-radius: 8px;">Back to Experiments</a>
+    </div>
+
+    <script src="../js/crystal-cavern.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('canvas-container');
+            if (window.CrystalCavern) {
+                new CrystalCavern(container, { numParticles: 50000 });
+            }
+        });
+    </script>
+</body>
+</html>
