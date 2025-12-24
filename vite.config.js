@@ -20,6 +20,7 @@ export default defineConfig({
         hologram: resolve(__dirname, 'src/pages/hologram.html'),
         pattern_tests: resolve(__dirname, 'src/pages/pattern_tests.html'),
         gravitational_nebula: resolve(__dirname, 'src/pages/gravitational-nebula.html'),
+        crystal_cavern: resolve(__dirname, 'src/pages/crystal-cavern.html'),
       },
     },
   },
