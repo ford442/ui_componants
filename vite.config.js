@@ -21,6 +21,7 @@ export default defineConfig({
         pattern_tests: resolve(__dirname, 'src/pages/pattern_tests.html'),
         gravitational_nebula: resolve(__dirname, 'src/pages/gravitational-nebula.html'),
         crystal_cavern: resolve(__dirname, 'src/pages/crystal-cavern.html'),
+        cyber_rain: resolve(__dirname, 'src/pages/cyber-rain.html'),
       },
     },
   },
