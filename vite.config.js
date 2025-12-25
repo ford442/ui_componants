@@ -22,6 +22,7 @@ export default defineConfig({
         gravitational_nebula: resolve(__dirname, 'src/pages/gravitational-nebula.html'),
         crystal_cavern: resolve(__dirname, 'src/pages/crystal-cavern.html'),
         cyber_rain: resolve(__dirname, 'src/pages/cyber-rain.html'),
+        biomechanical_growth: resolve(__dirname, 'src/pages/biomechanical-growth.html'),
       },
     },
   },
