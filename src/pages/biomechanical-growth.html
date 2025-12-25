@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biomechanical Growth - WebGL2 + WebGPU Experiment</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #050510;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px rgba(255, 100, 100, 0.5);
+        }
+
+        p {
+            color: #aaa;
+            max-width: 400px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #fff;
+            text-decoration: none;
+            opacity: 0.7;
+            pointer-events: auto;
+            transition: opacity 0.3s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="overlay">
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+        <h1>Biomechanical Growth</h1>
+        <p>A hybrid rendering experiment combining WebGL2 vertex displacement for the organic membrane and WebGPU compute shaders for the symbiotic spore swarm.</p>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script src="../js/biomechanical-growth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('canvas-container');
+            const experiment = new BiomechanicalGrowth(container, {
+                numParticles: 20000
+            });
+        });
+    </script>
+</body>
+
+</html>

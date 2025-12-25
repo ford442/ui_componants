@@ -247,6 +247,27 @@
             </div>
         </section>
 
+        <!-- Biomechanical Growth Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Biomechanical Growth</h2>
+                    <p class="description">Living Tissue (WebGL2) with Spore Swarm (WebGPU)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Membrane</span>
+                        <span class="layer-tag webgpu" style="background: rgba(255, 100, 100, 0.2); border-color: #ff5555; color: #ffcccc;">WebGPU Spores</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="biomechanical-growth-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #1a0505;"></div>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="biomechanical-growth.html" style="color: #aaa; text-decoration: none; font-size: 0.9rem; border-bottom: 1px solid #555;">View Full Page Experiment</a>
+                </div>
+            </div>
+        </section>
+
         <!-- Hybrid Engine Experiment -->
         <section class="experiment-section">
             <div class="component-card">
@@ -482,6 +503,7 @@
     <script src="../js/liquid-ripple.js"></script>
     <script src="../js/knob-3d.js"></script>
     <script src="../js/glitch-scroll.js"></script>
+    <script src="../js/biomechanical-growth.js"></script>
     <script src="../js/hybrid-engine.js"></script>
     <script src="../js/cyber-biology.js"></script>
     <script src="../js/force-field.js"></script>
@@ -524,6 +546,12 @@
             const neonCityContainer = document.getElementById('neon-city-container');
             if (neonCityContainer && window.NeonCityExperiment) {
                 new NeonCityExperiment(neonCityContainer, { instanceCount: 1000, numRainDrops: 5000 });
+            }
+
+            // Initialize Biomechanical Growth
+            const biomechContainer = document.getElementById('biomechanical-growth-container');
+            if (biomechContainer && window.BiomechanicalGrowth) {
+                new BiomechanicalGrowth(biomechContainer, { numParticles: 15000 });
             }
 
             // Initialize Hybrid Engine
