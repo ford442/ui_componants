@@ -23,6 +23,7 @@ export default defineConfig({
         crystal_cavern: resolve(__dirname, 'src/pages/crystal-cavern.html'),
         cyber_rain: resolve(__dirname, 'src/pages/cyber-rain.html'),
         biomechanical_growth: resolve(__dirname, 'src/pages/biomechanical-growth.html'),
+        quantum_data_stream: resolve(__dirname, 'src/pages/quantum-data-stream.html'),
       },
     },
   },
