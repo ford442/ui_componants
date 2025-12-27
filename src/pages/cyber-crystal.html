@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Crystal - Visual Experiments</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        #experiment-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            pointer-events: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .back-link:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+            background: linear-gradient(90deg, #00ffff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        .description {
+            color: rgba(255, 255, 255, 0.7);
+            max-width: 400px;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="experiment-container"></div>
+
+    <div class="ui-overlay">
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+        <h1>Cyber Crystal</h1>
+        <p class="description">
+            Hybrid Rendering: WebGL2 Wireframe Crystal Core + WebGPU Energy Shard Compute Simulation.
+        </p>
+    </div>
+
+    <script type="module">
+        import { CyberCrystalExperiment } from '../js/cyber-crystal.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('experiment-container');
+            if (container) {
+                new CyberCrystalExperiment(container, { numParticles: 50000 });
+            }
+        });
+    </script>
+</body>
+</html>

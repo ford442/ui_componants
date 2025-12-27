@@ -1,63 +1,51 @@
-import os
-import time
 from playwright.sync_api import sync_playwright
 
-def verify_experiments():
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
+def verify_experiments(page):
+    print("Navigating to experiments page...")
+    page.goto("http://localhost:5173/pages/experiments.html")
 
-        # Start a local server in the background (we assume it's running or we can start one)
-        # But wait, usually I should rely on the user to run the server or I should run it.
-        # Since I am in the sandbox, I should assume `npm run dev` needs to be running.
-        # However, `run_in_bash_session` shares the session.
-        # Actually, I'll just build it and serve the dist or just serve src.
-        # Let's try to access the files via a simple python http server to avoid vite complexity if possible,
-        # but vite config is set up for 'src' root.
+    print("Checking if Cyber Crystal card exists...")
+    card = page.wait_for_selector('h2:has-text("Cyber Crystal")')
+    if card:
+        print("Cyber Crystal card found!")
+    else:
+        print("Cyber Crystal card NOT found!")
 
-        # It's better to rely on `npm run preview` after build or `npm run dev`.
-        # I'll assume the user wants me to verify using `npm run dev` running in background.
-        # But I need to start it.
+    print("Taking screenshot of experiments page...")
+    page.screenshot(path="verification/experiments_page.png")
 
-        # Actually, let's just check the files exist and contain expected content for now,
-        # and maybe try to load them if I can start a server.
+    print("Navigating to Cyber Crystal experiment...")
+    page.goto("http://localhost:5173/pages/cyber-crystal.html")
 
-        # Since I can run long running processes, I will start `npm run dev` in background
-        # and then test against localhost.
+    # Wait a bit for initialization
+    page.wait_for_timeout(2000)
 
-        base_url = "http://localhost:5173"
+    # Check for WebGL canvas
+    print("Checking for canvas...")
+    canvas = page.query_selector('canvas')
+    if canvas:
+        print("Canvas found!")
+    else:
+        print("Canvas NOT found!")
 
-        experiments = [
-            "/pages/experiments.html",
-            "/pages/cyber-rain.html",
-            "/pages/gravitational-nebula.html",
-            "/pages/crystal-cavern.html"
-        ]
+    print("Taking screenshot of Cyber Crystal page...")
+    page.screenshot(path="verification/cyber_crystal.png")
 
-        for exp in experiments:
-            url = f"{base_url}{exp}"
-            print(f"Checking {url}...")
-            try:
-                page.goto(url)
-                # Wait a bit for JS to init
-                time.sleep(2)
-
-                # Check for console errors?
-                # We can attach a listener, but page.goto might have already triggered them.
-                # Ideally we listen before goto.
-
-                # Take screenshot
-                page.screenshot(path=f"verification/{exp.split('/')[-1]}.png")
-                print(f"  - Screenshot saved: verification/{exp.split('/')[-1]}.png")
-
-                # Check title
-                title = page.title()
-                print(f"  - Title: {title}")
-
-            except Exception as e:
-                print(f"  - Error loading {exp}: {e}")
-
-        browser.close()
+    # Check console for errors
+    print("Console messages:")
+    # (Note: console capturing is set up in the main block)
 
 if __name__ == "__main__":
-    verify_experiments()
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+
+        # Capture console logs
+        page.on("console", lambda msg: print(f"Browser Console: {msg.text}"))
+
+        try:
+            verify_experiments(page)
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            browser.close()
