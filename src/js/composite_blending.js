@@ -319,7 +319,7 @@
 
                         var col = vec3f(0.02, 0.02, 0.03);
                         // Grid
-                        let grid = step(0.98, fract(uv * 50.0));
+                        let grid = step(vec2f(0.98), fract(uv * 50.0));
                         col += vec3f(0.05) * grid.x;
 
                         // Circuit lines
