@@ -25,6 +25,7 @@ export default defineConfig({
         biomechanical_growth: resolve(__dirname, 'src/pages/biomechanical-growth.html'),
         quantum_data_stream: resolve(__dirname, 'src/pages/quantum-data-stream.html'),
         cyber_crystal: resolve(__dirname, 'src/pages/cyber-crystal.html'),
+        bioluminescent_abyss: resolve(__dirname, 'src/pages/bioluminescent-abyss.html'),
       },
     },
   },
