@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plasma Confinement Field - Hybrid Experiment</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+        }
+        .back-link {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .back-link:hover {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+        <h1>Plasma Confinement Field</h1>
+        <p style="font-size: 0.9rem; color: #aaa; margin: 0;">
+            WebGL2 Reactor Core + WebGPU High-Energy Plasma
+        </p>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script type="module">
+        import { PlasmaConfinement } from '../js/plasma-confinement.js';
+
+        const container = document.getElementById('canvas-container');
+        // Wait for potential font/layout loading
+        window.addEventListener('load', () => {
+            const experiment = new PlasmaConfinement(container, { numParticles: 40000 });
+
+            window.addEventListener('beforeunload', () => {
+                if (experiment.destroy) experiment.destroy();
+            });
+        });
+    </script>
+</body>
+</html>

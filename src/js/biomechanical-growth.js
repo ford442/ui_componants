@@ -317,7 +317,7 @@ class BiomechanicalGrowth {
                 // Spore movement logic
                 // Particles drift and are affected by a flow field based on the "veins"
 
-                let angle = p.time * 0.1;
+                let angle = params.time * 0.1;
                 let flow = vec2f(
                     sin(p.pos.y * 5.0 + params.time),
                     cos(p.pos.x * 5.0 + params.time)
