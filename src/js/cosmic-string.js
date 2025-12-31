@@ -1,11 +1,11 @@
 /**
- * Biomechanical Growth Experiment
+ * Cosmic String Instability
  * Demonstrates WebGL2 and WebGPU working in tandem.
- * - WebGL2: Renders a pulsating biological membrane.
- * - WebGPU: Renders a compute-driven spore swarm overlay.
+ * - WebGL2: Renders a vibrating, glowing energy filament (the string) that distorts space.
+ * - WebGPU: Simulates thousands of particles caught in the string's gravitational field.
  */
 
-class BiomechanicalGrowth {
+class CosmicStringExperiment {
     constructor(container, options = {}) {
         this.container = container;
         this.options = options;
@@ -20,7 +20,7 @@ class BiomechanicalGrowth {
         this.gl = null;
         this.glProgram = null;
         this.glVao = null;
-        this.glIndexCount = 0;
+        this.numStringSegments = 200;
 
         // WebGPU State
         this.gpuCanvas = null;
@@ -31,7 +31,7 @@ class BiomechanicalGrowth {
         this.computeBindGroup = null;
         this.simParamBuffer = null;
         this.particleBuffer = null;
-        this.numParticles = options.numParticles || 10000;
+        this.numParticles = options.numParticles || 30000;
 
         // Bind resize handler for cleanup
         this.handleResize = this.resize.bind(this);
@@ -42,28 +42,28 @@ class BiomechanicalGrowth {
     async init() {
         this.container.style.position = 'relative';
         this.container.style.overflow = 'hidden';
-        this.container.style.background = '#1a0505'; // Dark fleshy background
+        this.container.style.background = '#000';
 
-        console.log("BiomechanicalGrowth: Initializing...");
+        console.log("CosmicStringExperiment: Initializing...");
 
-        // 1. Initialize WebGL2 Layer (Background)
+        // 1. Initialize WebGL2 Layer (Background String)
         this.initWebGL2();
 
-        // 2. Initialize WebGPU Layer (Foreground)
+        // 2. Initialize WebGPU Layer (Foreground Particles)
         let gpuSuccess = false;
         if (typeof navigator !== 'undefined' && navigator.gpu) {
             try {
                 gpuSuccess = await this.initWebGPU();
             } catch (e) {
-                console.warn("BiomechanicalGrowth: WebGPU initialization error:", e);
+                console.warn("CosmicStringExperiment: WebGPU initialization error:", e);
             }
         }
 
         if (!gpuSuccess) {
-            console.log("BiomechanicalGrowth: WebGPU not enabled/supported. Running in WebGL2-only mode.");
+            console.log("CosmicStringExperiment: WebGPU not enabled/supported. Running in WebGL2-only mode.");
             this.addWebGPUNotSupportedMessage();
         } else {
-            console.log("BiomechanicalGrowth: WebGPU initialized successfully.");
+            console.log("CosmicStringExperiment: WebGPU initialized successfully.");
         }
 
         this.isActive = true;
@@ -73,7 +73,7 @@ class BiomechanicalGrowth {
     }
 
     // ========================================================================
-    // WebGL2 IMPLEMENTATION (Biological Membrane)
+    // WebGL2 IMPLEMENTATION (Vibrating String)
     // ========================================================================
 
     initWebGL2() {
@@ -88,76 +88,76 @@ class BiomechanicalGrowth {
         `;
         this.container.appendChild(this.glCanvas);
 
-        this.gl = this.glCanvas.getContext('webgl2');
+        this.gl = this.glCanvas.getContext('webgl2', { alpha: false });
         if (!this.gl) {
-            console.warn("BiomechanicalGrowth: WebGL2 not supported.");
+            console.warn("CosmicStringExperiment: WebGL2 not supported.");
             return;
         }
 
-        // Create a dense grid for organic deformation
-        const gridSize = 64;
+        // Generate string geometry (vertical strip)
         const positions = [];
-        const indices = [];
+        const width = 0.05; // Base thickness
+        for (let i = 0; i <= this.numStringSegments; i++) {
+            const t = i / this.numStringSegments;
+            const y = (t * 2.0) - 1.0; // -1 to 1
 
-        for (let y = 0; y <= gridSize; y++) {
-            for (let x = 0; x <= gridSize; x++) {
-                const u = x / gridSize;
-                const v = y / gridSize;
-                // Map to -1..1
-                positions.push(u * 2 - 1, v * 2 - 1);
-            }
+            // Left vertex
+            positions.push(-width);
+            positions.push(y);
+
+            // Right vertex
+            positions.push(width);
+            positions.push(y);
         }
-
-        for (let y = 0; y < gridSize; y++) {
-            for (let x = 0; x < gridSize; x++) {
-                const i = y * (gridSize + 1) + x;
-                indices.push(i, i + 1, i + gridSize + 1);
-                indices.push(i + 1, i + gridSize + 2, i + gridSize + 1);
-            }
-        }
-
-        this.glIndexCount = indices.length;
 
         const positionBuffer = this.gl.createBuffer();
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(positions), this.gl.STATIC_DRAW);
 
-        const indexBuffer = this.gl.createBuffer();
-        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-        this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), this.gl.STATIC_DRAW);
-
         // Vertex Shader
         const vsSource = `#version 300 es
             in vec2 a_position;
-
             uniform float u_time;
+            uniform float u_aspect;
 
-            out vec3 v_pos;
-            out float v_displacement;
+            out float v_intensity;
+            out vec2 v_uv;
 
             void main() {
                 vec2 pos = a_position;
 
-                // Organic movement
-                float dist = length(pos);
-                float angle = atan(pos.y, pos.x);
+                // Vertical coordinate (-1 to 1)
+                float y = pos.y;
 
-                // Pulsating effect
-                float pulse = sin(u_time * 2.0 - dist * 4.0) * 0.1;
+                // Vibration physics
+                float freq1 = 5.0;
+                float freq2 = 12.0;
+                float freq3 = 25.0;
 
-                // "Breathing" deformation
-                float breathing = sin(u_time * 0.5) * 0.05;
+                // Standing wave pattern
+                float displacement = sin(y * freq1 + u_time * 2.0) * 0.1
+                                   + sin(y * freq2 - u_time * 5.0) * 0.05
+                                   + sin(y * freq3 + u_time * 10.0) * 0.02;
 
-                float z = pulse + breathing;
+                // Modulate thickness based on energy flow
+                float energy = sin(y * 10.0 - u_time * 8.0) * 0.5 + 0.5;
+                float thickness = 0.02 + energy * 0.08;
 
-                // Add some twisting
-                float twist = sin(angle * 3.0 + u_time) * 0.05 * dist;
-                z += twist;
+                // Apply displacement to X
+                float xOffset = displacement;
 
-                v_pos = vec3(pos, z);
-                v_displacement = z;
+                // The vertex x is either -width or +width. We scale it by thickness.
+                // We use sign(pos.x) to know which side we are on.
+                float side = sign(pos.x);
+                pos.x = xOffset + side * thickness;
 
-                gl_Position = vec4(pos.x, pos.y, 0.0, 1.0);
+                // Correct aspect ratio for width (make it look consistent on different screens)
+                pos.x /= u_aspect;
+
+                gl_Position = vec4(pos, 0.0, 1.0);
+
+                v_intensity = energy;
+                v_uv = vec2(side * 0.5 + 0.5, y * 0.5 + 0.5);
             }
         `;
 
@@ -165,37 +165,34 @@ class BiomechanicalGrowth {
         const fsSource = `#version 300 es
             precision highp float;
 
-            in vec3 v_pos;
-            in float v_displacement;
+            in float v_intensity;
+            in vec2 v_uv;
             uniform float u_time;
 
             out vec4 outColor;
 
             void main() {
-                // Bio-texture generation
-                vec2 coord = v_pos.xy * 4.0;
+                // Glow falloff from center of the string
+                float dist = abs(v_uv.x - 0.5) * 2.0; // 0 at center, 1 at edges
+                float glow = 1.0 - smoothstep(0.0, 1.0, dist);
 
-                float vein = sin(coord.x * 10.0 + sin(coord.y * 10.0 + u_time));
-                vein += cos(coord.y * 8.0 + cos(coord.x * 8.0 + u_time));
+                // Core color (hot white/blue)
+                vec3 coreColor = vec3(0.8, 0.9, 1.0);
 
-                float tissue = smoothstep(-0.5, 0.8, vein);
+                // Outer glow (purple/magenta)
+                vec3 glowColor = vec3(0.8, 0.2, 1.0);
 
-                // Colors: Dark red background, bright red/pink veins
-                vec3 baseColor = vec3(0.2, 0.05, 0.05);
-                vec3 veinColor = vec3(0.8, 0.2, 0.3);
-                vec3 highlightColor = vec3(1.0, 0.4, 0.5);
+                // Pulse intensity
+                float pulse = 0.8 + 0.4 * sin(u_time * 10.0 + v_uv.y * 20.0);
 
-                vec3 color = mix(baseColor, veinColor, tissue);
+                vec3 finalColor = mix(glowColor, coreColor, glow * glow);
+                finalColor *= pulse * glow; // Fade out at edges
 
-                // Add pulse highlight
-                float pulseHighlight = smoothstep(0.05, 0.1, v_displacement);
-                color = mix(color, highlightColor, pulseHighlight * 0.5);
+                // Add vertical streaks
+                float streak = sin(v_uv.y * 100.0 + u_time * 20.0) * 0.1 + 0.9;
+                finalColor *= streak;
 
-                // Vignette
-                float dist = length(v_pos.xy);
-                color *= 1.0 - smoothstep(0.5, 1.5, dist);
-
-                outColor = vec4(color, 1.0);
+                outColor = vec4(finalColor, 1.0);
             }
         `;
 
@@ -208,8 +205,6 @@ class BiomechanicalGrowth {
         const positionLoc = this.gl.getAttribLocation(this.glProgram, 'a_position');
         this.gl.enableVertexAttribArray(positionLoc);
         this.gl.vertexAttribPointer(positionLoc, 2, this.gl.FLOAT, false, 0, 0);
-
-        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
         this.glVao = vao;
 
@@ -242,7 +237,7 @@ class BiomechanicalGrowth {
     }
 
     // ========================================================================
-    // WebGPU IMPLEMENTATION (Spore Particles)
+    // WebGPU IMPLEMENTATION (Orbiting Particles)
     // ========================================================================
 
     async initWebGPU() {
@@ -284,6 +279,9 @@ class BiomechanicalGrowth {
         });
 
         // COMPUTE SHADER
+        // Physics: Particles are attracted to the string (x=0) line.
+        // F = -k / dist^2 * direction
+        // But we also want them to spiral, so we add tangential velocity.
         const computeShaderCode = `
             struct Particle {
                 pos : vec2f,
@@ -297,10 +295,12 @@ class BiomechanicalGrowth {
             struct SimParams {
                 dt : f32,
                 time : f32,
+                stringX : f32, // X position of the string (can undulate)
+                unused : f32,
             }
             @group(0) @binding(1) var<uniform> params : SimParams;
 
-            // Simple pseudo-random function
+            // Simple random function
             fn rand(co: vec2f) -> f32 {
                 return fract(sin(dot(co, vec2f(12.9898, 78.233))) * 43758.5453);
             }
@@ -314,35 +314,58 @@ class BiomechanicalGrowth {
 
                 var p = particles[index];
 
-                // Spore movement logic
-                // Particles drift and are affected by a flow field based on the "veins"
+                // Calculate string position at this particle's Y height
+                // We approximate the string undulation here to match WebGL
+                let y = p.pos.y;
+                let t = params.time;
+                let stringOffset = sin(y * 5.0 + t * 2.0) * 0.1
+                                 + sin(y * 12.0 - t * 5.0) * 0.05;
 
-                let angle = params.time * 0.1;
-                let flow = vec2f(
-                    sin(p.pos.y * 5.0 + params.time),
-                    cos(p.pos.x * 5.0 + params.time)
-                );
+                let dx = p.pos.x - stringOffset;
+                let dy = 0.0; // Attracted to the line, so Y distance doesn't matter for gravity
 
-                // Add some chaotic movement
-                p.vel = p.vel * 0.95 + flow * 0.001;
+                let distSq = dx * dx + 0.001;
+                let dist = sqrt(distSq);
 
-                // Repel from center slightly
-                let dist = length(p.pos);
-                if (dist < 0.2) {
-                    p.vel += normalize(p.pos) * 0.01;
-                }
+                // Gravity towards string
+                let force = -0.05 / distSq;
 
+                // Limit force
+                if (force < -2.0) { force = -2.0; }
+
+                let dirX = dx / dist;
+
+                // Apply Gravity
+                p.vel.x += dirX * force * params.dt;
+
+                // Tangential force (Spiral) - stronger when close
+                // We want them to zip up/down the string too
+                let spiralSpeed = 5.0;
+                let spiralDir = sign(p.pos.y) * -1.0; // Opposite directions
+
+                // Add some noise to Y velocity
+                let noise = rand(vec2f(p.pos.x * 10.0, params.time));
+
+                // Orbit/Vortex velocity
+                // If on right, push up. If on left, push down.
+                p.vel.y += sign(dx) * 2.0 * params.dt;
+
+                // Conservation of angular momentum approximation: faster when closer
+                let orbitSpeed = 0.1 / (dist + 0.1);
+                // p.vel.y += orbitSpeed * params.dt;
+
+                // Damping
+                p.vel = p.vel * 0.98;
+
+                // Update Pos
                 p.pos = p.pos + p.vel * params.dt;
-                p.life -= params.dt * 0.2;
 
-                // Respawn
-                if (p.life <= 0.0 || abs(p.pos.x) > 1.2 || abs(p.pos.y) > 1.2) {
-                    let r = rand(vec2f(params.time, f32(index)));
-                    let theta = r * 6.28;
-                    let d = 0.1 + rand(vec2f(r, params.time)) * 0.2;
-                    p.pos = vec2f(cos(theta) * d, sin(theta) * d);
-                    p.vel = vec2f(cos(theta), sin(theta)) * 0.1;
-                    p.life = 1.0 + rand(vec2f(f32(index), params.time));
+                // Boundaries - Respawn
+                if (abs(p.pos.x) > 2.0 || abs(p.pos.y) > 1.2 || dist < 0.01) {
+                    // Respawn at edges
+                    p.pos.x = (rand(vec2f(params.time, f32(index))) - 0.5) * 3.0;
+                    p.pos.y = (rand(vec2f(f32(index), params.time)) - 0.5) * 2.0;
+                    p.vel = vec2f(0.0, 0.0);
                 }
 
                 particles[index] = p;
@@ -354,62 +377,58 @@ class BiomechanicalGrowth {
             struct VertexOutput {
                 @builtin(position) position : vec4f,
                 @location(0) color : vec4f,
-                @location(1) size : f32,
             }
 
             @vertex
-            fn vs_main(
-                @location(0) particlePos : vec2f,
-                @location(1) particleVel : vec2f,
-                @location(2) life : f32
-            ) -> VertexOutput {
+            fn vs_main(@location(0) particlePos : vec2f, @location(1) particleVel : vec2f) -> VertexOutput {
                 var output : VertexOutput;
                 output.position = vec4f(particlePos, 0.0, 1.0);
 
-                // Color based on life (Green/Yellow to faded)
-                let alpha = smoothstep(0.0, 0.2, life);
-                output.color = vec4f(0.8, 1.0, 0.2, alpha);
-                output.size = 2.0 + life * 2.0;
+                let speed = length(particleVel);
+                // Color mapping: Blue/Purple to White/Pink based on speed
+                let r = 0.2 + speed * 2.0;
+                let g = 0.1 + speed * 0.5;
+                let b = 1.0;
 
+                output.color = vec4f(r, g, b, 1.0);
                 return output;
             }
 
             @fragment
             fn fs_main(@location(0) color : vec4f) -> @location(0) vec4f {
+                // Simple point rendering
                 return color;
             }
         `;
 
         // Initialize Particles
-        // Struct is pos(2f), vel(2f), life(1f), dummy(1f) = 6 floats -> aligned to 8 floats for 16-byte alignment?
-        // vec2f is 8 bytes. f32 is 4 bytes.
-        // pos: 0, vel: 8, life: 16. Next struct starts at 20? No, stride must be multiple of 16 usually for array elements if they contain vec3/4?
-        // Actually for storage buffers standard layout rules apply.
-        // Let's use 4 floats per particle to be safe if life fits in z/w of vel?
-        // Or explicitly pad.
-        // Struct size: 2*4 + 2*4 + 4 + 4(padding) = 24 bytes? No.
-        // Let's just use 4 floats: pos.x, pos.y, vel.x, vel.y and put life elsewhere or pack it?
-        // Let's stick to the struct defined in shader: pos(vec2), vel(vec2), life(f32), dummy(f32).
-        // Size = 8 + 8 + 4 + 4 = 24 bytes. But WGSL arrays of structs have stride requirements.
-        // Usually power of 2 is safest. 32 bytes (8 floats).
+        // Structure: pos(2), vel(2), life(1), padding(1) = 6 floats -> aligned to 8 floats (32 bytes) usually or tight packed?
+        // WGSL struct alignment: vec2f is 8 bytes. f32 is 4 bytes.
+        // struct Particle { pos: vec2f, vel: vec2f, life: f32, dummy: f32 }
+        // Offset: 0 (pos), 8 (vel), 16 (life), 20 (dummy). Total 24 bytes.
+        // Array stride must be multiple of 16 bytes for some bindings, but storage buffer stride just needs to match.
+        // Let's use 8 floats (32 bytes) to be safe and power of 2 aligned.
 
-        const particleUnitSize = 32; // 8 floats * 4 bytes
+        // Actually, let's stick to the struct definition.
+        // vec2f (8), vec2f (8), f32 (4), f32 (4) = 24 bytes.
+        // Let's explicitly pad to 32 bytes (8 floats) in JS and use explicit padding in WGSL if needed.
+        // In previous example I used float32x2 (8 bytes) attributes.
+
+        const particleUnitSize = 24; // 6 floats * 4 bytes
         const particleBufferSize = this.numParticles * particleUnitSize;
-        const initialParticleData = new Float32Array(this.numParticles * 8);
+        const initialParticleData = new Float32Array(this.numParticles * 6);
 
         for (let i = 0; i < this.numParticles; i++) {
             // Pos
-            initialParticleData[i * 8 + 0] = (Math.random() * 2 - 1);
-            initialParticleData[i * 8 + 1] = (Math.random() * 2 - 1);
+            initialParticleData[i * 6 + 0] = (Math.random() * 4 - 2);
+            initialParticleData[i * 6 + 1] = (Math.random() * 2 - 1);
             // Vel
-            initialParticleData[i * 8 + 2] = (Math.random() - 0.5) * 0.1;
-            initialParticleData[i * 8 + 3] = (Math.random() - 0.5) * 0.1;
+            initialParticleData[i * 6 + 2] = 0;
+            initialParticleData[i * 6 + 3] = 0;
             // Life
-            initialParticleData[i * 8 + 4] = Math.random();
-            // Padding
-            initialParticleData[i * 8 + 5] = 0;
-            initialParticleData[i * 8 + 6] = 0;
-            initialParticleData[i * 8 + 7] = 0;
+            initialParticleData[i * 6 + 4] = Math.random();
+            // Dummy
+            initialParticleData[i * 6 + 5] = 0;
         }
 
         this.particleBuffer = this.device.createBuffer({
@@ -420,7 +439,7 @@ class BiomechanicalGrowth {
 
         // Uniform Buffer
         this.simParamBuffer = this.device.createBuffer({
-            size: 16, // 2 floats + padding to 16 bytes min uniform size
+            size: 16, // 4 floats (dt, time, stringX, unused)
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -459,7 +478,6 @@ class BiomechanicalGrowth {
                     attributes: [
                         { shaderLocation: 0, offset: 0, format: 'float32x2' }, // pos
                         { shaderLocation: 1, offset: 8, format: 'float32x2' }, // vel
-                        { shaderLocation: 2, offset: 16, format: 'float32' },  // life
                     ],
                 }],
             },
@@ -470,7 +488,7 @@ class BiomechanicalGrowth {
                     format: presentationFormat,
                     blend: {
                         color: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
-                        alpha: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
+                        alpha: { srcFactor: 'zero', dstFactor: 'one', operation: 'add' },
                     }
                 }],
             },
@@ -490,7 +508,7 @@ class BiomechanicalGrowth {
             position: absolute;
             bottom: 20px;
             right: 20px;
-            background: linear-gradient(90deg, rgba(200, 50, 50, 0.8), rgba(100, 20, 20, 0.9));
+            background: linear-gradient(90deg, rgba(100, 50, 200, 0.8), rgba(50, 20, 100, 0.9));
             color: white;
             padding: 8px 16px;
             border-radius: 8px;
@@ -498,10 +516,9 @@ class BiomechanicalGrowth {
             font-family: monospace;
             z-index: 10;
             pointer-events: none;
-            border: 1px solid rgba(255,100,100,0.5);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            border: 1px solid rgba(150,100,255,0.5);
         `;
-        msg.innerHTML = "⚠️ WebGPU Not Available &mdash; Running Hybrid Mode (WebGL2 Only)";
+        msg.innerHTML = "⚠️ WebGPU Not Available &mdash; Running String Simulation Only";
         this.container.appendChild(msg);
     }
 
@@ -547,30 +564,42 @@ class BiomechanicalGrowth {
         // 1. Render WebGL2
         if (this.gl && this.glProgram) {
             this.gl.useProgram(this.glProgram);
-            const timeLoc = this.gl.getUniformLocation(this.glProgram, 'u_time');
-            this.gl.uniform1f(timeLoc, time);
 
-            // Clear with dark red/black
-            this.gl.clearColor(0.1, 0.02, 0.02, 1.0);
+            const timeLoc = this.gl.getUniformLocation(this.glProgram, 'u_time');
+            const aspectLoc = this.gl.getUniformLocation(this.glProgram, 'u_aspect');
+
+            this.gl.uniform1f(timeLoc, time);
+            this.gl.uniform1f(aspectLoc, this.glCanvas.width / this.glCanvas.height);
+
+            this.gl.clearColor(0.02, 0.01, 0.05, 1.0); // Deep purple/black
             this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
+            // Enable additive blending for glow
+            this.gl.enable(this.gl.BLEND);
+            this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE);
+
             this.gl.bindVertexArray(this.glVao);
-            this.gl.drawElements(this.gl.TRIANGLES, this.glIndexCount, this.gl.UNSIGNED_SHORT, 0);
+            this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, (this.numStringSegments + 1) * 2);
+
+            this.gl.disable(this.gl.BLEND);
         }
 
         // 2. Render WebGPU
         if (this.device && this.context && this.renderPipeline) {
-            const params = new Float32Array([0.016, time, 0, 0]); // Padded to 16 bytes
+            // Update simulation params
+            const params = new Float32Array([0.016, time, 0.0, 0.0]);
             this.device.queue.writeBuffer(this.simParamBuffer, 0, params);
 
             const commandEncoder = this.device.createCommandEncoder();
 
+            // Compute
             const computePass = commandEncoder.beginComputePass();
             computePass.setPipeline(this.computePipeline);
             computePass.setBindGroup(0, this.computeBindGroup);
             computePass.dispatchWorkgroups(Math.ceil(this.numParticles / 64));
             computePass.end();
 
+            // Render
             const textureView = this.context.getCurrentTexture().createView();
             const renderPassDescriptor = {
                 colorAttachments: [{
@@ -613,5 +642,5 @@ class BiomechanicalGrowth {
 }
 
 if (typeof window !== 'undefined') {
-    window.BiomechanicalGrowth = BiomechanicalGrowth;
+    window.CosmicStringExperiment = CosmicStringExperiment;
 }

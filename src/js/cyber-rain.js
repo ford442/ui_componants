@@ -239,7 +239,9 @@ class CyberRain {
 
                 // Gravity
                 p.vel.y -= 9.8 * uniforms.dt;
-                p.pos.xyz += p.vel.xyz * uniforms.dt;
+                p.pos.x += p.vel.x * uniforms.dt;
+                p.pos.y += p.vel.y * uniforms.dt;
+                p.pos.z += p.vel.z * uniforms.dt;
 
                 // Floor collision (approximate, since camera moves, we simulate rain relative to camera)
                 // Let's say floor is at y = -2.0 relative to camera "screen" rain

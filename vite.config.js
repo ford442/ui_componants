@@ -26,6 +26,8 @@ export default defineConfig({
         quantum_data_stream: resolve(__dirname, 'src/pages/quantum-data-stream.html'),
         cyber_crystal: resolve(__dirname, 'src/pages/cyber-crystal.html'),
         bioluminescent_abyss: resolve(__dirname, 'src/pages/bioluminescent-abyss.html'),
+        plasma_confinement: resolve(__dirname, 'src/pages/plasma-confinement.html'),
+        cosmic_string: resolve(__dirname, 'src/pages/cosmic-string.html'),
       },
     },
   },
