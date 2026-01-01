@@ -28,6 +28,7 @@ export default defineConfig({
         bioluminescent_abyss: resolve(__dirname, 'src/pages/bioluminescent-abyss.html'),
         plasma_confinement: resolve(__dirname, 'src/pages/plasma-confinement.html'),
         cosmic_string: resolve(__dirname, 'src/pages/cosmic-string.html'),
+        hybrid_magnetic_field: resolve(__dirname, 'src/pages/hybrid-magnetic-field.html'),
       },
     },
   },

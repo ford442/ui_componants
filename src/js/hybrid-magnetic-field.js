@@ -1,11 +1,9 @@
 /**
- * Cosmic String Instability
- * Demonstrates WebGL2 and WebGPU working in tandem.
- * - WebGL2: Renders a vibrating, glowing energy filament (the string) that distorts space.
- * - WebGPU: Simulates thousands of particles caught in the string's gravitational field.
+ * Hybrid Magnetic Field Experiment
+ * Combines WebGL2 for field visualization and WebGPU for particle simulation.
  */
 
-class CosmicStringExperiment {
+class HybridMagneticField {
     constructor(container, options = {}) {
         this.container = container;
         this.options = options;
@@ -14,13 +12,14 @@ class CosmicStringExperiment {
         this.isActive = false;
         this.startTime = Date.now();
         this.animationId = null;
+        this.mouse = { x: 0, y: 0 };
+        this.canvasSize = { width: 0, height: 0 };
 
         // WebGL2 State
         this.glCanvas = null;
         this.gl = null;
         this.glProgram = null;
         this.glVao = null;
-        this.numStringSegments = 200;
 
         // WebGPU State
         this.gpuCanvas = null;
@@ -31,10 +30,11 @@ class CosmicStringExperiment {
         this.computeBindGroup = null;
         this.simParamBuffer = null;
         this.particleBuffer = null;
-        this.numParticles = options.numParticles || 30000;
+        this.numParticles = options.numParticles || 50000;
 
         // Bind resize handler for cleanup
         this.handleResize = this.resize.bind(this);
+        this.handleMouseMove = this.onMouseMove.bind(this);
 
         this.init();
     }
@@ -42,38 +42,51 @@ class CosmicStringExperiment {
     async init() {
         this.container.style.position = 'relative';
         this.container.style.overflow = 'hidden';
-        this.container.style.background = '#000';
+        this.container.style.background = '#0a0a0f';
 
-        console.log("CosmicStringExperiment: Initializing...");
+        console.log("HybridMagneticField: Initializing...");
 
-        // 1. Initialize WebGL2 Layer (Background String)
+        // 1. Initialize WebGL2 Layer (Background)
         this.initWebGL2();
 
-        // 2. Initialize WebGPU Layer (Foreground Particles)
+        // 2. Initialize WebGPU Layer (Foreground)
         let gpuSuccess = false;
         if (typeof navigator !== 'undefined' && navigator.gpu) {
             try {
                 gpuSuccess = await this.initWebGPU();
             } catch (e) {
-                console.warn("CosmicStringExperiment: WebGPU initialization error:", e);
+                console.warn("HybridMagneticField: WebGPU initialization error:", e);
             }
         }
 
         if (!gpuSuccess) {
-            console.log("CosmicStringExperiment: WebGPU not enabled/supported. Running in WebGL2-only mode.");
+            console.log("HybridMagneticField: WebGPU not enabled/supported. Running in WebGL2-only mode.");
             this.addWebGPUNotSupportedMessage();
         } else {
-            console.log("CosmicStringExperiment: WebGPU initialized successfully.");
+            console.log("HybridMagneticField: WebGPU initialized successfully.");
         }
+
+        // Ensure resizing happens before animation starts
+        this.resize();
 
         this.isActive = true;
         this.animate();
 
         window.addEventListener('resize', this.handleResize);
+        window.addEventListener('mousemove', this.handleMouseMove);
+    }
+
+    onMouseMove(e) {
+        // Normalize mouse coordinates to [-1, 1] (UV space centered)
+        const rect = this.container.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width * 2 - 1;
+        const y = -((e.clientY - rect.top) / rect.height * 2 - 1); // Flip Y to match WebGL/WebGPU coords
+        this.mouse.x = x;
+        this.mouse.y = y;
     }
 
     // ========================================================================
-    // WebGL2 IMPLEMENTATION (Vibrating String)
+    // WebGL2 IMPLEMENTATION (Field Viz)
     // ========================================================================
 
     initWebGL2() {
@@ -88,111 +101,122 @@ class CosmicStringExperiment {
         `;
         this.container.appendChild(this.glCanvas);
 
-        this.gl = this.glCanvas.getContext('webgl2', { alpha: false });
+        this.gl = this.glCanvas.getContext('webgl2');
         if (!this.gl) {
-            console.warn("CosmicStringExperiment: WebGL2 not supported.");
+            console.warn("HybridMagneticField: WebGL2 not supported.");
             return;
         }
 
-        // Generate string geometry (vertical strip)
-        const positions = [];
-        const width = 0.05; // Base thickness
-        for (let i = 0; i <= this.numStringSegments; i++) {
-            const t = i / this.numStringSegments;
-            const y = (t * 2.0) - 1.0; // -1 to 1
-
-            // Left vertex
-            positions.push(-width);
-            positions.push(y);
-
-            // Right vertex
-            positions.push(width);
-            positions.push(y);
-        }
-
+        // Setup simple quad
         const positionBuffer = this.gl.createBuffer();
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(positions), this.gl.STATIC_DRAW);
+        const positions = new Float32Array([
+            -1, -1,
+             1, -1,
+            -1,  1,
+             1,  1,
+        ]);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, positions, this.gl.STATIC_DRAW);
 
         // Vertex Shader
         const vsSource = `#version 300 es
             in vec2 a_position;
-            uniform float u_time;
-            uniform float u_aspect;
-
-            out float v_intensity;
             out vec2 v_uv;
-
             void main() {
-                vec2 pos = a_position;
-
-                // Vertical coordinate (-1 to 1)
-                float y = pos.y;
-
-                // Vibration physics
-                float freq1 = 5.0;
-                float freq2 = 12.0;
-                float freq3 = 25.0;
-
-                // Standing wave pattern
-                float displacement = sin(y * freq1 + u_time * 2.0) * 0.1
-                                   + sin(y * freq2 - u_time * 5.0) * 0.05
-                                   + sin(y * freq3 + u_time * 10.0) * 0.02;
-
-                // Modulate thickness based on energy flow
-                float energy = sin(y * 10.0 - u_time * 8.0) * 0.5 + 0.5;
-                float thickness = 0.02 + energy * 0.08;
-
-                // Apply displacement to X
-                float xOffset = displacement;
-
-                // The vertex x is either -width or +width. We scale it by thickness.
-                // We use sign(pos.x) to know which side we are on.
-                float side = sign(pos.x);
-                pos.x = xOffset + side * thickness;
-
-                // Correct aspect ratio for width (make it look consistent on different screens)
-                pos.x /= u_aspect;
-
-                gl_Position = vec4(pos, 0.0, 1.0);
-
-                v_intensity = energy;
-                v_uv = vec2(side * 0.5 + 0.5, y * 0.5 + 0.5);
+                v_uv = a_position;
+                gl_Position = vec4(a_position, 0.0, 1.0);
             }
         `;
 
-        // Fragment Shader
+        // Fragment Shader - Field Visualization
         const fsSource = `#version 300 es
             precision highp float;
 
-            in float v_intensity;
             in vec2 v_uv;
             uniform float u_time;
+            uniform vec2 u_mouse;
+            uniform vec2 u_resolution;
 
             out vec4 outColor;
 
+            #define PI 3.14159265359
+
+            // Simplex noise function (simplified)
+            vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+            float snoise(vec2 v) {
+                const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                        -0.577350269189626, 0.024390243902439);
+                vec2 i  = floor(v + dot(v, C.yy) );
+                vec2 x0 = v -   i + dot(i, C.xx);
+                vec2 i1;
+                i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+                vec4 x12 = x0.xyxy + C.xxzz;
+                x12.xy -= i1;
+                i = mod(i, 289.0);
+                vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+                + i.x + vec3(0.0, i1.x, 1.0 ));
+                vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+                m = m*m ;
+                m = m*m ;
+                vec3 x = 2.0 * fract(p * C.www) - 1.0;
+                vec3 h = abs(x) - 0.5;
+                vec3 ox = floor(x + 0.5);
+                vec3 a0 = x - ox;
+                m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+                vec3 g;
+                g.x  = a0.x  * x0.x  + h.x  * x0.y;
+                g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+                return 130.0 * dot(m, g);
+            }
+
+            vec2 getField(vec2 p) {
+                // Mouse influence
+                vec2 mDir = p - u_mouse;
+                float dist = length(mDir);
+                vec2 force = normalize(mDir) / (dist + 0.1) * 0.5;
+
+                // Rotational field around center
+                vec2 center = vec2(0.0);
+                vec2 cDir = p - center;
+                float cDist = length(cDir);
+                vec2 rotation = vec2(-cDir.y, cDir.x) * (1.0 / (cDist + 0.5));
+
+                // Noise field
+                float n = snoise(p * 2.0 + u_time * 0.1);
+                vec2 noiseField = vec2(cos(n * PI), sin(n * PI));
+
+                return rotation + force * -1.0 + noiseField * 0.3;
+            }
+
             void main() {
-                // Glow falloff from center of the string
-                float dist = abs(v_uv.x - 0.5) * 2.0; // 0 at center, 1 at edges
-                float glow = 1.0 - smoothstep(0.0, 1.0, dist);
+                vec2 uv = v_uv;
+                // Correct aspect ratio
+                if (u_resolution.y > 0.0) {
+                    uv.x *= u_resolution.x / u_resolution.y;
+                }
 
-                // Core color (hot white/blue)
-                vec3 coreColor = vec3(0.8, 0.9, 1.0);
+                vec2 fieldVec = getField(uv);
+                float fieldLen = length(fieldVec);
+                float fieldAngle = atan(fieldVec.y, fieldVec.x);
 
-                // Outer glow (purple/magenta)
-                vec3 glowColor = vec3(0.8, 0.2, 1.0);
+                // Visualize field lines
+                float lines = sin(fieldAngle * 10.0 + u_time * 2.0 + fieldLen * 5.0);
+                lines = smoothstep(0.8, 1.0, lines);
 
-                // Pulse intensity
-                float pulse = 0.8 + 0.4 * sin(u_time * 10.0 + v_uv.y * 20.0);
+                // Colorize
+                vec3 baseColor = vec3(0.05, 0.05, 0.1);
+                vec3 fieldColor = vec3(0.2, 0.4, 0.8);
+                vec3 activeColor = vec3(0.0, 0.8, 0.5); // WebGPU particle color match
 
-                vec3 finalColor = mix(glowColor, coreColor, glow * glow);
-                finalColor *= pulse * glow; // Fade out at edges
+                vec3 color = baseColor;
+                color += fieldColor * fieldLen * 0.5;
+                color += activeColor * lines * 0.3;
 
-                // Add vertical streaks
-                float streak = sin(v_uv.y * 100.0 + u_time * 20.0) * 0.1 + 0.9;
-                finalColor *= streak;
+                // Vignette
+                float vig = 1.0 - smoothstep(0.5, 1.5, length(v_uv));
+                color *= vig;
 
-                outColor = vec4(finalColor, 1.0);
+                outColor = vec4(color, 1.0);
             }
         `;
 
@@ -208,7 +232,8 @@ class CosmicStringExperiment {
 
         this.glVao = vao;
 
-        this.resizeGL();
+        // Remove internal resize call
+        // this.resizeGL();
     }
 
     createGLProgram(vsSource, fsSource) {
@@ -237,7 +262,7 @@ class CosmicStringExperiment {
     }
 
     // ========================================================================
-    // WebGPU IMPLEMENTATION (Orbiting Particles)
+    // WebGPU IMPLEMENTATION (Particle Simulation)
     // ========================================================================
 
     async initWebGPU() {
@@ -278,16 +303,43 @@ class CosmicStringExperiment {
             alphaMode: 'premultiplied',
         });
 
-        // COMPUTE SHADER
-        // Physics: Particles are attracted to the string (x=0) line.
-        // F = -k / dist^2 * direction
-        // But we also want them to spiral, so we add tangential velocity.
+        // WGSL Helper functions need to match GLSL logic as close as possible
+        const commonWGSL = `
+            fn permute(x: vec3f) -> vec3f { return ((x * 34.0) + 1.0) * x % 289.0; }
+            fn snoise(v: vec2f) -> f32 {
+                let C = vec4f(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+                var i = floor(v + dot(v, C.yy));
+                let x0 = v - i + dot(i, C.xx);
+                var i1 = vec2f(0.0);
+                if (x0.x > x0.y) { i1 = vec2f(1.0, 0.0); } else { i1 = vec2f(0.0, 1.0); }
+                var x12 = x0.xyxy + C.xxzz;
+                x12.x = x12.x - i1.x;
+                x12.y = x12.y - i1.y;
+                i = i % 289.0;
+                let p = permute(permute(i.y + vec3f(0.0, i1.y, 1.0)) + i.x + vec3f(0.0, i1.x, 1.0));
+                var m = max(0.5 - vec3f(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), vec3f(0.0));
+                m = m * m;
+                m = m * m;
+                let x = 2.0 * fract(p * C.www) - 1.0;
+                let h = abs(x) - 0.5;
+                let ox = floor(x + 0.5);
+                let a0 = x - ox;
+                m = m * (1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h));
+                var g = vec3f(0.0);
+                g.x = a0.x * x0.x + h.x * x0.y;
+                g.y = a0.y * x12.x + h.y * x12.y;
+                g.z = a0.z * x12.z + h.z * x12.w;
+                return 130.0 * dot(m, g);
+            }
+        `;
+
+        // COMPUTE SHADER - Cleanly defined
         const computeShaderCode = `
+            ${commonWGSL}
+
             struct Particle {
                 pos : vec2f,
                 vel : vec2f,
-                life : f32,
-                dummy : f32, // Padding
             }
 
             @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
@@ -295,140 +347,113 @@ class CosmicStringExperiment {
             struct SimParams {
                 dt : f32,
                 time : f32,
-                stringX : f32, // X position of the string (can undulate)
-                unused : f32,
+                mouseX : f32,
+                mouseY : f32,
+                aspect : f32,
+                pad : f32,
+                pad2 : f32,
+                pad3 : f32,
             }
             @group(0) @binding(1) var<uniform> params : SimParams;
 
-            // Simple random function
-            fn rand(co: vec2f) -> f32 {
-                return fract(sin(dot(co, vec2f(12.9898, 78.233))) * 43758.5453);
+            fn getField(p: vec2f) -> vec2f {
+                // Adjust P for aspect ratio in field calculation to match
+                let p_aspect = vec2f(p.x * params.aspect, p.y);
+                let m_aspect = vec2f(params.mouseX * params.aspect, params.mouseY);
+
+                // Mouse influence
+                let mDir = p_aspect - m_aspect;
+                let dist = length(mDir);
+                let force = normalize(mDir) / (dist + 0.1) * 0.5;
+
+                // Rotational field
+                let center = vec2f(0.0);
+                let cDir = p_aspect - center;
+                let cDist = length(cDir);
+                let rotation = vec2f(-cDir.y, cDir.x) * (1.0 / (cDist + 0.5));
+
+                // Noise
+                let n = snoise(p_aspect * 2.0 + params.time * 0.1);
+                let noiseField = vec2f(cos(n * 3.14159), sin(n * 3.14159));
+
+                return rotation + force * -1.0 + noiseField * 0.3;
             }
 
             @compute @workgroup_size(64)
             fn main(@builtin(global_invocation_id) GlobalInvocationID : vec3u) {
                 let index = GlobalInvocationID.x;
-                if (index >= ${this.numParticles}) {
+                if (index >= arrayLength(&particles)) {
                     return;
                 }
 
                 var p = particles[index];
 
-                // Calculate string position at this particle's Y height
-                // We approximate the string undulation here to match WebGL
-                let y = p.pos.y;
-                let t = params.time;
-                let stringOffset = sin(y * 5.0 + t * 2.0) * 0.1
-                                 + sin(y * 12.0 - t * 5.0) * 0.05;
+                let fieldForce = getField(p.pos);
 
-                let dx = p.pos.x - stringOffset;
-                let dy = 0.0; // Attracted to the line, so Y distance doesn't matter for gravity
-
-                let distSq = dx * dx + 0.001;
-                let dist = sqrt(distSq);
-
-                // Gravity towards string
-                var force = -0.05 / distSq;
-
-                // Limit force
-                if (force < -2.0) { force = -2.0; }
-
-                let dirX = dx / dist;
-
-                // Apply Gravity
-                p.vel.x += dirX * force * params.dt;
-
-                // Tangential force (Spiral) - stronger when close
-                // We want them to zip up/down the string too
-                let spiralSpeed = 5.0;
-                let spiralDir = sign(p.pos.y) * -1.0; // Opposite directions
-
-                // Add some noise to Y velocity
-                let noise = rand(vec2f(p.pos.x * 10.0, params.time));
-
-                // Orbit/Vortex velocity
-                // If on right, push up. If on left, push down.
-                p.vel.y += sign(dx) * 2.0 * params.dt;
-
-                // Conservation of angular momentum approximation: faster when closer
-                let orbitSpeed = 0.1 / (dist + 0.1);
-                // p.vel.y += orbitSpeed * params.dt;
+                // Accelerate based on field
+                p.vel = p.vel + fieldForce * params.dt * 2.0;
 
                 // Damping
-                p.vel = p.vel * 0.98;
+                p.vel = p.vel * 0.96;
 
-                // Update Pos
+                // Update pos
                 p.pos = p.pos + p.vel * params.dt;
 
-                // Boundaries - Respawn
-                if (abs(p.pos.x) > 2.0 || abs(p.pos.y) > 1.2 || dist < 0.01) {
-                    // Respawn at edges
-                    p.pos.x = (rand(vec2f(params.time, f32(index))) - 0.5) * 3.0;
-                    p.pos.y = (rand(vec2f(f32(index), params.time)) - 0.5) * 2.0;
-                    p.vel = vec2f(0.0, 0.0);
-                }
+                // Bounds wrap
+                if (p.pos.x < -1.2) { p.pos.x = 1.2; }
+                if (p.pos.x > 1.2) { p.pos.x = -1.2; }
+                if (p.pos.y < -1.2) { p.pos.y = 1.2; }
+                if (p.pos.y > 1.2) { p.pos.y = -1.2; }
 
                 particles[index] = p;
             }
         `;
 
-        // RENDER SHADER
+        // RENDER SHADER - Cleanly defined
         const drawShaderCode = `
             struct VertexOutput {
                 @builtin(position) position : vec4f,
                 @location(0) color : vec4f,
+                @location(1) life : f32,
             }
 
             @vertex
-            fn vs_main(@location(0) particlePos : vec2f, @location(1) particleVel : vec2f) -> VertexOutput {
+            fn vs_main(
+                @location(0) particlePos : vec2f,
+                @location(1) particleVel : vec2f
+            ) -> VertexOutput {
                 var output : VertexOutput;
                 output.position = vec4f(particlePos, 0.0, 1.0);
 
                 let speed = length(particleVel);
-                // Color mapping: Blue/Purple to White/Pink based on speed
-                let r = 0.2 + speed * 2.0;
-                let g = 0.1 + speed * 0.5;
-                let b = 1.0;
+                // Color ramp: Cyan -> White -> Pink based on speed
+                let c1 = vec3f(0.0, 1.0, 0.8); // Cyan
+                let c2 = vec3f(1.0, 1.0, 1.0); // White
+                let c3 = vec3f(1.0, 0.2, 0.5); // Pink
 
-                output.color = vec4f(r, g, b, 1.0);
+                var col = mix(c1, c2, smoothstep(0.0, 0.5, speed));
+                col = mix(col, c3, smoothstep(0.5, 1.5, speed));
+
+                output.color = vec4f(col, 1.0);
+                output.life = 1.0;
                 return output;
             }
 
             @fragment
             fn fs_main(@location(0) color : vec4f) -> @location(0) vec4f {
-                // Simple point rendering
                 return color;
             }
         `;
 
-        // Initialize Particles
-        // Structure: pos(2), vel(2), life(1), padding(1) = 6 floats -> aligned to 8 floats (32 bytes) usually or tight packed?
-        // WGSL struct alignment: vec2f is 8 bytes. f32 is 4 bytes.
-        // struct Particle { pos: vec2f, vel: vec2f, life: f32, dummy: f32 }
-        // Offset: 0 (pos), 8 (vel), 16 (life), 20 (dummy). Total 24 bytes.
-        // Array stride must be multiple of 16 bytes for some bindings, but storage buffer stride just needs to match.
-        // Let's use 8 floats (32 bytes) to be safe and power of 2 aligned.
-
-        // Actually, let's stick to the struct definition.
-        // vec2f (8), vec2f (8), f32 (4), f32 (4) = 24 bytes.
-        // Let's explicitly pad to 32 bytes (8 floats) in JS and use explicit padding in WGSL if needed.
-        // In previous example I used float32x2 (8 bytes) attributes.
-
-        const particleUnitSize = 24; // 6 floats * 4 bytes
+        const particleUnitSize = 16; // 4 floats * 4 bytes
         const particleBufferSize = this.numParticles * particleUnitSize;
-        const initialParticleData = new Float32Array(this.numParticles * 6);
+        const initialParticleData = new Float32Array(this.numParticles * 4);
 
         for (let i = 0; i < this.numParticles; i++) {
-            // Pos
-            initialParticleData[i * 6 + 0] = (Math.random() * 4 - 2);
-            initialParticleData[i * 6 + 1] = (Math.random() * 2 - 1);
-            // Vel
-            initialParticleData[i * 6 + 2] = 0;
-            initialParticleData[i * 6 + 3] = 0;
-            // Life
-            initialParticleData[i * 6 + 4] = Math.random();
-            // Dummy
-            initialParticleData[i * 6 + 5] = 0;
+            initialParticleData[i * 4 + 0] = (Math.random() * 2 - 1); // x
+            initialParticleData[i * 4 + 1] = (Math.random() * 2 - 1); // y
+            initialParticleData[i * 4 + 2] = 0; // vx
+            initialParticleData[i * 4 + 3] = 0; // vy
         }
 
         this.particleBuffer = this.device.createBuffer({
@@ -439,7 +464,7 @@ class CosmicStringExperiment {
 
         // Uniform Buffer
         this.simParamBuffer = this.device.createBuffer({
-            size: 16, // 4 floats (dt, time, stringX, unused)
+            size: 32,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -476,26 +501,24 @@ class CosmicStringExperiment {
                     arrayStride: particleUnitSize,
                     stepMode: 'vertex',
                     attributes: [
-                        { shaderLocation: 0, offset: 0, format: 'float32x2' }, // pos
-                        { shaderLocation: 1, offset: 8, format: 'float32x2' }, // vel
+                        { shaderLocation: 0, offset: 0, format: 'float32x2' },
+                        { shaderLocation: 1, offset: 8, format: 'float32x2' },
                     ],
                 }],
             },
             fragment: {
                 module: drawModule,
                 entryPoint: 'fs_main',
-                targets: [{
-                    format: presentationFormat,
-                    blend: {
-                        color: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
-                        alpha: { srcFactor: 'zero', dstFactor: 'one', operation: 'add' },
-                    }
-                }],
+                targets: [{ format: presentationFormat, blend: {
+                    color: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
+                    alpha: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' }
+                } }], // Additive blending
             },
             primitive: { topology: 'point-list' },
         });
 
-        this.resizeGPU();
+        // Remove internal resize call
+        // this.resizeGPU();
         return true;
     }
 
@@ -508,17 +531,14 @@ class CosmicStringExperiment {
             position: absolute;
             bottom: 20px;
             right: 20px;
-            background: linear-gradient(90deg, rgba(100, 50, 200, 0.8), rgba(50, 20, 100, 0.9));
+            background: rgba(100, 20, 20, 0.9);
             color: white;
             padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 13px;
+            border-radius: 4px;
             font-family: monospace;
-            z-index: 10;
             pointer-events: none;
-            border: 1px solid rgba(150,100,255,0.5);
         `;
-        msg.innerHTML = "⚠️ WebGPU Not Available &mdash; Running String Simulation Only";
+        msg.innerHTML = "WebGPU Not Available (WebGL2 Only)";
         this.container.appendChild(msg);
     }
 
@@ -531,6 +551,11 @@ class CosmicStringExperiment {
         const width = this.container.clientWidth;
         const height = this.container.clientHeight;
 
+        if (width === 0 || height === 0) return;
+
+        this.canvasSize.width = width;
+        this.canvasSize.height = height;
+
         const displayWidth = Math.floor(width * dpr);
         const displayHeight = Math.floor(height * dpr);
 
@@ -540,6 +565,8 @@ class CosmicStringExperiment {
 
     resizeGL(width, height) {
         if (!this.glCanvas) return;
+        if (width <= 0 || height <= 0) return;
+
         if (this.glCanvas.width !== width || this.glCanvas.height !== height) {
             this.glCanvas.width = width;
             this.glCanvas.height = height;
@@ -549,6 +576,8 @@ class CosmicStringExperiment {
 
     resizeGPU(width, height) {
         if (!this.gpuCanvas) return;
+        if (width <= 0 || height <= 0) return;
+
         if (this.gpuCanvas.width !== width || this.gpuCanvas.height !== height) {
             this.gpuCanvas.width = width;
             this.gpuCanvas.height = height;
@@ -566,28 +595,33 @@ class CosmicStringExperiment {
             this.gl.useProgram(this.glProgram);
 
             const timeLoc = this.gl.getUniformLocation(this.glProgram, 'u_time');
-            const aspectLoc = this.gl.getUniformLocation(this.glProgram, 'u_aspect');
-
             this.gl.uniform1f(timeLoc, time);
-            this.gl.uniform1f(aspectLoc, this.glCanvas.width / this.glCanvas.height);
 
-            this.gl.clearColor(0.02, 0.01, 0.05, 1.0); // Deep purple/black
+            const mouseLoc = this.gl.getUniformLocation(this.glProgram, 'u_mouse');
+            this.gl.uniform2f(mouseLoc, this.mouse.x, this.mouse.y);
+
+            const resLoc = this.gl.getUniformLocation(this.glProgram, 'u_resolution');
+            this.gl.uniform2f(resLoc, this.glCanvas.width, this.glCanvas.height);
+
+            this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
             this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
-            // Enable additive blending for glow
-            this.gl.enable(this.gl.BLEND);
-            this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE);
-
             this.gl.bindVertexArray(this.glVao);
-            this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, (this.numStringSegments + 1) * 2);
-
-            this.gl.disable(this.gl.BLEND);
+            this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
         }
 
         // 2. Render WebGPU
-        if (this.device && this.context && this.renderPipeline) {
+        if (this.device && this.context && this.renderPipeline && this.gpuCanvas.width > 0 && this.gpuCanvas.height > 0) {
             // Update simulation params
-            const params = new Float32Array([0.016, time, 0.0, 0.0]);
+            const aspect = this.canvasSize.width / this.canvasSize.height;
+            const params = new Float32Array([
+                0.016, // dt
+                time,  // time
+                this.mouse.x, // mouseX
+                this.mouse.y, // mouseY
+                aspect, // aspect
+                0, 0, 0 // padding
+            ]);
             this.device.queue.writeBuffer(this.simParamBuffer, 0, params);
 
             const commandEncoder = this.device.createCommandEncoder();
@@ -627,6 +661,7 @@ class CosmicStringExperiment {
         if (this.animationId) cancelAnimationFrame(this.animationId);
 
         window.removeEventListener('resize', this.handleResize);
+        window.removeEventListener('mousemove', this.handleMouseMove);
 
         if (this.gl) {
             const ext = this.gl.getExtension('WEBGL_lose_context');
@@ -642,5 +677,5 @@ class CosmicStringExperiment {
 }
 
 if (typeof window !== 'undefined') {
-    window.CosmicStringExperiment = CosmicStringExperiment;
+    window.HybridMagneticField = HybridMagneticField;
 }
