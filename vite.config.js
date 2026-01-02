@@ -29,6 +29,7 @@ export default defineConfig({
         plasma_confinement: resolve(__dirname, 'src/pages/plasma-confinement.html'),
         cosmic_string: resolve(__dirname, 'src/pages/cosmic-string.html'),
         hybrid_magnetic_field: resolve(__dirname, 'src/pages/hybrid-magnetic-field.html'),
+        stellar_forge: resolve(__dirname, 'src/pages/stellar-forge.html'),
       },
     },
   },
