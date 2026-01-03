@@ -4,14 +4,8 @@
 
 [33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
 
-  VITE v5.4.21  ready in 265 ms
+  VITE v5.4.21  ready in 350 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
-5:04:59 AM [vite] page reload js/quantum-data-stream.js
-5:06:47 AM [vite] page reload js/quantum-data-stream.js
-5:06:55 AM [vite] page reload pages/quantum-data-stream.html
-5:06:55 AM [vite] page reload pages/quantum_data_stream.html
-5:06:58 AM [vite] page reload pages/experiments.html
-5:07:03 AM [vite] vite.config.js changed, restarting server...
-5:07:03 AM [vite] server restarted.
+5:06:42 AM [vite] page reload js/neural-data-core.js
