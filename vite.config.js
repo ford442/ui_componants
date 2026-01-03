@@ -30,6 +30,7 @@ export default defineConfig({
         cosmic_string: resolve(__dirname, 'src/pages/cosmic-string.html'),
         hybrid_magnetic_field: resolve(__dirname, 'src/pages/hybrid-magnetic-field.html'),
         stellar_forge: resolve(__dirname, 'src/pages/stellar-forge.html'),
+        neural_data_core: resolve(__dirname, 'src/pages/neural-data-core.html'),
       },
     },
   },
