@@ -2,29 +2,29 @@ from playwright.sync_api import sync_playwright
 
 def verify_neon_city():
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        # Enable WebGPU
+        args = ["--enable-unsafe-webgpu"]
+        browser = p.chromium.launch(headless=True, args=args)
         page = browser.new_page()
+
+        # Log console
+        page.on("console", lambda msg: print(f"Browser Console: {msg.text}"))
+
         try:
-            # Navigate to the Neon City page
             page.goto("http://localhost:5173/pages/neon_city.html")
-
-            # Wait for the container
             page.wait_for_selector("#neon-city-container")
-
-            # Verify that the canvas was created inside the container
-            # The JS code appends a canvas for WebGL2
-            # `this.container.appendChild(this.glCanvas);`
             page.wait_for_selector("#neon-city-container canvas")
+            print("Canvas found - Init Success")
 
-            print("Canvas found inside container - Experiment Initialized Successfully")
+            # Interact
+            print("Interacting...")
+            for i in range(20):
+                page.mouse.move(100 + i*10, 100 + i*5)
+                page.wait_for_timeout(50)
 
-            # Give it some time to render/animate
-            page.wait_for_timeout(2000)
-
-            # Take a screenshot
+            page.wait_for_timeout(1500)
             page.screenshot(path="verification/neon_city_fixed.png")
-            print("Screenshot saved to verification/neon_city_fixed.png")
-
+            print("Screenshot saved")
         except Exception as e:
             print(f"Error: {e}")
             exit(1)
