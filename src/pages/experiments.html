@@ -109,6 +109,27 @@
             </div>
         </section>
 
+        <!-- Gravitational Lensing Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Gravitational Lensing</h2>
+                    <p class="description">General Relativity (WebGL2) + Accretion Disk (WebGPU)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Lensing</span>
+                        <span class="layer-tag webgpu" style="background: rgba(255, 100, 50, 0.2); border-color: #ffaa55; color: #ffccaa;">WebGPU Disk</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="gravitational-lensing-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #000;"></div>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="gravitational-lensing.html" style="color: #aaa; text-decoration: none; font-size: 0.9rem; border-bottom: 1px solid #555;">View Full Page Experiment</a>
+                </div>
+            </div>
+        </section>
+
         <!-- Hybrid Magnetic Field Experiment -->
         <section class="experiment-section">
             <div class="component-card">
@@ -694,6 +715,7 @@
     <script src="../js/glitch-scroll.js"></script>
     <script src="../js/biomechanical-growth.js"></script>
     <script src="../js/hybrid-engine.js"></script>
+    <script type="module" src="../js/gravitational-lensing.js"></script>
     <script type="module" src="../js/hybrid-magnetic-field.js"></script>
     <script src="../js/cyber-biology.js"></script>
     <script src="../js/force-field.js"></script>
@@ -722,6 +744,12 @@
 
         // Initialize experiments when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Gravitational Lensing
+            const lensingContainer = document.getElementById('gravitational-lensing-container');
+            if (lensingContainer && window.GravitationalLensing) {
+                new GravitationalLensing(lensingContainer, { numParticles: 50000 });
+            }
+
             // Initialize Singularity Reactor
             const singularityReactorContainer = document.getElementById('singularity-reactor-container');
             if (singularityReactorContainer) {
