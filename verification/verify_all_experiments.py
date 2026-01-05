@@ -34,6 +34,17 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Gravitational Nebula container NOT found.")
 
+            # Verify Temporal Crystal Page
+            print("Navigating to temporal-crystal.html...")
+            response = page.goto("http://localhost:5173/pages/temporal-crystal.html")
+            print(f"Response status: {response.status}")
+            page.wait_for_load_state("networkidle")
+
+            if page.locator("#experiment-container").count() > 0:
+                 print("SUCCESS: Temporal Crystal container found.")
+            else:
+                 print("FAILURE: Temporal Crystal container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
