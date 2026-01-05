@@ -31,6 +31,7 @@ export default defineConfig({
         hybrid_magnetic_field: resolve(__dirname, 'src/pages/hybrid-magnetic-field.html'),
         stellar_forge: resolve(__dirname, 'src/pages/stellar-forge.html'),
         singularity_reactor: resolve(__dirname, 'src/pages/singularity-reactor.html'),
+        gravitational_lensing: resolve(__dirname, 'src/pages/gravitational-lensing.html'),
       },
     },
   },
