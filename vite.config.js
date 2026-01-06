@@ -33,6 +33,7 @@ export default defineConfig({
         stellar_forge: resolve(__dirname, 'src/pages/stellar-forge.html'),
         singularity_reactor: resolve(__dirname, 'src/pages/singularity-reactor.html'),
         gravitational_lensing: resolve(__dirname, 'src/pages/gravitational-lensing.html'),
+        cherenkov_radiation: resolve(__dirname, 'src/pages/cherenkov-radiation.html'),
       },
     },
   },
