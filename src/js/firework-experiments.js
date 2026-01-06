@@ -159,10 +159,10 @@ export class CityCelebration {
                 if (i >= arrayLength(&particles)) { return; }
 
                 var p = particles[i];
-                let type = p.data.y;
+                let spark_type = p.data.y;
 
                 // Physics
-                if (type == 0.0) { // Rocket
+                if (spark_type == 0.0) { // Rocket
                     p.pos.y += p.pos.w * uniforms.dt; // vy
                     p.pos.w -= 0.2 * uniforms.dt; // gravity drag?
                     p.data.x -= uniforms.dt * 0.5; // life
@@ -218,10 +218,10 @@ export class CityCelebration {
                 output.pos = vec4f(p.pos.x, p.pos.y, 0.0, 1.0);
 
                 let life = p.data.x;
-                let type = p.data.y;
+                let spark_type = p.data.y;
 
                 var col = vec3f(1.0, 0.8, 0.2); // Default
-                if (type == 1.0) {
+                if (spark_type == 1.0) {
                      col = vec3f(p.data.z, p.data.w, 1.0 - p.data.z);
                 }
 
@@ -229,7 +229,7 @@ export class CityCelebration {
 
                 // Point size hack
                 var size = 0.005;
-                if (type == 1.0) { size = 0.003; }
+                if (spark_type == 1.0) { size = 0.003; }
 
                 // Expand point to quad in vertex shader (simplified just returning center point, needs topology point-list)
                 return output;
