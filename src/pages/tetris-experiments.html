@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris Experiments - WebGL2 + WebGPU</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        .experiment-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            padding: 2rem;
+        }
+        .experiment-card {
+            background: rgba(20, 20, 30, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .experiment-card h2 {
+            margin: 0;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+        .canvas-container {
+            width: 100%;
+            height: 400px;
+            background: #000;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        .tags {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .tag {
+            padding: 0.25rem 0.75rem;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .tag.webgl2 { background: rgba(0, 150, 255, 0.2); color: #88ccff; border: 1px solid rgba(0, 150, 255, 0.4); }
+        .tag.webgpu { background: rgba(255, 50, 100, 0.2); color: #ff88aa; border: 1px solid rgba(255, 50, 100, 0.4); }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <a href="experiments.html" class="back-link">← Back to All Experiments</a>
+        <div>
+            <h1>Tetris Block Experiments</h1>
+            <p class="subtitle">Hybrid WebGL2 + WebGPU Rendering</p>
+        </div>
+    </div>
+
+    <div class="experiment-grid">
+        <!-- Experiment 1 -->
+        <div class="experiment-card">
+            <div class="card-header">
+                <h2>Neon Tetris Rain</h2>
+                <div class="tags">
+                    <span class="tag webgl2">WebGL2 Grid</span>
+                    <span class="tag webgpu">WebGPU Blocks</span>
+                </div>
+            </div>
+            <div id="tetris-rain-container" class="canvas-container"></div>
+            <p class="description">Falling tetrominoes simulated on GPU with a retro neon grid background.</p>
+        </div>
+
+        <!-- Experiment 2 -->
+        <div class="experiment-card">
+            <div class="card-header">
+                <h2>Voxel Destruct</h2>
+                <div class="tags">
+                    <span class="tag webgl2">WebGL2 Core</span>
+                    <span class="tag webgpu">WebGPU Particles</span>
+                </div>
+            </div>
+            <div id="voxel-destruct-container" class="canvas-container"></div>
+            <p class="description">Massive block structure disintegrating into thousands of voxel particles.</p>
+        </div>
+    </div>
+
+    <!-- Global scripts -->
+    <script type="module" src="../js/main.js"></script>
+
+    <!-- Experiment Logic -->
+    <script type="module" src="../js/tetris-experiments.js"></script>
+
+    <script type="module">
+        import { NeonTetrisRain, VoxelDestruct } from '../js/tetris-experiments.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Neon Tetris Rain
+            const rainContainer = document.getElementById('tetris-rain-container');
+            if (rainContainer) {
+                new NeonTetrisRain(rainContainer, { blockCount: 1000 });
+            }
+
+            // Initialize Voxel Destruct
+            const destructContainer = document.getElementById('voxel-destruct-container');
+            if (destructContainer) {
+                new VoxelDestruct(destructContainer, { particleCount: 20000 });
+            }
+        });
+    </script>
+</body>
+</html>
