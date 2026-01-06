@@ -130,7 +130,7 @@ export class NeonTetrisRain {
                 pos: vec2f,
                 vel: vec2f,
                 color: vec4f,
-                type: f32, // 0-3 for different shapes if we get fancy, just color for now
+                shape_type: f32, // 0-3 for different shapes if we get fancy, just color for now
             }
             struct Uniforms {
                 time: f32,
@@ -167,7 +167,7 @@ export class NeonTetrisRain {
                 pos: vec2f,
                 vel: vec2f,
                 color: vec4f,
-                type: f32,
+                shape_type: f32,
             }
             @group(0) @binding(0) var<storage, read> particles: array<Particle>;
 
