@@ -15,9 +15,11 @@ const mockGPU = {
             createBindGroup: vi.fn(() => ({})),
             createBindGroupLayout: vi.fn(() => ({})),
             createPipelineLayout: vi.fn(() => ({})),
-            createBuffer: vi.fn(() => ({
+            // createBuffer now respects the requested descriptor.size to avoid overflows
+            createBuffer: vi.fn((descriptor) => ({
                 destroy: vi.fn(),
-                getMappedRange: vi.fn(() => new Float32Array(100).buffer),
+                // Allocate an ArrayBuffer of the exact size requested by the caller (in bytes)
+                getMappedRange: vi.fn(() => new ArrayBuffer(descriptor && descriptor.size ? descriptor.size : 0)),
                 unmap: vi.fn(),
                 mapAsync: vi.fn(() => Promise.resolve())
             })),
