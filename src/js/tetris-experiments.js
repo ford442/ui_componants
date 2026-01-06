@@ -830,38 +830,35 @@ export class VoxelDestruct {
     }
 }
 
-/**
- * Experiment 3: SampledGlassTetris
- * Demonstrates sampling a texture based on Screen Coordinates (gl_FragCoord)
- * to create a window/glass effect for falling blocks.
- */
 export class SampledGlassTetris {
     constructor(container, options = {}) {
         this.container = container;
-        this.options = options;
         this.imagePath = options.imagePath || 'bezel.png'; // Fallback
 
         this.canvas = null;
         this.gl = null;
         this.program = null;
         this.texture = null;
+        this.cubes = [];
         this.startTime = Date.now();
 
-        this.cubes = [];
+        this.resizeObserver = new ResizeObserver(() => this.resize());
         this.init();
     }
 
-    init() {
+    async init() {
         this.container.style.position = 'relative';
+        this.container.style.background = '#050505'; // Dark background
+
+        // 1. Setup Canvas
         this.canvas = document.createElement('canvas');
-        this.canvas.width = this.container.clientWidth;
-        this.canvas.height = this.container.clientHeight;
+        this.canvas.style.cssText = 'position: absolute; inset: 0; width: 100%; height: 100%;';
         this.container.appendChild(this.canvas);
 
         this.gl = this.canvas.getContext('webgl2');
-        if(!this.gl) return;
+        if (!this.gl) return;
 
-        // Initialize Shader
+        // 2. The "Holographic" Shader
         const vs = `#version 300 es
         in vec3 position;
         in vec3 normal;
@@ -871,18 +868,22 @@ export class SampledGlassTetris {
         uniform mat4 model;
 
         out vec3 vNormal;
-        out vec2 vUv; // Local UV for the gold frame
+        out vec3 vWorldPos;
+        out vec2 vUv;
 
         void main() {
+            vUv = position.xy * 0.5 + 0.5; // Map -1..1 to 0..1
             vNormal = (model * vec4(normal, 0.0)).xyz;
-            vUv = position.xy * 0.5 + 0.5; // Map -1..1 to 0..1 for face patterns
-            gl_Position = projection * view * model * vec4(position, 1.0);
+            vec4 worldPos = model * vec4(position, 1.0);
+            vWorldPos = worldPos.xyz;
+            gl_Position = projection * view * worldPos;
         }`;
 
         const fs = `#version 300 es
         precision highp float;
 
         in vec3 vNormal;
+        in vec3 vWorldPos;
         in vec2 vUv;
 
         uniform vec2 resolution;
@@ -892,174 +893,191 @@ export class SampledGlassTetris {
         out vec4 fragColor;
 
         void main() {
-            // 1. Calculate Screen Coordinates for the "Window" effect
+            // --- 1. Screen Space Sampling (The "Window" Effect) ---
             vec2 screenUV = gl_FragCoord.xy / resolution;
 
-            // 2. Sample the background texture based on SCREEN pos, not object pos
-            // We distort it slightly based on normal to look like refraction
-            vec2 distortedUV = screenUV + (vNormal.xy * 0.05);
-            vec4 glassColor = texture(uTexture, distortedUV);
+            // Subtle distortion based on normal (refraction)
+            vec2 distort = normalize(vNormal).xy * 0.02;
+            vec4 texColor = texture(uTexture, screenUV + distort);
 
-            // 3. Create a Procedural Gold Frame
-            // We use the local vUv to draw a border on the cube face
-            float borderX = step(0.1, vUv.x) * step(vUv.x, 0.9);
-            float borderY = step(0.1, vUv.y) * step(vUv.y, 0.9);
-            float isCenter = borderX * borderY;
+            // --- 2. Procedural Gold/White Metal Frame ---
+            // Create a border mask using local UVs
+            float borderWidth = 0.05;
+            float maskX = step(borderWidth, vUv.x) * step(vUv.x, 1.0 - borderWidth);
+            float maskY = step(borderWidth, vUv.y) * step(vUv.y, 1.0 - borderWidth);
+            float isCenter = maskX * maskY;
 
-            // 4. Lighting
+            // Lighting for the metal
             vec3 lightDir = normalize(vec3(0.5, 0.8, 1.0));
-            float diff = max(dot(normalize(vNormal), lightDir), 0.0);
-            vec3 gold = vec3(1.0, 0.8, 0.2) * (diff + 0.5);
-            vec3 shine = vec3(1.0) * pow(max(dot(reflect(-lightDir, vNormal), vec3(0,0,1)), 0.0), 16.0);
+            vec3 norm = normalize(vNormal);
 
-            // 5. Mix Frame and Glass
-            vec3 finalColor = mix(gold + shine, glassColor.rgb * 1.5, isCenter);
+            // Diffuse
+            float diff = max(dot(norm, lightDir), 0.0);
+
+            // Specular (Shiny!)
+            vec3 viewDir = normalize(vec3(0.0, 0.0, 5.0) - vWorldPos);
+            vec3 reflectDir = reflect(-lightDir, norm);
+            float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+
+            // Metal Colors
+            vec3 goldColor = vec3(1.0, 0.85, 0.4);
+            vec3 whiteMetal = vec3(0.9, 0.95, 1.0);
+
+            // Combine Frame: Mix gold base with white specular highlights
+            vec3 frameColor = goldColor * (diff * 0.5 + 0.5) + (whiteMetal * spec);
+
+            // --- 3. Final Mix ---
+            // If center, show image (brightened). If edge, show metal frame.
+            vec3 finalColor = mix(frameColor, texColor.rgb * 1.5, isCenter);
 
             fragColor = vec4(finalColor, 1.0);
         }`;
 
         this.program = this.createProgram(vs, fs);
 
-        // Create Cube Geometry
-        this.createGeometry();
+        // 3. Geometry (Cube)
+        this.createCubeGeometry();
 
-        // Load Texture
-        this.loadTexture(this.imagePath);
+        // 4. Load Image
+        await this.loadTexture(this.imagePath);
 
-        // Create some falling cubes data
-        for(let i=0; i<20; i++) {
-            this.cubes.push({
-                x: (Math.random() - 0.5) * 10,
-                y: Math.random() * 20 - 10,
-                z: (Math.random() - 0.5) * 5,
-                rotSpeed: Math.random() * 2 + 1,
-                rotAxis: [Math.random(), Math.random(), Math.random()]
-            });
-        }
+        // 5. Create Objects (Falling Cubes)
+        this.resetCubes();
 
+        // 6. Start Loop
+        this.resizeObserver.observe(this.container);
+        this.resize();
         requestAnimationFrame(() => this.animate());
     }
 
-    createProgram(vsSource, fsSource) {
+    resetCubes() {
+        this.cubes = [];
+        for(let i=0; i<15; i++) {
+            this.cubes.push({
+                x: (Math.random() - 0.5) * 8,
+                y: Math.random() * 20 - 5,
+                z: (Math.random() - 0.5) * 5,
+                rot: { x: Math.random(), y: Math.random(), z: Math.random() },
+                rotSpeed: { x: Math.random()*2, y: Math.random()*2 }
+            });
+        }
+    }
+
+    createCubeGeometry() {
+        // Standard Cube with Normals
+        // 24 vertices (4 per face * 6 faces) to allow hard edges for normals
+        const vertices = [];
+        const normals = [];
+        const indices = [];
+
+        // Helper to add face
+        let idxCounter = 0;
+        const addFace = (n, u, v, w, depth) => {
+            // u, v are axes for the face plane, w is depth axis
+            // corners: -1,-1; 1,-1; 1,1; -1,1
+            const corners = [ [-1,-1], [1,-1], [1,1], [-1,1] ];
+            corners.forEach(c => {
+                let pos = [0,0,0];
+                pos[u] = c[0]; pos[v] = c[1]; pos[w] = depth;
+                vertices.push(...pos);
+                normals.push((w===0?depth:0), (w===1?depth:0), (w===2?depth:0));
+            });
+            indices.push(idxCounter, idxCounter+1, idxCounter+2, idxCounter, idxCounter+2, idxCounter+3);
+            idxCounter += 4;
+        };
+
+        addFace(0, 0, 1, 2, 1);  // Front
+        addFace(1, 0, 1, 2, -1); // Back
+        addFace(2, 2, 0, 1, 1);  // Top
+        addFace(3, 2, 0, 1, -1); // Bottom
+        addFace(4, 2, 1, 0, 1);  // Right
+        addFace(5, 2, 1, 0, -1); // Left
+
+        this.vao = this.gl.createVertexArray();
+        this.gl.bindVertexArray(this.vao);
+
+        const vBuf = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vBuf);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(vertices), this.gl.STATIC_DRAW);
+        const pLoc = this.gl.getAttribLocation(this.program, 'position');
+        this.gl.enableVertexAttribArray(pLoc);
+        this.gl.vertexAttribPointer(pLoc, 3, this.gl.FLOAT, false, 0, 0);
+
+        const nBuf = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, nBuf);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(normals), this.gl.STATIC_DRAW);
+        const nLoc = this.gl.getAttribLocation(this.program, 'normal');
+        this.gl.enableVertexAttribArray(nLoc);
+        this.gl.vertexAttribPointer(nLoc, 3, this.gl.FLOAT, false, 0, 0);
+
+        const iBuf = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, iBuf);
+        this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), this.gl.STATIC_DRAW);
+
+        this.indexCount = indices.length;
+    }
+
+    loadTexture(url) {
+        return new Promise(resolve => {
+            this.texture = this.gl.createTexture();
+            this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 1, 1, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, new Uint8Array([0,0,255,255]));
+
+            const img = new Image();
+            img.onload = () => {
+                this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, img);
+                this.gl.generateMipmap(this.gl.TEXTURE_2D);
+                // Important for screen space wrap
+                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+                resolve();
+            };
+            img.src = url;
+        });
+    }
+
+    resize() {
+        if(!this.canvas) return;
+        this.canvas.width = this.container.clientWidth;
+        this.canvas.height = this.container.clientHeight;
+        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    createProgram(vsSrc, fsSrc) {
         const vs = this.gl.createShader(this.gl.VERTEX_SHADER);
-        this.gl.shaderSource(vs, vsSource); this.gl.compileShader(vs);
-        if (!this.gl.getShaderParameter(vs, this.gl.COMPILE_STATUS)) console.error(this.gl.getShaderInfoLog(vs));
-
+        this.gl.shaderSource(vs, vsSrc); this.gl.compileShader(vs);
         const fs = this.gl.createShader(this.gl.FRAGMENT_SHADER);
-        this.gl.shaderSource(fs, fsSource); this.gl.compileShader(fs);
-        if (!this.gl.getShaderParameter(fs, this.gl.COMPILE_STATUS)) console.error(this.gl.getShaderInfoLog(fs));
-
+        this.gl.shaderSource(fs, fsSrc); this.gl.compileShader(fs);
         const p = this.gl.createProgram();
         this.gl.attachShader(p, vs); this.gl.attachShader(p, fs);
         this.gl.linkProgram(p);
         return p;
     }
 
-    createGeometry() {
-        // Standard Cube
-        const vertices = new Float32Array([
-            // Front face
-            -1.0, -1.0,  1.0,   1.0, -1.0,  1.0,   1.0,  1.0,  1.0,  -1.0,  1.0,  1.0,
-            // Back face
-            -1.0, -1.0, -1.0,  -1.0,  1.0, -1.0,   1.0,  1.0, -1.0,   1.0, -1.0, -1.0,
-            // Top face
-            -1.0,  1.0, -1.0,  -1.0,  1.0,  1.0,   1.0,  1.0,  1.0,   1.0,  1.0, -1.0,
-            // Bottom face
-            -1.0, -1.0, -1.0,   1.0, -1.0, -1.0,   1.0, -1.0,  1.0,  -1.0, -1.0,  1.0,
-            // Right face
-             1.0, -1.0, -1.0,   1.0,  1.0, -1.0,   1.0,  1.0,  1.0,   1.0, -1.0,  1.0,
-            // Left face
-            -1.0, -1.0, -1.0,  -1.0, -1.0,  1.0,  -1.0,  1.0,  1.0,  -1.0,  1.0, -1.0,
-        ]);
-
-        const normals = new Float32Array([
-            // Normals (simplified)
-            0,0,1, 0,0,1, 0,0,1, 0,0,1, // Front
-            0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1, // Back
-            0,1,0, 0,1,0, 0,1,0, 0,1,0, // Top
-            0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0, // Bottom
-            1,0,0, 1,0,0, 1,0,0, 1,0,0, // Right
-            -1,0,0, -1,0,0, -1,0,0, -1,0,0 // Left
-        ]);
-
-        const indices = new Uint16Array([
-            0,  1,  2,      0,  2,  3,    // front
-            4,  5,  6,      4,  6,  7,    // back
-            8,  9,  10,     8,  10, 11,   // top
-            12, 13, 14,     12, 14, 15,   // bottom
-            16, 17, 18,     16, 18, 19,   // right
-            20, 21, 22,     20, 22, 23    // left
-        ]);
-
-        this.vao = this.gl.createVertexArray();
-        this.gl.bindVertexArray(this.vao);
-
-        const vBuffer = this.gl.createBuffer();
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vBuffer);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
-        const posLoc = this.gl.getAttribLocation(this.program, 'position');
-        this.gl.enableVertexAttribArray(posLoc);
-        this.gl.vertexAttribPointer(posLoc, 3, this.gl.FLOAT, false, 0, 0);
-
-        const nBuffer = this.gl.createBuffer();
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, nBuffer);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, normals, this.gl.STATIC_DRAW);
-        const normLoc = this.gl.getAttribLocation(this.program, 'normal');
-        this.gl.enableVertexAttribArray(normLoc);
-        this.gl.vertexAttribPointer(normLoc, 3, this.gl.FLOAT, false, 0, 0);
-
-        const iBuffer = this.gl.createBuffer();
-        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, iBuffer);
-        this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, indices, this.gl.STATIC_DRAW);
-
-        this.indexCount = indices.length;
-    }
-
-    loadTexture(url) {
-        this.texture = this.gl.createTexture();
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-        // Placeholder pixel while loading
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 1, 1, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, new Uint8Array([0, 255, 255, 255]));
-
-        const img = new Image();
-        img.onload = () => {
-            this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, img);
-            this.gl.generateMipmap(this.gl.TEXTURE_2D);
-            // Texture parameters for repeat
-            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.REPEAT);
-            this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.REPEAT);
-        };
-        img.src = url;
-    }
-
     animate() {
         const time = (Date.now() - this.startTime) / 1000;
 
-        this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-        this.gl.clearColor(0.1, 0.1, 0.1, 1.0);
+        this.gl.clearColor(0.05, 0.05, 0.05, 1.0);
         this.gl.enable(this.gl.DEPTH_TEST);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
         this.gl.useProgram(this.program);
-
-        // Globals
         this.gl.uniform2f(this.gl.getUniformLocation(this.program, 'resolution'), this.canvas.width, this.canvas.height);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'time'), time);
 
-        // Matrix Setup
-        const fov = 45 * Math.PI / 180;
+        // Perspective Matrix
         const aspect = this.canvas.width / this.canvas.height;
-        const zNear = 0.1;
-        const zFar = 100.0;
+        const fov = 60 * Math.PI / 180;
         const f = 1.0 / Math.tan(fov / 2);
-        const projection = [
-            f / aspect, 0, 0, 0,
+        const proj = [
+            f/aspect, 0, 0, 0,
             0, f, 0, 0,
-            0, 0, (zFar + zNear) / (zNear - zFar), -1,
-            0, 0, (2 * zFar * zNear) / (zNear - zFar), 0
+            0, 0, -1, -1,
+            0, 0, -0.2, 0
         ];
 
+        // View Matrix (Camera back 15 units)
         const view = [
             1, 0, 0, 0,
             0, 1, 0, 0,
@@ -1067,39 +1085,45 @@ export class SampledGlassTetris {
             0, 0, -15, 1
         ];
 
-        this.gl.uniformMatrix4fv(this.gl.getUniformLocation(this.program, 'projection'), false, new Float32Array(projection));
+        this.gl.uniformMatrix4fv(this.gl.getUniformLocation(this.program, 'projection'), false, new Float32Array(proj));
         this.gl.uniformMatrix4fv(this.gl.getUniformLocation(this.program, 'view'), false, new Float32Array(view));
 
         this.gl.bindVertexArray(this.vao);
 
-        // Draw Cubes
+        // Update and Draw Cubes
         this.cubes.forEach((cube, i) => {
-            // Update physics (fall and reset)
+            // Physics
             cube.y -= 0.05;
-            cube.rotSpeed = 1.0;
-            if(cube.y < -10) cube.y = 10;
+            if (cube.y < -8) {
+                cube.y = 8;
+                cube.x = (Math.random() - 0.5) * 10;
+            }
 
-            // Build Model Matrix manually
-            // 1. Rotate
-            const c = Math.cos(time * cube.rotSpeed + i);
-            const s = Math.sin(time * cube.rotSpeed + i);
+            // Rotation
+            cube.rot.x += cube.rotSpeed.x * 0.01;
+            cube.rot.y += cube.rotSpeed.y * 0.01;
 
-            // Simple rotation matrix (around Y and Z mixed for tumble)
-            // This is a simplified rotation for demo
-            let model = [
-                c, 0, s, 0,
-                0, 1, 0, 0,
-                -s, 0, c, 0,
-                0, 0, 0, 1
+            // --- Simple Manual Matrix Math for Model ---
+            // 1. Rotation Matrices
+            const cx = Math.cos(cube.rot.x), sx = Math.sin(cube.rot.x);
+            const cy = Math.cos(cube.rot.y), sy = Math.sin(cube.rot.y);
+
+            // Combined Rotation (Y then X approx)
+            // r00 r01 r02
+            // r10 r11 r12
+            // r20 r21 r22
+            const r00 = cy, r01 = 0, r02 = sy;
+            const r10 = sx*sy, r11 = cx, r12 = -sx*cy;
+            const r20 = -cx*sy, r21 = sx, r22 = cx*cy;
+
+            const model = [
+                r00, r10, r20, 0,
+                r01, r11, r21, 0,
+                r02, r12, r22, 0,
+                cube.x, cube.y, cube.z, 1 // Translation
             ];
 
-            // 2. Translate
-            model[12] = cube.x;
-            model[13] = cube.y;
-            model[14] = cube.z;
-
             this.gl.uniformMatrix4fv(this.gl.getUniformLocation(this.program, 'model'), false, new Float32Array(model));
-
             this.gl.drawElements(this.gl.TRIANGLES, this.indexCount, this.gl.UNSIGNED_SHORT, 0);
         });
 
