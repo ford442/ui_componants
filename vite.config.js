@@ -34,6 +34,8 @@ export default defineConfig({
         singularity_reactor: resolve(__dirname, 'src/pages/singularity-reactor.html'),
         gravitational_lensing: resolve(__dirname, 'src/pages/gravitational-lensing.html'),
         cherenkov_radiation: resolve(__dirname, 'src/pages/cherenkov-radiation.html'),
+        tetris_experiments: resolve(__dirname, 'src/pages/tetris-experiments.html'),
+        firework_experiments: resolve(__dirname, 'src/pages/firework-experiments.html'),
       },
     },
   },
