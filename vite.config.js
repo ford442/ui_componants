@@ -37,6 +37,7 @@ export default defineConfig({
         cherenkov_radiation: resolve(__dirname, 'src/pages/cherenkov-radiation.html'),
         tetris_experiments: resolve(__dirname, 'src/pages/tetris-experiments.html'),
         firework_experiments: resolve(__dirname, 'src/pages/firework-experiments.html'),
+        seismic_wave: resolve(__dirname, 'src/pages/seismic-wave.html'),
       },
     },
   },
