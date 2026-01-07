@@ -88,11 +88,13 @@
                 <h2>Holographic Glass</h2>
                 <div class="tags">
                     <span class="tag webgl2">WebGL2</span>
-                    <span class="tag shader">Screen Space Sampling</span>
+                    <span class="tag shader">Screen Space</span>
                 </div>
             </div>
-            <div id="sampled-glass-container" class="canvas-container"></div>
-            <p class="description">Cubes sampling a background texture based on screen position to create a transparent gem effect.</p>
+            <div id="hologram-container" class="canvas-container"></div>
+            <p class="description">
+                Blocks sample a static background image based on their screen position, creating a transparent "window" effect with a procedural gold metal frame.
+            </p>
         </div>
     </div>
 
@@ -116,10 +118,11 @@
                 new VoxelDestruct(destructContainer, { particleCount: 20000 });
             }
 
-            // Initialize Sampled Glass
-            const glassContainer = document.getElementById('sampled-glass-container');
-            if (glassContainer) {
-                new SampledGlassTetris(glassContainer, { imagePath: '../block.png' });
+            // Init Experiment 3
+            const holoContainer = document.getElementById('hologram-container');
+            if (holoContainer) {
+                // Using the uploaded image file name
+                new SampledGlassTetris(holoContainer, { imagePath: '/block.png' });
             }
         });
     </script>
