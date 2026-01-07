@@ -15,6 +15,8 @@ export default defineConfig({
         surfaces: resolve(__dirname, 'src/pages/surfaces.html'),
         switches: resolve(__dirname, 'src/pages/switches.html'),
         experiments: resolve(__dirname, 'src/pages/experiments.html'),
+        fireworks: resolve(__dirname, 'src/pages/fireworks.html'),
+        tetris: resolve(__dirname, 'src/pages/tetris.html'),
         portal: resolve(__dirname, 'src/pages/portal_vortex.html'),
         neon_city: resolve(__dirname, 'src/pages/neon_city.html'),
         hologram: resolve(__dirname, 'src/pages/hologram.html'),
