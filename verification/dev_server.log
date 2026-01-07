@@ -4,53 +4,7 @@
 
 [33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
 
-  VITE v5.4.21  ready in 317 ms
+  VITE v5.4.21  ready in 361 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
-Error:   Failed to scan for dependencies from entries:
-  /app/src/index.html
-/app/src/pages/buttons.html
-/app/src/pages/composite_blending.html
-/app/src/pages/indicators.html
-/app/src/pages/knobs.html
-/app/src/pages/surfaces.html
-/app/src/pages/switches.html
-/app/src/pages/experiments.html
-/app/src/pages/fireworks.html
-/app/src/pages/tetris.html
-/app/src/pages/portal_vortex.html
-/app/src/pages/neon_city.html
-/app/src/pages/hologram.html
-/app/src/pages/pattern_tests.html
-/app/src/pages/gravitational-nebula.html
-/app/src/pages/crystal-cavern.html
-/app/src/pages/cyber-rain.html
-/app/src/pages/biomechanical-growth.html
-/app/src/pages/quantum-data-stream.html
-/app/src/pages/cyber-crystal.html
-/app/src/pages/bioluminescent-abyss.html
-/app/src/pages/plasma-confinement.html
-/app/src/pages/cosmic-string.html
-/app/src/pages/hybrid-magnetic-field.html
-/app/src/pages/stellar-forge.html
-/app/src/pages/neural-data-core.html
-/app/src/pages/tetris-experiments.html
-
-  [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mNo matching export in "src/js/tetris-experiments.js" for import "TetrisExperiment"[0m
-
-    script:/app/src/pages/tetris.html?id=0:2:17:
-[37m      2 │         import { [32mTetrisExperiment[37m } from '../js/tetris-experiments....
-        ╵                  [32m~~~~~~~~~~~~~~~~[0m
-
-
-    at failureErrorWithLog (/app/node_modules/esbuild/lib/main.js:1472:15)
-    at /app/node_modules/esbuild/lib/main.js:945:25
-    at runOnEndCallbacks (/app/node_modules/esbuild/lib/main.js:1315:45)
-    at buildResponseToResult (/app/node_modules/esbuild/lib/main.js:943:7)
-    at /app/node_modules/esbuild/lib/main.js:955:9
-    at new Promise (<anonymous>)
-    at requestCallbacks.on-end (/app/node_modules/esbuild/lib/main.js:954:54)
-    at handleRequest (/app/node_modules/esbuild/lib/main.js:647:17)
-    at handleIncomingPacket (/app/node_modules/esbuild/lib/main.js:672:7)
-    at Socket.readFromStdout (/app/node_modules/esbuild/lib/main.js:600:7)

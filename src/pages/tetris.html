@@ -3,43 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tetris Simulation - UI Components</title>
+    <title>Neon Tetris Rain - WebGL2 + WebGPU</title>
     <link rel="stylesheet" href="../css/main.css">
     <style>
-        body { margin: 0; overflow: hidden; background: #050510; }
-        .experiment-container {
+        body { margin: 0; background: #050510; color: #fff; font-family: sans-serif; overflow: hidden; }
+        .page-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 2rem;
+            z-index: 10;
+            background: linear-gradient(to bottom, rgba(5,5,16,0.9), transparent);
+            pointer-events: none;
+        }
+        .page-header a { pointer-events: auto; }
+        .back-link { color: #88ccff; text-decoration: none; margin-bottom: 1rem; display: inline-block; }
+        h1 { margin: 0; font-size: 2rem; text-shadow: 0 0 10px rgba(0, 255, 255, 0.5); }
+        .subtitle { color: #88ccff; opacity: 0.8; margin-top: 0.5rem; }
+
+        #canvas-container {
             width: 100vw;
             height: 100vh;
-        }
-        .overlay-ui {
             position: absolute;
-            top: 2rem;
-            left: 2rem;
-            pointer-events: none;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
     </style>
 </head>
 <body>
-    <div class="experiment-container" id="tetris-container"></div>
-
-    <div class="overlay-ui">
-        <div class="page-header">
-            <a href="../index.html" class="back-link" style="pointer-events: auto;">← Back</a>
-            <div>
-                <h1>Tetris Block Rain</h1>
-                <p class="subtitle">Canvas 2D Simulation with Neon Glow</p>
-            </div>
+    <div class="page-header">
+        <a href="experiments.html" class="back-link">← Back to All Experiments</a>
+        <div>
+            <h1>Tetris Block Rain</h1>
+            <p class="subtitle">WebGL2 + WebGPU Simulation</p>
         </div>
     </div>
 
+    <div id="canvas-container"></div>
+
     <script type="module">
-        import { TetrisExperiment } from '../js/tetris-experiments.js';
+        // Updated import to use the new class name
+        import { NeonTetrisRain } from '../js/tetris-experiments.js';
 
         document.addEventListener('DOMContentLoaded', () => {
-            const container = document.getElementById('tetris-container');
-            new TetrisExperiment(container, {
-                speed: 1.5
-            });
+            const container = document.getElementById('canvas-container');
+            if (container) {
+                // Initialized with blockCount options matching the new API
+                new NeonTetrisRain(container, { blockCount: 1500 });
+            }
         });
     </script>
 </body>
