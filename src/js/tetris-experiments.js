@@ -479,12 +479,17 @@ export class VoxelDestruct {
 export class SampledGlassTetris {
     constructor(container, options = {}) {
         this.container = container;
-        this.imagePath = options.imagePath || '/block.png';
+        this.imagePath = options.imagePath;
+        this.videoPath = options.videoPath;
+        this.frameColor1 = options.frameColor1 || [1.0, 0.8, 0.2];
+        this.frameColor2 = options.frameColor2 || [0.9, 0.95, 1.0];
+        this.distortStrength = options.distortStrength || 0.05;
 
         this.canvas = null;
         this.gl = null;
         this.program = null;
         this.texture = null;
+        this.videoElement = null;
         this.cubes = [];
         this.startTime = Date.now();
 
@@ -535,13 +540,17 @@ export class SampledGlassTetris {
         uniform vec2 resolution;
         uniform sampler2D uTexture;
         uniform float time;
+        uniform vec3 uFrameColor1;
+        uniform vec3 uFrameColor2;
+        uniform float uDistortStrength;
+
 
         out vec4 fragColor;
 
         void main() {
             // --- Screen Space Sampling (Window Effect) ---
             vec2 screenUV = gl_FragCoord.xy / resolution;
-            vec2 distort = normalize(vNormal).xy * 0.05;
+            vec2 distort = normalize(vNormal).xy * uDistortStrength;
             vec4 texColor = texture(uTexture, screenUV + distort);
 
             // --- Procedural Frame ---
@@ -558,9 +567,7 @@ export class SampledGlassTetris {
             vec3 reflectDir = reflect(-lightDir, norm);
             float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
 
-            vec3 goldColor = vec3(1.0, 0.8, 0.2);
-            vec3 whiteMetal = vec3(0.9, 0.95, 1.0);
-            vec3 frameColor = goldColor * (diff * 0.5 + 0.5) + (whiteMetal * spec);
+            vec3 frameColor = uFrameColor1 * (diff * 0.5 + 0.5) + (uFrameColor2 * spec);
 
             // --- Combine ---
             vec3 finalColor = mix(frameColor, texColor.rgb * 1.5, isCenter);
@@ -569,7 +576,7 @@ export class SampledGlassTetris {
 
         this.program = this.createProgram(vs, fs);
         this.createCubeGeometry();
-        await this.loadTexture(this.imagePath);
+        await this.loadMedia();
         this.resetCubes();
 
         this.resizeObserver.observe(this.container);
@@ -635,21 +642,46 @@ export class SampledGlassTetris {
         this.indexCount = indices.length;
     }
 
-    loadTexture(url) {
+    loadMedia() {
         return new Promise(resolve => {
             this.texture = this.gl.createTexture();
             this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 1, 1, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, new Uint8Array([0,255,255,255]));
-            const img = new Image();
-            img.onload = () => {
+            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 1, 1, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255])); // Black pixel
+
+            const setupTexture = () => {
                 this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, img);
-                this.gl.generateMipmap(this.gl.TEXTURE_2D);
                 this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
                 this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-                resolve();
+                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
             };
-            img.src = url;
+
+            if (this.videoPath) {
+                this.videoElement = document.createElement('video');
+                this.videoElement.src = this.videoPath;
+                this.videoElement.muted = true;
+                this.videoElement.loop = true;
+                this.videoElement.playsInline = true;
+                this.videoElement.play().then(() => {
+                    setupTexture();
+                    resolve();
+                }).catch(e => console.error("Video play failed:", e));
+
+            } else if (this.imagePath) {
+                const img = new Image();
+                img.onload = () => {
+                    setupTexture();
+                    this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+                    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, img);
+                    this.gl.generateMipmap(this.gl.TEXTURE_2D);
+                    resolve();
+                };
+                img.onerror = () => resolve(); // Resolve even if image fails
+                img.src = this.imagePath;
+
+            } else {
+                resolve(); // No media
+            }
         });
     }
 
@@ -672,6 +704,11 @@ export class SampledGlassTetris {
     }
 
     animate() {
+        if (this.videoElement && this.videoElement.readyState >= this.videoElement.HAVE_CURRENT_DATA) {
+            this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.videoElement);
+        }
+
         const time = (Date.now() - this.startTime) / 1000;
         this.gl.clearColor(0.05, 0.05, 0.05, 1.0);
         this.gl.enable(this.gl.DEPTH_TEST);
@@ -680,6 +717,10 @@ export class SampledGlassTetris {
         this.gl.useProgram(this.program);
         this.gl.uniform2f(this.gl.getUniformLocation(this.program, 'resolution'), this.canvas.width, this.canvas.height);
         this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'time'), time);
+        this.gl.uniform3fv(this.gl.getUniformLocation(this.program, 'uFrameColor1'), this.frameColor1);
+        this.gl.uniform3fv(this.gl.getUniformLocation(this.program, 'uFrameColor2'), this.frameColor2);
+        this.gl.uniform1f(this.gl.getUniformLocation(this.program, 'uDistortStrength'), this.distortStrength);
+
 
         const aspect = this.canvas.width / this.canvas.height;
         const f = 1.0 / Math.tan((60 * Math.PI / 180) / 2);

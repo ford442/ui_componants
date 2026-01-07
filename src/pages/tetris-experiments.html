@@ -92,7 +92,7 @@
                 </p>
             </div>
 
-            <!-- 3. Holographic Glass (New) -->
+            <!-- 3. Holographic Glass (Original) -->
             <div class="experiment-card">
                 <div class="card-header">
                     <h2>Holographic Glass</h2>
@@ -101,9 +101,69 @@
                         <span class="tag shader">Screen Space</span>
                     </div>
                 </div>
-                <div id="hologram-container" class="canvas-container"></div>
+                <div id="hologram-container-original" class="canvas-container"></div>
                 <p class="description">
-                    Rotating cubes that sample a background texture based on screen position, creating a transparent window effect.
+                    Original gold/white metal frame design sampling a standard background texture.
+                </p>
+            </div>
+
+            <!-- 4. Cyber Ice -->
+            <div class="experiment-card">
+                <div class="card-header">
+                    <h2>Cyber Ice</h2>
+                    <div class="tags">
+                        <span class="tag webgl2">WebGL2</span>
+                        <span class="tag texture">Ice</span>
+                    </div>
+                </div>
+                <div id="hologram-container-ice" class="canvas-container"></div>
+                <p class="description">
+                    A variation using a circuit board texture with a cool blue and chrome frame. High distortion.
+                </p>
+            </div>
+
+            <!-- 5. Molten Lava -->
+            <div class="experiment-card">
+                <div class="card-header">
+                    <h2>Molten Lava</h2>
+                    <div class="tags">
+                        <span class="tag webgl2">WebGL2</span>
+                        <span class="tag texture">Lava</span>
+                    </div>
+                </div>
+                <div id="hologram-container-lava" class="canvas-container"></div>
+                <p class="description">
+                    Uses a magma texture with a dark obsidian and glowing red-hot metal frame.
+                </p>
+            </div>
+
+            <!-- 6. Crystal Geode -->
+            <div class="experiment-card">
+                <div class="card-header">
+                    <h2>Crystal Geode</h2>
+                    <div class="tags">
+                        <span class="tag webgl2">WebGL2</span>
+                        <span class="tag texture">Nebula</span>
+                    </div>
+                </div>
+                <div id="hologram-container-geode" class="canvas-container"></div>
+                <p class="description">
+                    A nebula texture is sampled inside a frame of iridescent purple and polished silver.
+                </p>
+            </div>
+
+             <!-- 7. Digital Rain (Video) -->
+            <div class="experiment-card">
+                <div class="card-header">
+                    <h2>Digital Rain</h2>
+                    <div class="tags">
+                        <span class="tag webgl2">WebGL2</span>
+                        <span class="tag video">Video Texture</span>
+                    </div>
+                </div>
+                <div id="hologram-container-video" class="canvas-container"></div>
+                <p class="description">
+                    This experiment uses a video of digital rain as a texture source, creating an animated interior.
                 </p>
             </div>
         </div>
@@ -113,24 +173,45 @@
         import { NeonTetrisRain, VoxelDestruct, SampledGlassTetris } from '../js/tetris-experiments.js';
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Initialize Neon Tetris Rain
-            const rainContainer = document.getElementById('neon-rain-container');
-            if (rainContainer) {
-                new NeonTetrisRain(rainContainer, { blockCount: 5000 });
-            }
+            new NeonTetrisRain(document.getElementById('neon-rain-container'), { blockCount: 5000 });
+            new VoxelDestruct(document.getElementById('voxel-destruct-container'), { particleCount: 10000 });
 
-            // Initialize Voxel Destruct
-            const destructContainer = document.getElementById('voxel-destruct-container');
-            if (destructContainer) {
-                new VoxelDestruct(destructContainer, { particleCount: 10000 });
-            }
+            // Base Hologram
+            new SampledGlassTetris(document.getElementById('hologram-container-original'), {
+                imagePath: '/block.png'
+            });
 
-            // Initialize Holographic Glass
-            const holoContainer = document.getElementById('hologram-container');
-            if (holoContainer) {
-                // Using /block.png as the source texture as requested (mapped from public/block.png)
-                new SampledGlassTetris(holoContainer, { imagePath: '/block.png' });
-            }
+            // Cyber Ice
+            new SampledGlassTetris(document.getElementById('hologram-container-ice'), {
+                imagePath: '/circuitry.jpg',
+                frameColor1: [0.0, 0.8, 1.0],
+                frameColor2: [0.8, 0.9, 1.0],
+                distortStrength: 0.15
+            });
+
+            // Molten Lava
+            new SampledGlassTetris(document.getElementById('hologram-container-lava'), {
+                imagePath: '/magma.jpg',
+                frameColor1: [0.1, 0.05, 0.05],
+                frameColor2: [1.0, 0.2, 0.0],
+                distortStrength: 0.03
+            });
+
+            // Crystal Geode
+            new SampledGlassTetris(document.getElementById('hologram-container-geode'), {
+                imagePath: '/nebula.jpg',
+                frameColor1: [0.6, 0.2, 1.0],
+                frameColor2: [0.9, 0.9, 1.0],
+                distortStrength: 0.08
+            });
+
+             // Digital Rain (Video)
+            new SampledGlassTetris(document.getElementById('hologram-container-video'), {
+                videoPath: '/digital-rain.mp4',
+                frameColor1: [0.0, 0.5, 0.2],
+                frameColor2: [0.5, 1.0, 0.8],
+                distortStrength: 0.04
+            });
         });
     </script>
 </body>
