@@ -8,8 +8,8 @@ class LiquidRipple {
         this.ctx = this.canvas.getContext('2d');
         this.ripples = [];
 
-        this.init();
         this.animate = this.animate.bind(this);
+        this.init();
     }
 
     init() {

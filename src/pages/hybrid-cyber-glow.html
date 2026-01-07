@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid Cyber Glow - WebGL2 + WebGPU</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        .canvas-container { width: 100vw; height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container" class="canvas-container"></div>
+
+    <div class="controls-overlay">
+        <h1>Hybrid Cyber Glow</h1>
+        <p>WebGL2 (Tunnel) + WebGPU (100k Particles)</p>
+        <p style="font-size: 0.8em; opacity: 0.7;">Move mouse to influence flow and tunnel distortion</p>
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+    </div>
+
+    <script type="module" src="../js/main.js"></script>
+    <script type="module" src="../js/hybrid-cyber-glow.js"></script>
+
+    <script type="module">
+        import '../js/hybrid-cyber-glow.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('canvas-container');
+            const experiment = new HybridCyberGlow(container, {
+                numParticles: 100000
+            });
+        });
+    </script>
+</body>
+</html>

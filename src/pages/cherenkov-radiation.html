@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cherenkov Radiation - UI Components</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        #experiment-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .instruction-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(100, 200, 255, 0.8);
+            font-family: 'Space Mono', monospace;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .back-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            color: #fff;
+            text-decoration: none;
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .back-button:hover {
+            background: rgba(0, 255, 255, 0.2);
+            border-color: rgba(0, 255, 255, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div class="instruction-overlay">
+        <h2>CHERENKOV RADIATION</h2>
+        <p>Hybrid WebGL2 + WebGPU</p>
+        <p>Move cursor to disturb the reactor pool.</p>
+    </div>
+
+    <a href="experiments.html" class="back-button">← Back to Dashboard</a>
+
+    <div id="experiment-container"></div>
+
+    <script type="module">
+        import '../js/cherenkov-radiation.js';
+
+        const container = document.getElementById('experiment-container');
+        const experiment = new window.CherenkovRadiation(container, {
+            numParticles: 100000
+        });
+    </script>
+</body>
+</html>

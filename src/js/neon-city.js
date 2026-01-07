@@ -15,6 +15,11 @@ class NeonCityExperiment {
         this.speed = 0.5;
         this.rainDensity = 0.7;
 
+        // Interaction State
+        this.mouseX = 0;
+        this.mouseY = 0;
+        this.cameraOffset = { x: 0, y: 0 };
+
         // WebGL2 State (City)
         this.glCanvas = null;
         this.gl = null;
@@ -75,6 +80,14 @@ class NeonCityExperiment {
         this.animate();
 
         window.addEventListener('resize', this.handleResize);
+
+        // Interaction Listener
+        this.container.addEventListener('mousemove', (e) => {
+            const rect = this.container.getBoundingClientRect();
+            // Normalized -1 to 1
+            this.mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            this.mouseY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+        });
     }
 
     // ========================================================================
@@ -201,9 +214,31 @@ class NeonCityExperiment {
             float glow = 0.2 + 0.8 * iseed;
             vec3 buildingColor = mix(vec3(0.1, 0.0, 0.2), vec3(0.0, 0.8, 1.0), iseed);
 
-            // Windows effect?
-            if (mod(worldPos.y * 2.0, 1.0) > 0.5 && mod(worldPos.x + worldPos.z, 2.0) > 1.0) {
-                 buildingColor += vec3(0.8, 0.8, 0.5) * glow;
+            // Windows effect (Refined: Alive & Flickering)
+            // Grid pattern for windows
+            float wx = mod(worldPos.x + 100.0, 2.0); // Window grid X
+            float wy = mod(worldPos.y, 1.0);         // Window grid Y
+            float wz = mod(worldPos.z + 100.0, 2.0); // Window grid Z
+
+            // Basic window shape
+            bool isWindow = (wy > 0.4 && wy < 0.8) && (wx > 0.5 && wx < 1.5 || wz > 0.5 && wz < 1.5);
+
+            if (isWindow) {
+                // Random flicker based on position and time
+                float flicker = fract(sin(dot(worldPos.xyz, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
+                float activeWindow = step(0.7, fract(flicker + u_time * 0.1)); // 30% windows active, changing slowly
+
+                // Occasional fast blink
+                float fastBlink = step(0.95, fract(u_time * 2.0 + flicker * 10.0));
+
+                // Combine
+                float windowLight = max(activeWindow, fastBlink);
+
+                // Neon colors for windows (Cyan, Magenta, Yellow)
+                vec3 winColor = mix(vec3(0.0, 1.0, 1.0), vec3(1.0, 0.0, 1.0), fract(iseed * 10.0));
+                if (fract(iseed * 20.0) > 0.5) winColor = vec3(1.0, 1.0, 0.0);
+
+                buildingColor += winColor * windowLight * 2.0 * glow;
             }
 
             v_color = buildingColor;
@@ -258,7 +293,7 @@ class NeonCityExperiment {
         this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, indices, this.gl.STATIC_DRAW);
 
         this.gl.enable(this.gl.DEPTH_TEST);
-        this.resizeGL();
+        this.resize();
     }
 
     createGLProgram(vsSource, fsSource) {
@@ -478,7 +513,7 @@ class NeonCityExperiment {
             primitive: { topology: 'line-list' }
         });
 
-        this.resizeGPU();
+        this.resize();
     }
 
     updateRainParams() {
@@ -525,9 +560,13 @@ class NeonCityExperiment {
             // Matrices
             const aspect = this.glCanvas.width / this.glCanvas.height;
             const projection = this.createPerspectiveMatrix(60, aspect, 0.1, 500.0);
+            // Smooth Camera Parallax
+            this.cameraOffset.x += (this.mouseX - this.cameraOffset.x) * 0.05;
+            this.cameraOffset.y += (this.mouseY - this.cameraOffset.y) * 0.05;
+
             const view = this.createLookAtMatrix(
-                [0, 5, -20], // Eye
-                [0, 0, 50],  // Target
+                [this.cameraOffset.x * 10, 5 + this.cameraOffset.y * 5, -20], // Eye
+                [this.cameraOffset.x * 5, 0, 50],  // Target
                 [0, 1, 0]    // Up
             );
 

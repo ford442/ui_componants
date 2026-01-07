@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   root: 'src',
   build: {
+    emptyOutDir: true,
     outDir: '../dist',
     rollupOptions: {
       input: {
@@ -22,6 +23,7 @@ export default defineConfig({
         gravitational_nebula: resolve(__dirname, 'src/pages/gravitational-nebula.html'),
         crystal_cavern: resolve(__dirname, 'src/pages/crystal-cavern.html'),
         cyber_rain: resolve(__dirname, 'src/pages/cyber-rain.html'),
+        plasma_storm: resolve(__dirname, 'src/pages/plasma-storm.html'),
         biomechanical_growth: resolve(__dirname, 'src/pages/biomechanical-growth.html'),
         quantum_data_stream: resolve(__dirname, 'src/pages/quantum-data-stream.html'),
         cyber_crystal: resolve(__dirname, 'src/pages/cyber-crystal.html'),
@@ -29,8 +31,14 @@ export default defineConfig({
         plasma_confinement: resolve(__dirname, 'src/pages/plasma-confinement.html'),
         cosmic_string: resolve(__dirname, 'src/pages/cosmic-string.html'),
         hybrid_magnetic_field: resolve(__dirname, 'src/pages/hybrid-magnetic-field.html'),
+        hybrid_cyber_glow: resolve(__dirname, 'src/pages/hybrid-cyber-glow.html'),
         stellar_forge: resolve(__dirname, 'src/pages/stellar-forge.html'),
         neural_data_core: resolve(__dirname, 'src/pages/neural-data-core.html'),
+        singularity_reactor: resolve(__dirname, 'src/pages/singularity-reactor.html'),
+        gravitational_lensing: resolve(__dirname, 'src/pages/gravitational-lensing.html'),
+        cherenkov_radiation: resolve(__dirname, 'src/pages/cherenkov-radiation.html'),
+        tetris_experiments: resolve(__dirname, 'src/pages/tetris-experiments.html'),
+        firework_experiments: resolve(__dirname, 'src/pages/firework-experiments.html'),
       },
     },
   },
