@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fireworks Simulation - UI Components</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body { margin: 0; overflow: hidden; background: #020205; }
+        .experiment-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        .overlay-ui {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="experiment-container" id="fireworks-container"></div>
+
+    <div class="overlay-ui">
+        <div class="page-header">
+            <a href="../index.html" class="back-link" style="pointer-events: auto;">← Back</a>
+            <div>
+                <h1>Fireworks Simulation</h1>
+                <p class="subtitle">WebGPU Compute Shader Particle System</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { FireworksExperiment } from '../js/fireworks-experiments.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('fireworks-container');
+            new FireworksExperiment(container, {
+                particleCount: 50000,
+                gravity: 0.8
+            });
+        });
+    </script>
+</body>
+</html>
