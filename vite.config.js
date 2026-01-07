@@ -34,6 +34,7 @@ export default defineConfig({
         hybrid_magnetic_field: resolve(__dirname, 'src/pages/hybrid-magnetic-field.html'),
         hybrid_cyber_glow: resolve(__dirname, 'src/pages/hybrid-cyber-glow.html'),
         stellar_forge: resolve(__dirname, 'src/pages/stellar-forge.html'),
+        neural_data_core: resolve(__dirname, 'src/pages/neural-data-core.html'),
         singularity_reactor: resolve(__dirname, 'src/pages/singularity-reactor.html'),
         gravitational_lensing: resolve(__dirname, 'src/pages/gravitational-lensing.html'),
         cherenkov_radiation: resolve(__dirname, 'src/pages/cherenkov-radiation.html'),
