@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Void Singularity - Visual Experiments</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        #experiment-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            pointer-events: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .back-link:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+            background: linear-gradient(90deg, #ff8800, #ff0055);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(255, 100, 0, 0.3);
+        }
+        .description {
+            color: rgba(255, 255, 255, 0.7);
+            max-width: 400px;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="experiment-container"></div>
+
+    <div class="ui-overlay">
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+        <h1>Void Singularity</h1>
+        <p class="description">
+            Event Horizon Simulation.
+            <br>
+            <strong>WebGL2:</strong> Gravitational lensing & distortion shader.
+            <br>
+            <strong>WebGPU:</strong> Accretion disk particle physics (N-body gravity).
+        </p>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module">
+        import { VoidSingularityExperiment } from '../js/void-singularity.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('experiment-container');
+            if (container) {
+                new VoidSingularityExperiment(container, { numParticles: 60000 });
+            }
+        });
+    </script>
+</body>
+</html>

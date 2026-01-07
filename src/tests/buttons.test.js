@@ -14,7 +14,8 @@ describe('Buttons Page', () => {
     });
 
     it('initializes basic buttons', async () => {
-        // Load module
+        // Load modules (main must be loaded first because it defines UIComponents)
+        await import('../js/main.js');
         await import('../js/buttons.js');
 
         // Dispatch DOMContentLoaded

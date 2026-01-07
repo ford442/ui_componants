@@ -15,6 +15,10 @@ class CosmicStringExperiment {
         this.startTime = Date.now();
         this.animationId = null;
 
+        // Interaction State
+        this.mouse = { x: 0, y: 0 };
+        this.isInteracting = false;
+
         // WebGL2 State
         this.glCanvas = null;
         this.gl = null;
@@ -33,8 +37,11 @@ class CosmicStringExperiment {
         this.particleBuffer = null;
         this.numParticles = options.numParticles || 30000;
 
-        // Bind resize handler for cleanup
+        // Bind handlers
         this.handleResize = this.resize.bind(this);
+        this.handleMouseMove = this.onMouseMove.bind(this);
+        this.handleTouchMove = this.onTouchMove.bind(this);
+        this.handleTouchEnd = this.onTouchEnd.bind(this);
 
         this.init();
     }
@@ -70,6 +77,37 @@ class CosmicStringExperiment {
         this.animate();
 
         window.addEventListener('resize', this.handleResize);
+        this.container.addEventListener('mousemove', this.handleMouseMove);
+        this.container.addEventListener('touchmove', this.handleTouchMove, { passive: false });
+        this.container.addEventListener('touchend', this.handleTouchEnd);
+        this.container.addEventListener('mouseleave', this.handleTouchEnd);
+    }
+
+    onMouseMove(e) {
+        const rect = this.container.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = 1.0 - (e.clientY - rect.top) / rect.height; // WebGL Y is up
+
+        // Map to [-1, 1]
+        this.mouse.x = x * 2.0 - 1.0;
+        this.mouse.y = y * 2.0 - 1.0;
+        this.isInteracting = true;
+    }
+
+    onTouchMove(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = this.container.getBoundingClientRect();
+        const x = (touch.clientX - rect.left) / rect.width;
+        const y = 1.0 - (touch.clientY - rect.top) / rect.height;
+
+        this.mouse.x = x * 2.0 - 1.0;
+        this.mouse.y = y * 2.0 - 1.0;
+        this.isInteracting = true;
+    }
+
+    onTouchEnd() {
+        this.isInteracting = false;
     }
 
     // ========================================================================
@@ -119,6 +157,8 @@ class CosmicStringExperiment {
             in vec2 a_position;
             uniform float u_time;
             uniform float u_aspect;
+            uniform vec2 u_mouse;
+            uniform float u_interacting;
 
             out float v_intensity;
             out vec2 v_uv;
@@ -138,6 +178,13 @@ class CosmicStringExperiment {
                 float displacement = sin(y * freq1 + u_time * 2.0) * 0.1
                                    + sin(y * freq2 - u_time * 5.0) * 0.05
                                    + sin(y * freq3 + u_time * 10.0) * 0.02;
+
+                // Interaction: Pull towards mouse
+                if (u_interacting > 0.5) {
+                    float distY = abs(y - u_mouse.y);
+                    float pull = exp(-distY * distY * 10.0) * 0.5; // Gaussian interaction window
+                    displacement += (u_mouse.x - displacement) * pull * u_interacting;
+                }
 
                 // Modulate thickness based on energy flow
                 float energy = sin(y * 10.0 - u_time * 8.0) * 0.5 + 0.5;
@@ -168,6 +215,8 @@ class CosmicStringExperiment {
             in float v_intensity;
             in vec2 v_uv;
             uniform float u_time;
+            uniform vec2 u_mouse;
+            uniform float u_interacting;
 
             out vec4 outColor;
 
@@ -181,6 +230,11 @@ class CosmicStringExperiment {
 
                 // Outer glow (purple/magenta)
                 vec3 glowColor = vec3(0.8, 0.2, 1.0);
+
+                // Change color on interaction
+                if (u_interacting > 0.5) {
+                    glowColor = mix(glowColor, vec3(1.0, 0.4, 0.2), 0.5); // Orange-ish tint when touched
+                }
 
                 // Pulse intensity
                 float pulse = 0.8 + 0.4 * sin(u_time * 10.0 + v_uv.y * 20.0);
@@ -279,9 +333,6 @@ class CosmicStringExperiment {
         });
 
         // COMPUTE SHADER
-        // Physics: Particles are attracted to the string (x=0) line.
-        // F = -k / dist^2 * direction
-        // But we also want them to spiral, so we add tangential velocity.
         const computeShaderCode = `
             struct Particle {
                 pos : vec2f,
@@ -295,12 +346,15 @@ class CosmicStringExperiment {
             struct SimParams {
                 dt : f32,
                 time : f32,
-                stringX : f32, // X position of the string (can undulate)
-                unused : f32,
+                mouseX : f32,
+                mouseY : f32,
+                isInteracting : f32,
+                unused1 : f32,
+                unused2 : f32,
+                unused3 : f32,
             }
             @group(0) @binding(1) var<uniform> params : SimParams;
 
-            // Simple random function
             fn rand(co: vec2f) -> f32 {
                 return fract(sin(dot(co, vec2f(12.9898, 78.233))) * 43758.5453);
             }
@@ -314,16 +368,20 @@ class CosmicStringExperiment {
 
                 var p = particles[index];
 
-                // Calculate string position at this particle's Y height
-                // We approximate the string undulation here to match WebGL
+                // Calculate string position (approximate match to WebGL)
                 let y = p.pos.y;
                 let t = params.time;
-                let stringOffset = sin(y * 5.0 + t * 2.0) * 0.1
+                var stringOffset = sin(y * 5.0 + t * 2.0) * 0.1
                                  + sin(y * 12.0 - t * 5.0) * 0.05;
 
-                let dx = p.pos.x - stringOffset;
-                let dy = 0.0; // Attracted to the line, so Y distance doesn't matter for gravity
+                // Apply Mouse Interaction to String Position (approximate)
+                if (params.isInteracting > 0.5) {
+                     let distY = abs(y - params.mouseY);
+                     let pull = exp(-distY * distY * 10.0) * 0.5;
+                     stringOffset += (params.mouseX - stringOffset) * pull;
+                }
 
+                let dx = p.pos.x - stringOffset;
                 let distSq = dx * dx + 0.001;
                 let dist = sqrt(distSq);
 
@@ -338,21 +396,22 @@ class CosmicStringExperiment {
                 // Apply Gravity
                 p.vel.x += dirX * force * params.dt;
 
-                // Tangential force (Spiral) - stronger when close
-                // We want them to zip up/down the string too
-                let spiralSpeed = 5.0;
-                let spiralDir = sign(p.pos.y) * -1.0; // Opposite directions
-
-                // Add some noise to Y velocity
-                let noise = rand(vec2f(p.pos.x * 10.0, params.time));
-
-                // Orbit/Vortex velocity
-                // If on right, push up. If on left, push down.
+                // Tangential force (Spiral)
                 p.vel.y += sign(dx) * 2.0 * params.dt;
 
-                // Conservation of angular momentum approximation: faster when closer
-                let orbitSpeed = 0.1 / (dist + 0.1);
-                // p.vel.y += orbitSpeed * params.dt;
+                // Mouse Repulsion/Attraction
+                if (params.isInteracting > 0.5) {
+                    let mDx = p.pos.x - params.mouseX;
+                    let mDy = p.pos.y - params.mouseY;
+                    let mDistSq = mDx*mDx + mDy*mDy + 0.001;
+
+                    // Repel particles from mouse cursor
+                    let repelForce = 0.5 / mDistSq;
+                    if (repelForce > 5.0) { repelForce = 5.0; }
+
+                    p.vel.x += (mDx / sqrt(mDistSq)) * repelForce * params.dt;
+                    p.vel.y += (mDy / sqrt(mDistSq)) * repelForce * params.dt;
+                }
 
                 // Damping
                 p.vel = p.vel * 0.98;
@@ -361,8 +420,7 @@ class CosmicStringExperiment {
                 p.pos = p.pos + p.vel * params.dt;
 
                 // Boundaries - Respawn
-                if (abs(p.pos.x) > 2.0 || abs(p.pos.y) > 1.2 || dist < 0.01) {
-                    // Respawn at edges
+                if (abs(p.pos.x) > 2.0 || abs(p.pos.y) > 1.2 || dist < 0.005) {
                     p.pos.x = (rand(vec2f(params.time, f32(index))) - 0.5) * 3.0;
                     p.pos.y = (rand(vec2f(f32(index), params.time)) - 0.5) * 2.0;
                     p.vel = vec2f(0.0, 0.0);
@@ -385,7 +443,7 @@ class CosmicStringExperiment {
                 output.position = vec4f(particlePos, 0.0, 1.0);
 
                 let speed = length(particleVel);
-                // Color mapping: Blue/Purple to White/Pink based on speed
+                // Color mapping
                 let r = 0.2 + speed * 2.0;
                 let g = 0.1 + speed * 0.5;
                 let b = 1.0;
@@ -396,38 +454,23 @@ class CosmicStringExperiment {
 
             @fragment
             fn fs_main(@location(0) color : vec4f) -> @location(0) vec4f {
-                // Simple point rendering
                 return color;
             }
         `;
 
         // Initialize Particles
-        // Structure: pos(2), vel(2), life(1), padding(1) = 6 floats -> aligned to 8 floats (32 bytes) usually or tight packed?
-        // WGSL struct alignment: vec2f is 8 bytes. f32 is 4 bytes.
-        // struct Particle { pos: vec2f, vel: vec2f, life: f32, dummy: f32 }
-        // Offset: 0 (pos), 8 (vel), 16 (life), 20 (dummy). Total 24 bytes.
-        // Array stride must be multiple of 16 bytes for some bindings, but storage buffer stride just needs to match.
-        // Let's use 8 floats (32 bytes) to be safe and power of 2 aligned.
-
-        // Actually, let's stick to the struct definition.
-        // vec2f (8), vec2f (8), f32 (4), f32 (4) = 24 bytes.
-        // Let's explicitly pad to 32 bytes (8 floats) in JS and use explicit padding in WGSL if needed.
-        // In previous example I used float32x2 (8 bytes) attributes.
-
-        const particleUnitSize = 24; // 6 floats * 4 bytes
+        // Struct: pos(2f), vel(2f), life(1f), dummy(1f) = 6 floats -> 24 bytes.
+        // But stride must be aligned. Let's assume standard layout.
+        const particleUnitSize = 24;
         const particleBufferSize = this.numParticles * particleUnitSize;
         const initialParticleData = new Float32Array(this.numParticles * 6);
 
         for (let i = 0; i < this.numParticles; i++) {
-            // Pos
             initialParticleData[i * 6 + 0] = (Math.random() * 4 - 2);
             initialParticleData[i * 6 + 1] = (Math.random() * 2 - 1);
-            // Vel
             initialParticleData[i * 6 + 2] = 0;
             initialParticleData[i * 6 + 3] = 0;
-            // Life
             initialParticleData[i * 6 + 4] = Math.random();
-            // Dummy
             initialParticleData[i * 6 + 5] = 0;
         }
 
@@ -438,8 +481,10 @@ class CosmicStringExperiment {
         this.device.queue.writeBuffer(this.particleBuffer, 0, initialParticleData);
 
         // Uniform Buffer
+        // Size needs to be 16-byte aligned.
+        // 8 floats = 32 bytes.
         this.simParamBuffer = this.device.createBuffer({
-            size: 16, // 4 floats (dt, time, stringX, unused)
+            size: 32,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -567,9 +612,13 @@ class CosmicStringExperiment {
 
             const timeLoc = this.gl.getUniformLocation(this.glProgram, 'u_time');
             const aspectLoc = this.gl.getUniformLocation(this.glProgram, 'u_aspect');
+            const mouseLoc = this.gl.getUniformLocation(this.glProgram, 'u_mouse');
+            const interactingLoc = this.gl.getUniformLocation(this.glProgram, 'u_interacting');
 
             this.gl.uniform1f(timeLoc, time);
             this.gl.uniform1f(aspectLoc, this.glCanvas.width / this.glCanvas.height);
+            this.gl.uniform2f(mouseLoc, this.mouse.x, this.mouse.y);
+            this.gl.uniform1f(interactingLoc, this.isInteracting ? 1.0 : 0.0);
 
             this.gl.clearColor(0.02, 0.01, 0.05, 1.0); // Deep purple/black
             this.gl.clear(this.gl.COLOR_BUFFER_BIT);
@@ -587,7 +636,17 @@ class CosmicStringExperiment {
         // 2. Render WebGPU
         if (this.device && this.context && this.renderPipeline) {
             // Update simulation params
-            const params = new Float32Array([0.016, time, 0.0, 0.0]);
+            // Struct SimParams: dt, time, mouseX, mouseY, isInteracting, unused1, unused2, unused3
+            const params = new Float32Array([
+                0.016,
+                time,
+                this.mouse.x,
+                this.mouse.y,
+                this.isInteracting ? 1.0 : 0.0,
+                0.0,
+                0.0,
+                0.0
+            ]);
             this.device.queue.writeBuffer(this.simParamBuffer, 0, params);
 
             const commandEncoder = this.device.createCommandEncoder();
@@ -627,6 +686,10 @@ class CosmicStringExperiment {
         if (this.animationId) cancelAnimationFrame(this.animationId);
 
         window.removeEventListener('resize', this.handleResize);
+        this.container.removeEventListener('mousemove', this.handleMouseMove);
+        this.container.removeEventListener('touchmove', this.handleTouchMove);
+        this.container.removeEventListener('touchend', this.handleTouchEnd);
+        this.container.removeEventListener('mouseleave', this.handleTouchEnd);
 
         if (this.gl) {
             const ext = this.gl.getExtension('WEBGL_lose_context');
