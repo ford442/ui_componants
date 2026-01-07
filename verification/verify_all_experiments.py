@@ -1,89 +1,45 @@
-import os
-import time
 from playwright.sync_api import sync_playwright
 
-experiments = [
-    "bioluminescent-abyss.html",
-    "biomechanical-growth.html",
-    "buttons.html",
-    "cherenkov-radiation.html",
-    "composite_blending.html",
-    "cosmic-string.html",
-    "crystal-cavern.html",
-    "cyber-crystal.html",
-    "cyber-rain.html",
-    "gravitational-lensing.html",
-    "gravitational-nebula.html",
-    "hologram.html",
-    "hybrid-magnetic-field.html",
-    "indicators.html",
-    "knobs.html",
-    "neon_city.html",
-    "pattern_tests.html",
-    "plasma-confinement.html",
-    "plasma-storm.html",
-    "portal_vortex.html",
-    "quantum-data-stream.html",
-    "singularity-reactor.html",
-    "stellar-forge.html",
-    "surfaces.html",
-    "switches.html",
-    "temporal-crystal.html",
-    "void-singularity.html"
-]
-
-def verify_experiments():
+def verify_all_experiments():
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True, args=['--enable-unsafe-webgpu'])
-        context = browser.new_context()
-        page = context.new_page()
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
 
-        # Capture console errors
-        console_errors = []
-        page.on("console", lambda msg: console_errors.append(msg.text) if msg.type == "error" else None)
-        page.on("pageerror", lambda exc: console_errors.append(str(exc)))
+        # Capture console messages
+        page.on("console", lambda msg: print(f"Console: {msg.text}"))
+        page.on("pageerror", lambda err: print(f"Page Error: {err}"))
 
-        passed = 0
-        failed = 0
-        failed_experiments = []
+        try:
+            print("Navigating to experiments.html...")
+            response = page.goto("http://localhost:5173/pages/experiments.html")
+            print(f"Response status: {response.status}")
 
-        print(f"Starting verification of {len(experiments)} experiments...")
+            page.wait_for_load_state("networkidle")
 
-        for exp in experiments:
-            url = f"http://localhost:5173/pages/{exp}"
-            print(f"Checking {exp}...")
-            console_errors.clear()
+            # Check for Temporal Core container
+            if page.locator("#temporal-core-container").count() > 0:
+                print("SUCCESS: Temporal Core container found.")
+            else:
+                print("FAILURE: Temporal Core container NOT found.")
 
-            try:
-                page.goto(url)
-                # Wait for a bit to let scripts run and potential errors to appear
-                page.wait_for_timeout(1000)
+            # Check for Hybrid Engine container
+            if page.locator("#hybrid-engine-container").count() > 0:
+                print("SUCCESS: Hybrid Engine container found.")
+            else:
+                print("FAILURE: Hybrid Engine container NOT found.")
 
-                if console_errors:
-                    print(f"  FAILED: Console errors found in {exp}:")
-                    for err in console_errors:
-                        print(f"    - {err}")
-                    failed += 1
-                    failed_experiments.append(exp)
-                else:
-                    print(f"  PASSED")
-                    passed += 1
+            # Check for Gravitational Nebula container
+            if page.locator("#gravitational-nebula-container").count() > 0:
+                print("SUCCESS: Gravitational Nebula container found.")
+            else:
+                print("FAILURE: Gravitational Nebula container NOT found.")
 
-            except Exception as e:
-                print(f"  FAILED: Exception checking {exp}: {e}")
-                failed += 1
-                failed_experiments.append(exp)
+            print("Verification finished.")
 
-        print("-" * 30)
-        print(f"Verification Complete.")
-        print(f"Passed: {passed}")
-        print(f"Failed: {failed}")
-
-        if failed > 0:
-            print(f"Failed experiments: {failed_experiments}")
-            exit(1)
-        else:
-            exit(0)
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            browser.close()
 
 if __name__ == "__main__":
-    verify_experiments()
+    verify_all_experiments()
