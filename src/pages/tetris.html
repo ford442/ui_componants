@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Tetris Rain - WebGL2 + WebGPU</title>
+    <title>Texture Sampling Test</title>
     <link rel="stylesheet" href="../css/main.css">
     <style>
         body { margin: 0; background: #050510; color: #fff; font-family: sans-serif; overflow: hidden; }
@@ -19,7 +19,7 @@
         }
         .page-header a { pointer-events: auto; }
         .back-link { color: #88ccff; text-decoration: none; margin-bottom: 1rem; display: inline-block; }
-        h1 { margin: 0; font-size: 2rem; text-shadow: 0 0 10px rgba(0, 255, 255, 0.5); }
+        h1 { margin: 0; font-size: 2rem; }
         .subtitle { color: #88ccff; opacity: 0.8; margin-top: 0.5rem; }
 
         #canvas-container {
@@ -29,6 +29,7 @@
             top: 0;
             left: 0;
             z-index: 1;
+            background: #000;
         }
     </style>
 </head>
@@ -36,22 +37,21 @@
     <div class="page-header">
         <a href="experiments.html" class="back-link">← Back to All Experiments</a>
         <div>
-            <h1>Tetris Block Rain</h1>
-            <p class="subtitle">WebGL2 + WebGPU Simulation</p>
+            <h1>Block Sampling Test</h1>
+            <p class="subtitle">Screen-Space Sampling from /block.png</p>
         </div>
     </div>
 
     <div id="canvas-container"></div>
 
     <script type="module">
-        // Updated import to use the new class name
-        import { NeonTetrisRain } from '../js/tetris-experiments.js';
+        import { SampledGlassTetris } from '../js/tetris-experiments.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             const container = document.getElementById('canvas-container');
             if (container) {
-                // Initialized with blockCount options matching the new API
-                new NeonTetrisRain(container, { blockCount: 1500 });
+                // Using /block.png as the source texture
+                new SampledGlassTetris(container, { imagePath: '/block.png' });
             }
         });
     </script>
