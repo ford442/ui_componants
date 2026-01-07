@@ -31,6 +31,7 @@ export default defineConfig({
         plasma_confinement: resolve(__dirname, 'src/pages/plasma-confinement.html'),
         cosmic_string: resolve(__dirname, 'src/pages/cosmic-string.html'),
         hybrid_magnetic_field: resolve(__dirname, 'src/pages/hybrid-magnetic-field.html'),
+        hybrid_cyber_glow: resolve(__dirname, 'src/pages/hybrid-cyber-glow.html'),
         stellar_forge: resolve(__dirname, 'src/pages/stellar-forge.html'),
         singularity_reactor: resolve(__dirname, 'src/pages/singularity-reactor.html'),
         gravitational_lensing: resolve(__dirname, 'src/pages/gravitational-lensing.html'),
