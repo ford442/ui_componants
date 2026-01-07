@@ -109,6 +109,69 @@
             </div>
         </section>
 
+        <!-- Hybrid Magnetic Field Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Hybrid Magnetic Field</h2>
+                    <p class="description">Field Viz (WebGL2) + Particle Sim (WebGPU)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Field</span>
+                        <span class="layer-tag webgpu" style="background: rgba(50, 255, 100, 0.2); border-color: #55ff55; color: #aaffaa;">WebGPU Particles</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="hybrid-magnetic-field-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #0a0a0f;"></div>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="hybrid-magnetic-field.html" style="color: #aaa; text-decoration: none; font-size: 0.9rem; border-bottom: 1px solid #555;">View Full Page Experiment</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Neural Data Core Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Neural Data Core</h2>
+                    <p class="description">Raymarched Core (WebGL2) + Data Flow (WebGPU)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 SDF</span>
+                        <span class="layer-tag webgpu" style="background: rgba(0, 200, 255, 0.2); border-color: #00ccff; color: #ccffff;">WebGPU Orbitals</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="neural-data-core-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #000000;"></div>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="neural-data-core.html" style="color: #aaa; text-decoration: none; font-size: 0.9rem; border-bottom: 1px solid #555;">View Full Page Experiment</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stellar Forge Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Stellar Forge</h2>
+                    <p class="description">Star Core (WebGL2) + Accretion Disk (WebGPU)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Core</span>
+                        <span class="layer-tag webgpu" style="background: rgba(255, 100, 50, 0.2); border-color: #ffaa55; color: #ffccaa;">WebGPU Disk</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="stellar-forge-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #000005;"></div>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="stellar-forge.html" style="color: #aaa; text-decoration: none; font-size: 0.9rem; border-bottom: 1px solid #555;">View Full Page Experiment</a>
+                </div>
+            </div>
+        </section>
+
         <!-- SVG Morphing -->
         <section class="experiment-section">
             <div class="component-card">
@@ -620,22 +683,23 @@
     </div>
 
     <!-- Load experiment scripts -->
-    <script src="../js/magnetic-particles.js"></script>
-    <script src="../js/aurora-background.js"></script>
-    <script src="../js/svg-morph.js"></script>
-    <script src="../js/portal-toggle-shader.js"></script>
-    <script src="../js/circuit-breaker-shader.js"></script>
-    <script src="../js/switches-experiments.js"></script>
-    <script src="../js/liquid-ripple.js"></script>
-    <script src="../js/knob-3d.js"></script>
-    <script src="../js/glitch-scroll.js"></script>
-    <script src="../js/biomechanical-growth.js"></script>
-    <script src="../js/hybrid-engine.js"></script>
-    <script src="../js/holographic-stream.js"></script>
-    <script src="../js/cyber-biology.js"></script>
-    <script src="../js/force-field.js"></script>
-    <script src="../js/neural-network.js"></script>
-    <script src="../js/fluid-sim.js"></script>
+    <script type="module" src="../js/magnetic-particles.js"></script>
+    <script type="module" src="../js/aurora-background.js"></script>
+    <script type="module" src="../js/svg-morph.js"></script>
+    <script type="module" src="../js/portal-toggle-shader.js"></script>
+    <script type="module" src="../js/circuit-breaker-shader.js"></script>
+    <script type="module" src="../js/switches-experiments.js"></script>
+    <script type="module" src="../js/liquid-ripple.js"></script>
+    <script type="module" src="../js/knob-3d.js"></script>
+    <script type="module" src="../js/glitch-scroll.js"></script>
+    <script type="module" src="../js/biomechanical-growth.js"></script>
+    <script type="module" src="../js/hybrid-engine.js"></script>
+    <script type="module" src="../js/hybrid-magnetic-field.js"></script>
+    <script type="module" src="../js/neural-data-core.js"></script>
+    <script type="module" src="../js/cyber-biology.js"></script>
+    <script type="module" src="../js/force-field.js"></script>
+    <script type="module" src="../js/neural-network.js"></script>
+    <script type="module" src="../js/fluid-sim.js"></script>
     <script type="module" src="../js/neon-city.js"></script>
     <script type="module" src="../js/gravitational-nebula.js"></script>
     <script type="module" src="../js/cyber-rain.js"></script>
@@ -643,18 +707,25 @@
     <script type="module" src="../js/cyber-crystal.js"></script>
     <script type="module" src="../js/bioluminescent-abyss.js"></script>
     <script type="module" src="../js/plasma-confinement.js"></script>
-    <script src="../js/temporal-core.js"></script>
-    <script src="../js/crystal-cavern.js"></script>
-    <script src="../js/cosmic-string.js"></script>
+    <script type="module" src="../js/temporal-core.js"></script>
+    <script type="module" src="../js/crystal-cavern.js"></script>
+    <script type="module" src="../js/cosmic-string.js"></script>
 
     <script type="module">
         import { QuantumDataStream } from '../js/quantum-data-stream.js';
         import { CyberCrystalExperiment } from '../js/cyber-crystal.js';
         import { BioluminescentAbyss } from '../js/bioluminescent-abyss.js';
         import { PlasmaConfinement } from '../js/plasma-confinement.js';
+        import { StellarForge } from '../js/stellar-forge.js';
 
         // Initialize experiments when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Stellar Forge
+            const stellarForgeContainer = document.getElementById('stellar-forge-container');
+            if (stellarForgeContainer) {
+                new StellarForge(stellarForgeContainer, { numParticles: 50000 });
+            }
+
             // Initialize Plasma Confinement
             const plasmaContainer = document.getElementById('plasma-confinement-container');
             if (plasmaContainer) {
@@ -727,10 +798,16 @@
                 new HybridEngine(hybridContainer, { numParticles: 20000 });
             }
 
-            // Initialize Holographic Stream
-            const holographicContainer = document.getElementById('holographic-stream-container');
-            if (holographicContainer && window.HolographicStream) {
-                new HolographicStream(holographicContainer, { numParticles: 30000 });
+            // Initialize Hybrid Magnetic Field
+            const hybridMagneticContainer = document.getElementById('hybrid-magnetic-field-container');
+            if (hybridMagneticContainer && window.HybridMagneticField) {
+                new HybridMagneticField(hybridMagneticContainer, { numParticles: 30000 });
+            }
+
+            // Initialize Neural Data Core
+            const neuralDataCoreContainer = document.getElementById('neural-data-core-container');
+            if (neuralDataCoreContainer && window.NeuralDataCore) {
+                new NeuralDataCore(neuralDataCoreContainer, { numParticles: 40000 });
             }
 
             // Initialize Cyber-Biology
