@@ -184,6 +184,27 @@
             </div>
         </section>
 
+        <!-- Seismic Wave Terrain Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Seismic Wave Terrain</h2>
+                    <p class="description">Sensor Grid (WebGL2) + Wave Equation (WebGPU)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Markers</span>
+                        <span class="layer-tag webgpu" style="background: rgba(50, 100, 255, 0.2); border-color: #55aaff; color: #aaaaff;">WebGPU Compute</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="seismic-wave-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #000;"></div>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="seismic-wave.html" style="color: #aaa; text-decoration: none; font-size: 0.9rem; border-bottom: 1px solid #555;">View Full Page Experiment</a>
+                </div>
+            </div>
+        </section>
+
         <!-- Cherenkov Radiation Experiment -->
         <section class="experiment-section">
             <div class="component-card">
@@ -823,6 +844,7 @@
     <script type="module" src="../js/cosmic-string.js"></script>
     <script type="module" src="../js/singularity-reactor.js"></script>
     <script type="module" src="../js/cherenkov-radiation.js"></script>
+    <script type="module" src="../js/seismic-wave.js"></script>
 
     <script type="module">
         import { VoidSingularityExperiment } from '../js/void-singularity.js';
@@ -833,9 +855,16 @@
         import { StellarForge } from '../js/stellar-forge.js';
         import { SingularityReactor } from '../js/singularity-reactor.js';
         import { CherenkovRadiation } from '../js/cherenkov-radiation.js';
+        import { SeismicWaveExperiment } from '../js/seismic-wave.js';
 
         // Initialize experiments when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Seismic Wave
+            const seismicContainer = document.getElementById('seismic-wave-container');
+            if (seismicContainer && window.SeismicWaveExperiment) {
+                new SeismicWaveExperiment(seismicContainer, { gridSize: 128 });
+            }
+
             // Initialize Cherenkov Radiation
             const cherenkovContainer = document.getElementById('cherenkov-radiation-container');
             if (cherenkovContainer && window.CherenkovRadiation) {
