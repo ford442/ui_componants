@@ -328,7 +328,7 @@ class CosmicStringExperiment {
                 let dist = sqrt(distSq);
 
                 // Gravity towards string
-                let force = -0.05 / distSq;
+                var force = -0.05 / distSq;
 
                 // Limit force
                 if (force < -2.0) { force = -2.0; }
