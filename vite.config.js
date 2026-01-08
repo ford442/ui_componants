@@ -30,6 +30,7 @@ export default defineConfig({
         bioluminescent_abyss: resolve(__dirname, 'src/pages/bioluminescent-abyss.html'),
         plasma_confinement: resolve(__dirname, 'src/pages/plasma-confinement.html'),
         cosmic_string: resolve(__dirname, 'src/pages/cosmic-string.html'),
+        acoustic_levitation: resolve(__dirname, 'src/pages/acoustic-levitation.html'),
         hybrid_magnetic_field: resolve(__dirname, 'src/pages/hybrid-magnetic-field.html'),
         stellar_forge: resolve(__dirname, 'src/pages/stellar-forge.html'),
         neural_data_core: resolve(__dirname, 'src/pages/neural-data-core.html'),
