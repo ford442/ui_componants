@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seismic Wave Terrain - Hybrid Experiment</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            pointer-events: auto;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 16px;
+            border-radius: 4px;
+        }
+        .info-card {
+            background: rgba(10, 10, 20, 0.85);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            max-width: 300px;
+            pointer-events: auto;
+        }
+        h1 { font-size: 1.5rem; margin: 0 0 0.5rem 0; color: #fff; }
+        p { color: #aaa; font-size: 0.9rem; line-height: 1.5; margin: 0; }
+        .tag {
+            display: inline-block;
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-right: 5px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .tag.webgl { background: rgba(50, 100, 255, 0.2); color: #88aaff; border: 1px solid #5588ff; }
+        .tag.webgpu { background: rgba(255, 100, 50, 0.2); color: #ffaa88; border: 1px solid #ff8855; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div class="ui-overlay">
+        <a href="experiments.html" class="back-link">← Back to Lab</a>
+        <div class="info-card">
+            <h1>Seismic Wave Terrain</h1>
+            <p>
+                A hybrid experiment combining WebGL2 and WebGPU.
+                <br><br>
+                <strong>WebGL2:</strong> Renders the static sensor stations (pillars).
+                <br>
+                <strong>WebGPU:</strong> Simulates wave propagation on the grid using Compute Shaders (Wave Equation).
+                <br><br>
+                <em>Click and drag to trigger seismic waves.</em>
+            </p>
+            <div>
+                <span class="tag webgl">WebGL2</span>
+                <span class="tag webgpu">WebGPU Compute</span>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="../js/seismic-wave.js"></script>
+    <script type="module">
+        import { SeismicWaveExperiment } from '../js/seismic-wave.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('canvas-container');
+            if (navigator.gpu) {
+                new SeismicWaveExperiment(container, { gridSize: 256 });
+            } else {
+                // Fallback for non-WebGPU (could be handled inside the class too)
+                new SeismicWaveExperiment(container, { gridSize: 100 });
+            }
+        });
+    </script>
+</body>
+</html>

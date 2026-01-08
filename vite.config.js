@@ -34,6 +34,7 @@ export default defineConfig({
         stellar_forge: resolve(__dirname, 'src/pages/stellar-forge.html'),
         neural_data_core: resolve(__dirname, 'src/pages/neural-data-core.html'),
         tetris_experiments: resolve(__dirname, 'src/pages/tetris-experiments.html'),
+        seismic_wave: resolve(__dirname, 'src/pages/seismic-wave.html'),
       },
     },
   },

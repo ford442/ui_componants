@@ -710,8 +710,10 @@
     <script type="module" src="../js/temporal-core.js"></script>
     <script type="module" src="../js/crystal-cavern.js"></script>
     <script type="module" src="../js/cosmic-string.js"></script>
+    <script type="module" src="../js/seismic-wave.js"></script>
 
     <script type="module">
+        import { SeismicWaveExperiment } from '../js/seismic-wave.js';
         import { QuantumDataStream } from '../js/quantum-data-stream.js';
         import { CyberCrystalExperiment } from '../js/cyber-crystal.js';
         import { BioluminescentAbyss } from '../js/bioluminescent-abyss.js';
@@ -766,6 +768,12 @@
             const cosmicStringContainer = document.getElementById('cosmic-string-container');
             if (cosmicStringContainer && window.CosmicStringExperiment) {
                 new CosmicStringExperiment(cosmicStringContainer, { numParticles: 20000 });
+            }
+
+            // Initialize Seismic Wave
+            const seismicWaveContainer = document.getElementById('seismic-wave-container');
+            if (seismicWaveContainer && window.SeismicWaveExperiment) {
+                new SeismicWaveExperiment(seismicWaveContainer, { gridSize: 100 });
             }
 
             // Initialize Temporal Data Core
