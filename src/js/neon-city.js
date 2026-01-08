@@ -71,6 +71,9 @@ class NeonCityExperiment {
             }
         }
 
+        // Initial resize to ensure canvases have correct size before rendering
+        this.resize();
+
         this.isActive = true;
         this.animate();
 
@@ -258,7 +261,8 @@ class NeonCityExperiment {
         this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, indices, this.gl.STATIC_DRAW);
 
         this.gl.enable(this.gl.DEPTH_TEST);
-        this.resizeGL();
+
+        // Removed call to resizeGL() here to avoid setting undefined size
     }
 
     createGLProgram(vsSource, fsSource) {
@@ -406,26 +410,6 @@ class NeonCityExperiment {
         });
 
         // Layouts & Pipelines
-        const bindGroupLayout = this.device.createBindGroupLayout({
-            entries: [
-                { binding: 0, visibility: GPUShaderStage.COMPUTE | GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } }, // Actually read-write in compute
-                { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } }
-            ]
-        });
-        // Note: For compute it needs to be storage (read_write). For vertex it is read-only.
-        // WebGPU separates these. We need to be careful.
-        // Actually, 'read-only-storage' in vertex and 'storage' in compute for the same buffer is tricky if using same bind group.
-        // Better:
-        // Compute BindGroup: Binding 0 (Storage), Binding 1 (Uniform)
-        // Render BindGroup: Binding 0 (ReadOnlyStorage)
-
-        // Let's try one BG layout with "buffer: { type: 'storage' }" which implies read-write in compute.
-        // In vertex shader, we can define it as `var<storage, read>`.
-        // However, standard says default storage is read-only. `read-write` needs explicit type.
-
-        // Let's create two layouts if needed, or just one that is permissive?
-        // Actually, `buffer: { type: 'storage' }` is fine for both if usage allows.
-
         const computeBGLayout = this.device.createBindGroupLayout({
             entries: [
                 { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, // read-write
@@ -478,7 +462,7 @@ class NeonCityExperiment {
             primitive: { topology: 'line-list' }
         });
 
-        this.resizeGPU();
+        // Removed call to resizeGPU() here
     }
 
     updateRainParams() {
@@ -493,6 +477,9 @@ class NeonCityExperiment {
         const dpr = window.devicePixelRatio || 1;
         const w = this.container.clientWidth * dpr;
         const h = this.container.clientHeight * dpr;
+
+        // Ensure non-zero dimensions
+        if (w === 0 || h === 0) return;
 
         this.resizeGL(w, h);
         this.resizeGPU(w, h);
@@ -565,20 +552,23 @@ class NeonCityExperiment {
             cPass.end();
 
             // Render
-            const textureView = this.context.getCurrentTexture().createView();
-            const rPass = encoder.beginRenderPass({
-                colorAttachments: [{
-                    view: textureView,
-                    clearValue: { r: 0, g: 0, b: 0, a: 0 },
-                    loadOp: 'load', // Load WebGL canvas content beneath? No, they are separate canvases.
-                    storeOp: 'store'
-                }]
-            });
-            rPass.setPipeline(this.rainPipeline);
-            rPass.setBindGroup(0, this.renderBindGroup);
-            // Draw 2 vertices per instance * numRainDrops instances
-            rPass.draw(2, this.numRainDrops);
-            rPass.end();
+            // Ensure width/height are valid (>0) to avoid validation errors
+            if (this.gpuCanvas.width > 0 && this.gpuCanvas.height > 0) {
+                const textureView = this.context.getCurrentTexture().createView();
+                const rPass = encoder.beginRenderPass({
+                    colorAttachments: [{
+                        view: textureView,
+                        clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                        loadOp: 'load', // Load WebGL canvas content beneath? No, they are separate canvases.
+                        storeOp: 'store'
+                    }]
+                });
+                rPass.setPipeline(this.rainPipeline);
+                rPass.setBindGroup(0, this.renderBindGroup);
+                // Draw 2 vertices per instance * numRainDrops instances
+                rPass.draw(2, this.numRainDrops);
+                rPass.end();
+            }
 
             this.device.queue.submit([encoder.finish()]);
         }
