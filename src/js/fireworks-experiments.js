@@ -30,8 +30,15 @@ export class FireworksExperiment {
         this.initialized = false;
         this.isRunning = false;
 
+        this.mouseX = 0;
+        this.mouseY = 0;
+        this.isMouseDown = 0;
+
         this.resize = this.resize.bind(this);
         this.render = this.render.bind(this);
+        this.handleMouseMove = this.handleMouseMove.bind(this);
+        this.handleMouseDown = this.handleMouseDown.bind(this);
+        this.handleMouseUp = this.handleMouseUp.bind(this);
 
         this.init();
     }
@@ -54,24 +61,29 @@ export class FireworksExperiment {
             this.context = this.canvas.getContext('webgpu');
             this.presentationFormat = navigator.gpu.getPreferredCanvasFormat();
 
-            const observer = new ResizeObserver(entries => {
-                for (const entry of entries) {
-                    const width = entry.contentRect.width;
-                    const height = entry.contentRect.height;
-                    const dpr = window.devicePixelRatio || 1;
-                    this.canvas.width = Math.max(1, width * dpr);
-                    this.canvas.height = Math.max(1, height * dpr);
+            this.resize();
 
-                    if (this.initialized) {
-                        this.context.configure({
-                            device: this.device,
-                            format: this.presentationFormat,
-                            alphaMode: 'premultiplied'
-                        });
-                    }
-                }
-            });
+            const observer = new ResizeObserver(() => this.resize());
             observer.observe(this.container);
+
+            // Event Listeners
+            this.canvas.addEventListener('mousemove', this.handleMouseMove);
+            this.canvas.addEventListener('mousedown', this.handleMouseDown);
+            this.canvas.addEventListener('mouseup', this.handleMouseUp);
+            // Touch support
+            this.canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                this.handleMouseMove(touch);
+            }, { passive: false });
+             this.canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.handleMouseDown();
+                const touch = e.touches[0];
+                this.handleMouseMove(touch);
+            }, { passive: false });
+            this.canvas.addEventListener('touchend', this.handleMouseUp);
+
 
             await this.createAssets();
 
@@ -119,9 +131,18 @@ export class FireworksExperiment {
         this.particleBuffer.unmap();
 
         // Uniform buffer
-        // time, deltaTime, resolution(2), gravity, seed
+        // time, deltaTime, resolution(2), gravity, seed, mouseX, mouseY, mouseDown
+        // Size: 8 floats = 32 bytes.
+        // But let's align to 16 bytes chunks.
+        // Uniforms struct:
+        // time (f32), deltaTime (f32), resX (f32), resY (f32)
+        // gravity (f32), seed (f32), mouseX (f32), mouseY (f32)
+        // mouseDown (f32), pad1, pad2, pad3
+        // Total: 12 floats -> 48 bytes. Round up to 64 bytes for alignment safety if needed or keep packed.
+        // Let's use 48 bytes (3 * vec4 size).
+
         this.uniformBuffer = this.device.createBuffer({
-            size: 64, // aligned
+            size: 64, // Sufficient for our needs
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
 
@@ -143,7 +164,10 @@ export class FireworksExperiment {
                 resX: f32,
                 resY: f32,
                 gravity: f32,
-                seed: f32
+                seed: f32,
+                mouseX: f32,
+                mouseY: f32,
+                mouseDown: f32
             }
 
             @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
@@ -171,16 +195,47 @@ export class FireworksExperiment {
                 // Update Life
                 p.life -= uniforms.deltaTime * 0.5;
 
+                // Mouse interaction: Attraction when mouse down
+                if (uniforms.mouseDown > 0.5) {
+                    let mousePos = vec2<f32>(uniforms.mouseX, uniforms.mouseY);
+                    // Convert mouse from [0, res] to [-1, 1] (approximately, preserving aspect ratio)
+                    let aspect = uniforms.resX / uniforms.resY;
+                    let mX = (mousePos.x / uniforms.resX) * 2.0 - 1.0;
+                    let mY = (1.0 - mousePos.y / uniforms.resY) * 2.0 - 1.0; // Flip Y
+                    // Adjust X for aspect if we did that for particles.
+                    // Our vertex shader doesn't correct aspect, it just uses raw pos.
+                    // But assume particles are in standard clip space [-1, 1].
+
+                    let target = vec2<f32>(mX, mY);
+                    let delta = target - p.pos;
+                    let dist = length(delta);
+                    if (dist < 0.5) {
+                        let force = normalize(delta) * 5.0 * uniforms.deltaTime;
+                        p.vel += force;
+                    }
+                }
+
                 // Respawn
                 if (p.life <= 0.0) {
                     let seed = u32(uniforms.time * 1000.0) + index * 123u;
                     let rand = hash(seed);
 
-                    // Reset to bottom center-ish
-                    p.pos = vec2<f32>((hash(seed + 1u) - 0.5) * 1.5, -1.2);
+                    if (uniforms.mouseDown > 0.5 && (index % 10u) == 0u) {
+                        // Spawn at mouse if clicked
+                         let mousePos = vec2<f32>(uniforms.mouseX, uniforms.mouseY);
+                         let mX = (mousePos.x / uniforms.resX) * 2.0 - 1.0;
+                         let mY = (1.0 - mousePos.y / uniforms.resY) * 2.0 - 1.0;
 
-                    // Launch velocity
-                    p.vel = vec2<f32>((hash(seed + 2u) - 0.5) * 0.5, 1.5 + hash(seed + 3u) * 1.0);
+                         p.pos = vec2<f32>(mX, mY);
+                         let angle = hash(seed + 1u) * 6.28;
+                         let speed = hash(seed + 2u) * 2.0;
+                         p.vel = vec2<f32>(cos(angle) * speed, sin(angle) * speed);
+                    } else {
+                        // Reset to bottom center-ish
+                        p.pos = vec2<f32>((hash(seed + 1u) - 0.5) * 1.5, -1.2);
+                        // Launch velocity
+                        p.vel = vec2<f32>((hash(seed + 2u) - 0.5) * 0.5, 1.5 + hash(seed + 3u) * 1.0);
+                    }
 
                     // Random Color
                     let hue = hash(seed + 4u);
@@ -325,7 +380,59 @@ export class FireworksExperiment {
     }
 
     resize() {
-        // Handled by ResizeObserver
+        const rect = this.container.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+
+        // Ensure non-zero dimensions
+        const width = Math.max(1, rect.width * dpr);
+        const height = Math.max(1, rect.height * dpr);
+
+        this.canvas.width = width;
+        this.canvas.height = height;
+
+        if (this.device && this.context) {
+             this.context.configure({
+                device: this.device,
+                format: this.presentationFormat,
+                alphaMode: 'premultiplied'
+            });
+        }
+    }
+
+    handleMouseMove(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+        const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
+
+        // Fallback if event is just a Touch object passed directly
+        const x = clientX !== undefined ? clientX : e.clientX;
+        const y = clientY !== undefined ? clientY : e.clientY;
+
+        this.mouseX = x - rect.left;
+        this.mouseY = y - rect.top;
+    }
+
+    handleMouseDown(e) {
+        this.isMouseDown = 1.0;
+        if(e) {
+            const rect = this.canvas.getBoundingClientRect();
+             // Check if it's a TouchEvent or MouseEvent or direct Touch object
+            let clientX, clientY;
+            if (e.touches && e.touches.length > 0) {
+                 clientX = e.touches[0].clientX;
+                 clientY = e.touches[0].clientY;
+            } else {
+                 clientX = e.clientX;
+                 clientY = e.clientY;
+            }
+
+            this.mouseX = clientX - rect.left;
+            this.mouseY = clientY - rect.top;
+        }
+    }
+
+    handleMouseUp(e) {
+        this.isMouseDown = 0.0;
     }
 
     render(time) {
@@ -336,6 +443,7 @@ export class FireworksExperiment {
         const dt = 0.016; // Fixed step for stability
 
         // Update Uniforms
+        // Struct: time, deltaTime, resX, resY, gravity, seed, mouseX, mouseY, mouseDown
         const uniforms = new Float32Array([
             t,
             dt,
@@ -343,7 +451,10 @@ export class FireworksExperiment {
             this.canvas.height,
             this.options.gravity,
             Math.random(), // seed
-            0, 0 // padding
+            this.mouseX,
+            this.mouseY,
+            this.isMouseDown,
+            0, 0, 0 // padding
         ]);
         this.device.queue.writeBuffer(this.uniformBuffer, 0, uniforms);
 
@@ -380,5 +491,9 @@ export class FireworksExperiment {
         if (this.particleBuffer) this.particleBuffer.destroy();
         if (this.uniformBuffer) this.uniformBuffer.destroy();
         this.container.innerHTML = '';
+        this.canvas.removeEventListener('mousemove', this.handleMouseMove);
+        this.canvas.removeEventListener('mousedown', this.handleMouseDown);
+        this.canvas.removeEventListener('mouseup', this.handleMouseUp);
+        // ... remove touch listeners if stored
     }
 }
