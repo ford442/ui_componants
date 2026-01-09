@@ -36,6 +36,7 @@ export default defineConfig({
         neural_data_core: resolve(__dirname, 'src/pages/neural-data-core.html'),
         tetris_experiments: resolve(__dirname, 'src/pages/tetris-experiments.html'),
         seismic_wave: resolve(__dirname, 'src/pages/seismic-wave.html'),
+        cosmic_radiation: resolve(__dirname, 'src/pages/cosmic-radiation.html'),
       },
     },
   },
