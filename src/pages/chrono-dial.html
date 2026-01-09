@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chrono Dial - Hybrid Interface</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050510;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.5rem;
+            text-shadow: 0 0 10px rgba(0, 200, 255, 0.5);
+        }
+        p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        .instruction {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            color: #00ffff;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #fff;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <!-- Canvases will be injected here by JS -->
+    </div>
+
+    <div class="ui-overlay">
+        <h1>Chrono Dial</h1>
+        <p>Hybrid WebGL2 (Dial) + WebGPU (Time Dust)</p>
+        <div class="instruction">DRAG horizontally to rotate the dial and accelerate time.</div>
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+    </div>
+
+    <script type="module">
+        import { ChronoDial } from '../js/chrono-dial.js';
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('canvas-container');
+            if (container) {
+                new ChronoDial(container);
+            }
+        });
+    </script>
+</body>
+</html>
