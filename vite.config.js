@@ -39,6 +39,7 @@ export default defineConfig({
         cosmic_radiation: resolve(__dirname, 'src/pages/cosmic-radiation.html'),
         void_rift: resolve(__dirname, 'src/pages/void-rift.html'),
         photon_containment: resolve(__dirname, 'src/pages/photon-containment.html'),
+        signage_lab: resolve(__dirname, 'src/pages/signage_lab.html'),
       },
     },
   },
