@@ -148,6 +148,11 @@ class AcousticLevitation {
 
             out vec4 outColor;
 
+            float hexDist(vec2 p) {
+                p = abs(p);
+                return max(p.x, dot(p, normalize(vec2(1.0, 1.73))));
+            }
+
             void main() {
                 // Hexagon pattern
                 vec2 st = v_uv * 10.0;
@@ -157,25 +162,20 @@ class AcousticLevitation {
                 vec2 b = mod(st - h, r) - h;
                 vec2 gv = dot(a, a) < dot(b, b) ? a : b;
                 float x = atan(gv.x, gv.y);
-                float y = 0.5 - hex(gv);
-                float hex = smoothstep(0.0, 0.1, 0.5 - length(gv));
+                float y = 0.5 - hexDist(gv);
+                float hexVal = smoothstep(0.0, 0.1, 0.5 - length(gv));
 
                 // Pulse emission
                 float pulse = sin(u_time * 5.0 - length(v_uv - 0.5) * 10.0) * 0.5 + 0.5;
 
                 vec3 color = vec3(0.1, 0.2, 0.4);
-                color += vec3(0.5, 0.7, 1.0) * hex * pulse;
+                color += vec3(0.5, 0.7, 1.0) * hexVal * pulse;
 
                 // Edge glow
                 float edge = smoothstep(0.4, 0.5, abs(v_uv.x - 0.5)) + smoothstep(0.4, 0.5, abs(v_uv.y - 0.5));
                 color += vec3(0.2, 0.5, 1.0) * edge;
 
                 outColor = vec4(color, 0.8);
-            }
-
-            float hex(vec2 p) {
-                p = abs(p);
-                return max(p.x, dot(p, normalize(vec2(1.0, 1.73))));
             }
         `;
 
