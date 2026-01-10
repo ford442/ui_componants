@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multilingual Signage Lab</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/signage_lab.css">
+</head>
+<body class="bg-slate-900 text-slate-200 font-sans">
+
+    <header class="mb-8 max-w-4xl mx-auto p-4 md:p-8">
+        <h1 class="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            Multilingual Signage Lab
+        </h1>
+        <p class="text-slate-400">
+            Experimenting with "Temporal" vs. "Spectral" information density.
+        </p>
+        <a href="../index.html" class="text-sm text-blue-400 hover:underline mt-2 inline-block">← Back to Dashboard</a>
+    </header>
+
+    <div class="max-w-4xl mx-auto bg-slate-800 rounded-xl p-4 mb-8 shadow-xl border border-slate-700">
+        <div class="flex flex-wrap gap-4 items-center justify-between">
+
+            <div class="flex bg-slate-900 rounded-lg p-1">
+                <button id="btn-tab-scroll" class="px-4 py-2 rounded-md transition-colors flex items-center gap-2 bg-blue-600 text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m2 22 20-20"/><path d="M2 12a10 10 1 1 20 0"/></svg> Vertical Scroll
+                </button>
+                <button id="btn-tab-stack" class="px-4 py-2 rounded-md transition-colors flex items-center gap-2 text-slate-400 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> Chromatic Overlap
+                </button>
+            </div>
+
+            <div class="flex bg-slate-900 rounded-lg p-1">
+                <button class="btn-content px-4 py-2 rounded-md transition-colors flex items-center gap-2 bg-indigo-600 text-white" data-type="words">Action</button>
+                <button class="btn-content px-4 py-2 rounded-md transition-colors flex items-center gap-2 text-slate-400 hover:text-white" data-type="status">Status</button>
+                <button class="btn-content px-4 py-2 rounded-md transition-colors flex items-center gap-2 text-slate-400 hover:text-white" data-type="numbers">Numbers</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 p-4">
+
+        <div class="lg:col-span-2 space-y-6">
+
+            <div id="display-container" class="relative h-80 rounded-lg overflow-hidden flex flex-col items-center justify-center transition-all duration-300">
+                </div>
+
+            <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                <div id="controls-scroll" class="flex items-center gap-4">
+                    <button id="btn-toggle-play" class="p-3 bg-blue-600 rounded-full hover:bg-blue-500 transition text-white">
+                        <svg id="icon-pause" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="4" height="16" x="6" y="4" rx="1"/><rect width="4" height="16" x="14" y="4" rx="1"/></svg>
+                        <svg id="icon-play" class="hidden" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    </button>
+                    <div class="text-sm text-slate-400">
+                        The <span class="text-white font-bold">Scrolling Stack</span> reduces anxiety by showing content "coming up next".
+                    </div>
+                </div>
+
+                <div id="controls-stack" class="hidden space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-bold text-slate-300">Simulate "Brain Focus":</span>
+                        <button id="btn-chaos-mode" class="text-xs bg-slate-700 text-white px-2 py-1 rounded hover:bg-slate-600">
+                            Disable Transparency
+                        </button>
+                    </div>
+                    <div class="flex gap-2" id="layer-toggles">
+                        </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <div class="bg-slate-800 p-6 rounded-xl border-l-4 border-purple-500 shadow-lg">
+                <h3 class="font-bold text-lg text-white mb-2">Observations</h3>
+                <div id="observation-text" class="space-y-4 text-slate-300 text-sm">
+                    </div>
+            </div>
+
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                <h3 class="font-bold text-lg text-white mb-4">Design Rules</h3>
+                <ul class="space-y-3 text-sm text-slate-400">
+                    <li class="flex items-start gap-2">
+                        <span class="text-green-400 font-bold">✓</span>
+                        <span><strong>Temporal:</strong> Use motion to indicate "more content exists." Never just snap-change.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-red-400 font-bold">×</span>
+                        <span><strong>Spectral:</strong> Do not overlap text with similar silhouettes.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-yellow-400 font-bold">!</span>
+                        <span><strong>Context:</strong> "Status" can wait. "Danger" cannot.</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module" src="../js/signage_lab.js"></script>
+</body>
+</html>
