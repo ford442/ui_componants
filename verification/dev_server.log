@@ -4,9 +4,11 @@
 
 [33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
 
-  VITE v5.4.21  ready in 405 ms
+  VITE v5.4.21  ready in 359 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
-1:17:46 AM [vite] page reload js/liquid-ripple.js
-1:19:00 AM [vite] page reload js/neon-city.js
+5:27:52 AM [vite] page reload js/void-rift.js
+5:28:31 AM [vite] page reload js/acoustic-levitation.js
+5:28:37 AM [vite] page reload js/acoustic-levitation.js
+5:29:07 AM [vite] page reload js/acoustic-levitation.js

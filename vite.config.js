@@ -37,6 +37,7 @@ export default defineConfig({
         tetris_experiments: resolve(__dirname, 'src/pages/tetris-experiments.html'),
         seismic_wave: resolve(__dirname, 'src/pages/seismic-wave.html'),
         cosmic_radiation: resolve(__dirname, 'src/pages/cosmic-radiation.html'),
+        void_rift: resolve(__dirname, 'src/pages/void-rift.html'),
       },
     },
   },

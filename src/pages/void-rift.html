@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Void Rift - Hybrid WebGL2/WebGPU</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        .overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 100;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        h1 { margin: 0 0 0.5rem 0; font-size: 1.5rem; }
+        p { margin: 0; opacity: 0.8; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div class="overlay">
+        <h1>Void Rift</h1>
+        <p>Hybrid Rendering Engine</p>
+        <p>• Background: WebGL2 Raymarching (Gravitational Lensing)</p>
+        <p>• Foreground: WebGPU Compute Shaders (Accretion Disk)</p>
+    </div>
+
+    <script type="module">
+        import '../js/void-rift.js';
+
+        const container = document.getElementById('canvas-container');
+        if (container) {
+            new VoidRift(container, { numParticles: 100000 });
+        }
+    </script>
+</body>
+</html>
