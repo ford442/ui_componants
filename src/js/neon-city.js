@@ -14,6 +14,7 @@ class NeonCityExperiment {
         this.animationId = null;
         this.speed = 0.5;
         this.rainDensity = 0.7;
+        this.mouse = { x: 0, y: 0 };
 
         // WebGL2 State (City)
         this.glCanvas = null;
@@ -58,6 +59,20 @@ class NeonCityExperiment {
                 this.updateRainParams();
             });
         }
+
+        // Mouse Interaction
+        this.container.addEventListener('mousemove', (e) => {
+            const rect = this.container.getBoundingClientRect();
+            // Normalize to [-1, 1]
+            this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        });
+
+        this.container.addEventListener('mouseleave', () => {
+             // Reset or keep last position? Let's smoothly return to center logic if needed,
+             // but for now keeping last pos is fine or resetting.
+             // this.mouse.x = 0; this.mouse.y = 0;
+        });
 
         // 1. Init WebGL2 (City Layer)
         this.initWebGL2();
@@ -325,6 +340,8 @@ class NeonCityExperiment {
             struct Uniforms {
                 dt: f32,
                 density: f32,
+                mouseX: f32,
+                mouseY: f32,
             }
             @group(0) @binding(1) var<uniform> uniforms : Uniforms;
 
@@ -334,6 +351,14 @@ class NeonCityExperiment {
                 if (i >= ${this.numRainDrops}) { return; }
 
                 var p = particles[i];
+
+                // Interaction: Repel from mouse
+                let mousePos = vec2f(uniforms.mouseX, uniforms.mouseY);
+                let dist = distance(p.pos, mousePos);
+                if (dist < 0.3) {
+                    let dir = normalize(p.pos - mousePos);
+                    p.pos = p.pos + dir * (0.3 - dist) * 0.1;
+                }
 
                 // Fall down
                 p.pos.y = p.pos.y - p.speed * uniforms.dt;
@@ -405,7 +430,7 @@ class NeonCityExperiment {
         this.rainBuffer.unmap();
 
         this.uniformBuffer = this.device.createBuffer({
-            size: 16, // dt(4), density(4), pad(8)
+            size: 16, // dt(4), density(4), mouseX(4), mouseY(4)
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
 
@@ -509,11 +534,15 @@ class NeonCityExperiment {
         if (this.gl && this.glProgram) {
             this.gl.useProgram(this.glProgram);
 
+            // Parallax Camera
+            const camX = this.mouse.x * 5.0;
+            const camY = 5.0 + this.mouse.y * 2.0;
+
             // Matrices
             const aspect = this.glCanvas.width / this.glCanvas.height;
             const projection = this.createPerspectiveMatrix(60, aspect, 0.1, 500.0);
             const view = this.createLookAtMatrix(
-                [0, 5, -20], // Eye
+                [camX, camY, -20], // Eye (Parallax)
                 [0, 0, 50],  // Target
                 [0, 1, 0]    // Up
             );
@@ -539,7 +568,12 @@ class NeonCityExperiment {
         // 2. WebGPU Render
         if (this.device && this.rainPipeline) {
             // Update Uniforms
-            const uData = new Float32Array([dt * (1.0 + this.speed * 5.0), this.rainDensity]); // Speed up rain with scroll
+            const uData = new Float32Array([
+                dt * (1.0 + this.speed * 5.0),
+                this.rainDensity,
+                this.mouse.x,
+                this.mouse.y
+            ]);
             this.device.queue.writeBuffer(this.uniformBuffer, 0, uData);
 
             const encoder = this.device.createCommandEncoder();
