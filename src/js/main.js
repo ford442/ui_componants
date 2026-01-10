@@ -940,6 +940,10 @@ class WebGPUParticleSystem {
 
         try {
             const adapter = await navigator.gpu.requestAdapter();
+            if (!adapter) {
+                console.warn('WebGPU adapter not found');
+                return false;
+            }
             this.device = await adapter.requestDevice();
 
             this.context = this.canvas.getContext('webgpu');
@@ -1276,6 +1280,10 @@ class WebGPUVolumetricRenderer {
 
         try {
             const adapter = await navigator.gpu.requestAdapter();
+            if (!adapter) {
+                console.warn('WebGPU adapter not found');
+                return false;
+            }
             this.device = await adapter.requestDevice();
 
             this.context = this.canvas.getContext('webgpu');
