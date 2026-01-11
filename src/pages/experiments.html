@@ -630,6 +630,27 @@
             </div>
         </section>
 
+        <!-- Hyper-Dimensional Cube Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Hyper-Dimensional Cube</h2>
+                    <p class="description">4D Tesseract Projection (WebGL2) + Dimensional Particles (WebGPU)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Wireframe</span>
+                        <span class="layer-tag webgpu" style="background: rgba(180, 50, 255, 0.2); border-color: #b050ff; color: #e0b0ff;">WebGPU Particles</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="hyper-cube-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #050505;"></div>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="hyper-cube.html" style="color: #aaa; text-decoration: none; font-size: 0.9rem; border-bottom: 1px solid #555;">View Full Page Experiment</a>
+                </div>
+            </div>
+        </section>
+
             <!-- Acoustic Levitation Experiment -->
             <section class="experiment-section">
                 <div class="component-card">
@@ -829,6 +850,7 @@
     <script type="module" src="../js/fluid-sim.js"></script>
     <script type="module" src="../js/neon-city.js"></script>
     <script type="module" src="../js/gravitational-nebula.js"></script>
+    <script type="module" src="../js/hyper-cube.js"></script>
     <script type="module" src="../js/cyber-rain.js"></script>
     <script type="module" src="../js/quantum-data-stream.js"></script>
     <script type="module" src="../js/cyber-crystal.js"></script>
@@ -952,6 +974,12 @@
             const nebulaContainer = document.getElementById('gravitational-nebula-container');
             if (nebulaContainer && window.GravitationalNebula) {
                 new GravitationalNebula(nebulaContainer, { numParticles: 50000 });
+            }
+
+            // Initialize Hyper-Cube
+            const hyperCubeContainer = document.getElementById('hyper-cube-container');
+            if (hyperCubeContainer && window.HyperCubeExperiment) {
+                new HyperCubeExperiment(hyperCubeContainer, { numParticles: 50000 });
             }
 
             // Initialize Neon City
