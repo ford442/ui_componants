@@ -14,6 +14,10 @@ export class PlasmaConfinement {
         this.isActive = false;
         this.startTime = Date.now();
         this.animationId = null;
+        this.mouseX = 0;
+        this.mouseY = 0;
+        // NEW: Confinement Strength
+        this.confinementStrength = 1.0;
 
         // WebGL2 State
         this.glCanvas = null;
@@ -34,6 +38,9 @@ export class PlasmaConfinement {
 
         // Bind resize handler for cleanup
         this.handleResize = this.resize.bind(this);
+        this.handleMouseMove = this.onMouseMove.bind(this);
+        this.handleMouseDown = this.onMouseDown.bind(this);
+        this.handleMouseUp = this.onMouseUp.bind(this);
 
         this.init();
     }
@@ -64,9 +71,33 @@ export class PlasmaConfinement {
         this.animate();
 
         window.addEventListener('resize', this.handleResize);
+        this.container.addEventListener('mousemove', this.handleMouseMove);
+        this.container.addEventListener('mousedown', this.handleMouseDown);
+        this.container.addEventListener('mouseup', this.handleMouseUp);
+        // Also support touch
+        this.container.addEventListener('touchstart', this.handleMouseDown);
+        this.container.addEventListener('touchend', this.handleMouseUp);
+
 
         // Initial resize
         this.resize();
+    }
+
+    onMouseMove(e) {
+        const rect = this.container.getBoundingClientRect();
+        // Normalize mouse to -1 to 1
+        this.mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouseY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+    }
+
+    onMouseDown(e) {
+        // Invert strength to repel/explode
+        this.confinementStrength = -2.0;
+    }
+
+    onMouseUp(e) {
+        // Restore confinement
+        this.confinementStrength = 1.0;
     }
 
     // ========================================================================
@@ -286,6 +317,12 @@ export class PlasmaConfinement {
             struct Params {
                 dt : f32,
                 time : f32,
+                mouseX: f32,
+                mouseY: f32,
+                confinementStrength: f32,
+                pad1: f32,
+                pad2: f32,
+                pad3: f32,
             }
 
             @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
@@ -320,27 +357,43 @@ export class PlasmaConfinement {
                 p.vel.x += -sin(angle) * swirlForce * params.dt;
                 p.vel.z += cos(angle) * swirlForce * params.dt;
 
-                // Attraction to center
+                // Attraction/Repulsion center
                 let centerDir = normalize(-p.pos.xyz);
-                p.vel.x += centerDir.x * 0.8 * params.dt;
-                p.vel.y += centerDir.y * 0.8 * params.dt;
-                p.vel.z += centerDir.z * 0.8 * params.dt;
+                // params.confinementStrength is 1.0 (attract) or -2.0 (repel)
+                p.vel.x += centerDir.x * 0.8 * params.confinementStrength * params.dt;
+                p.vel.y += centerDir.y * 0.8 * params.confinementStrength * params.dt;
+                p.vel.z += centerDir.z * 0.8 * params.confinementStrength * params.dt;
+
+                // Mouse Repulsion (Local Interaction)
+                // Project mouse to approximate world coords
+                let mouseWorld = vec3f(params.mouseX * 2.0, params.mouseY * 2.0, 0.0);
+                let mouseDist = distance(p.pos.xyz, mouseWorld);
+                if (mouseDist < 0.5) {
+                    let repelDir = normalize(p.pos.xyz - mouseWorld);
+                    let force = (1.0 - mouseDist/0.5) * 5.0;
+                    p.vel.x += repelDir.x * force * params.dt;
+                    p.vel.y += repelDir.y * force * params.dt;
+                    p.vel.z += repelDir.z * force * params.dt;
+                }
 
                 // Turbulence
                 p.vel.x += (hash(i + u32(params.time * 100.0)) - 0.5) * 0.1;
                 p.vel.y += (hash(i + 1u + u32(params.time * 100.0)) - 0.5) * 0.1;
                 p.vel.z += (hash(i + 2u + u32(params.time * 100.0)) - 0.5) * 0.1;
 
-                // Boundary condition (Soft bounce)
+                // Boundary condition (Soft bounce if outside radius)
                 if (dist > radius) {
-                    let n = normalize(-p.pos.xyz);
-                    p.vel.x += n.x * 2.0 * params.dt;
-                    p.vel.y += n.y * 2.0 * params.dt;
-                    p.vel.z += n.z * 2.0 * params.dt;
-                    // Dampen
-                    p.vel.x *= 0.9;
-                    p.vel.y *= 0.9;
-                    p.vel.z *= 0.9;
+                    // Only bounce if we are trying to confine
+                    if (params.confinementStrength > 0.0) {
+                        let n = normalize(-p.pos.xyz);
+                        p.vel.x += n.x * 2.0 * params.dt;
+                        p.vel.y += n.y * 2.0 * params.dt;
+                        p.vel.z += n.z * 2.0 * params.dt;
+                        // Dampen
+                        p.vel.x *= 0.9;
+                        p.vel.y *= 0.9;
+                        p.vel.z *= 0.9;
+                    }
                 }
 
                 // Global Damping
@@ -429,7 +482,7 @@ export class PlasmaConfinement {
         this.device.queue.writeBuffer(this.particleBuffer, 0, pBufferData);
 
         this.simParamBuffer = this.device.createBuffer({
-            size: 16, // align to 16 bytes for uniforms
+            size: 32, // increased size to accommodate new params (8 floats = 32 bytes)
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -622,8 +675,12 @@ export class PlasmaConfinement {
 
         // 2. Render WebGPU
         if (this.device && this.renderPipeline) {
-            // Update simulation params
-            const params = new Float32Array([0.016, time]); // dt, time
+            // Update simulation params: dt, time, mouseX, mouseY, confinementStrength, pad...
+            // Size is 32 bytes (8 floats)
+            const params = new Float32Array([
+                0.016, time, this.mouseX, this.mouseY,
+                this.confinementStrength, 0, 0, 0
+            ]);
             this.device.queue.writeBuffer(this.simParamBuffer, 0, params);
 
             // Update Camera Uniforms
@@ -668,6 +725,11 @@ export class PlasmaConfinement {
         this.isActive = false;
         if(this.animationId) cancelAnimationFrame(this.animationId);
         window.removeEventListener('resize', this.handleResize);
+        this.container.removeEventListener('mousemove', this.handleMouseMove);
+        this.container.removeEventListener('mousedown', this.handleMouseDown);
+        this.container.removeEventListener('mouseup', this.handleMouseUp);
+        this.container.removeEventListener('touchstart', this.handleMouseDown);
+        this.container.removeEventListener('touchend', this.handleMouseUp);
 
         // Clean up GL
         if(this.gl) {
