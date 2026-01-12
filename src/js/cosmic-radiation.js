@@ -153,8 +153,15 @@ export class CosmicRadiation {
         return;
     }
 
-    this.adapter = await navigator.gpu.requestAdapter();
-    this.device = await this.adapter.requestDevice();
+    try {
+        this.adapter = await navigator.gpu.requestAdapter();
+        if (!this.adapter) return; // Add check here
+        this.device = await this.adapter.requestDevice();
+    } catch (e) {
+        console.warn("WebGPU init failed", e);
+        return;
+    }
+
     this.contextGPU = this.canvasGPU.getContext('webgpu');
     this.format = navigator.gpu.getPreferredCanvasFormat();
 
