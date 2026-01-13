@@ -952,9 +952,11 @@
     <script type="module" src="../js/nano-plex.js"></script>
     <script type="module" src="../js/bio-digital-synthesis.js"></script>
     <script type="module" src="../js/cymatic-plate.js"></script>
+    <script type="module" src="../js/chrono-excavation.js"></script>
 
     <script type="module">
         import { CymaticPlate } from '../js/cymatic-plate.js';
+        import { ChronoExcavation } from '../js/chrono-excavation.js';
         import { ChronoDial } from '../js/chrono-dial.js';
         import { BioDigitalSynthesis } from '../js/bio-digital-synthesis.js';
         import { NanoPlexExperiment } from '../js/nano-plex.js';
@@ -1113,6 +1115,10 @@
             const fiberOpticsContainer = document.getElementById('fiber-optics-container');
             if (fiberOpticsContainer) {
                 new FiberOpticExperiment(fiberOpticsContainer);
+            // Initialize Chrono Excavation
+            const chronoExcavationContainer = document.getElementById('chrono-excavation-container');
+            if (chronoExcavationContainer && window.ChronoExcavation) {
+                new ChronoExcavation(chronoExcavationContainer, { numParticles: 40000 });
             }
 
             // Initialize Hybrid Magnetic Field
