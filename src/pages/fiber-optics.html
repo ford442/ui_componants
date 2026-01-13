@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fiber Optic Data Transmission - Hybrid WebGL2 + WebGPU</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            width: 100%;
+            height: 100%;
+        }
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        #webgl-canvas {
+            z-index: 1;
+        }
+        #webgpu-canvas {
+            z-index: 2;
+            mix-blend-mode: screen;
+        }
+        .ui-overlay {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .back-link {
+            pointer-events: auto;
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            font-family: system-ui, sans-serif;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        .back-link:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .title-card {
+            margin-top: 15px;
+            background: rgba(0, 5, 20, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #00ffcc;
+            color: #fff;
+            font-family: system-ui, sans-serif;
+            max-width: 300px;
+        }
+        .title-card h1 {
+            margin: 0 0 5px 0;
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            color: #00ffcc;
+            text-transform: uppercase;
+        }
+        .title-card p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: #aaa;
+            line-height: 1.4;
+        }
+        .tech-tag {
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 8px;
+            margin-right: 5px;
+            font-weight: bold;
+        }
+        .tag-webgl { background: rgba(50, 100, 255, 0.2); color: #88ccff; border: 1px solid #3366cc; }
+        .tag-webgpu { background: rgba(0, 255, 150, 0.2); color: #55ffaa; border: 1px solid #00cc88; }
+
+        #error-message {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(50, 0, 0, 0.9);
+            color: #ffcccc;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ff5555;
+            text-align: center;
+            font-family: monospace;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <!-- WebGL2 Canvas for Static Fiber Geometry -->
+        <canvas id="webgl-canvas"></canvas>
+        <!-- WebGPU Canvas for Dynamic Data Pulses -->
+        <canvas id="webgpu-canvas"></canvas>
+    </div>
+
+    <div class="ui-overlay">
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+        <div class="title-card">
+            <h1>Fiber Optic Cabling</h1>
+            <p>High-speed data transmission simulation. WebGL2 renders the glass fiber bundles, while WebGPU Compute Shaders calculate the trajectory of thousands of light pulses.</p>
+            <div>
+                <span class="tech-tag tag-webgl">WebGL2 Geometry</span>
+                <span class="tech-tag tag-webgpu">WebGPU Compute</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="error-message">
+        WebGPU is not supported on this device.<br>
+        Please try a compatible browser (Chrome/Edge/Canary).
+    </div>
+
+    <script type="module">
+        import { FiberOpticExperiment } from '../js/fiber-optics.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!navigator.gpu) {
+                document.getElementById('error-message').style.display = 'block';
+                // Still init WebGL part if possible, but for now we warn
+            }
+
+            const container = document.getElementById('canvas-container');
+            const experiment = new FiberOpticExperiment(container);
+
+            // Handle resize
+            window.addEventListener('resize', () => {
+                if (experiment.resize) experiment.resize();
+            });
+        });
+    </script>
+</body>
+</html>
