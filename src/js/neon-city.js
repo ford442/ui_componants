@@ -22,7 +22,9 @@ class NeonCityExperiment {
         this.glProgram = null;
         this.glVao = null;
         this.instanceCount = 2000;
+        this.buildingDataArray = null; // CPU copy for raycasting
         this.buildingBuffer = null; // Buffer for building properties (pos, size)
+        this.hoveredInstance = -1;
 
         // WebGPU State (Rain)
         this.gpuCanvas = null;
@@ -66,6 +68,10 @@ class NeonCityExperiment {
             // Normalize to [-1, 1]
             this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            if (this.glCanvas) {
+                this.checkIntersection();
+            }
         });
 
         this.container.addEventListener('mouseleave', () => {
@@ -119,6 +125,7 @@ class NeonCityExperiment {
         // We pack this into attributes.
         // Let's keep it simple: Position X, Z, Scale Y (height), Random Seed
         const instanceData = new Float32Array(this.instanceCount * 4);
+        this.buildingDataArray = instanceData; // Store reference for Raycasting
         const range = 200;
 
         for (let i = 0; i < this.instanceCount; i++) {
@@ -185,6 +192,7 @@ class NeonCityExperiment {
         uniform mat4 u_view;
         uniform float u_time;
         uniform float u_scrollSpeed;
+        uniform float u_hoveredInstance;
 
         out vec3 v_color;
         out float v_dist;
@@ -199,11 +207,20 @@ class NeonCityExperiment {
             float iseed = a_instanceData.w;
 
             // Scroll Logic
-            float zPos = iz + u_time * u_scrollSpeed * 20.0;
-            // Wrap around
-            float range = 200.0;
+            // We want zPos to move from negative to positive (or vice versa) and wrap
+            // Original logic: zPos = iz + offset. If zPos > 10.0, zPos -= 200.0.
+            // This implies the valid window is roughly [-190, 10].
+            // To make this robust for any time t:
+            // The offset increases indefinitely.
+            // The pattern repeats every 200 units.
+            // We want the resulting zPos to be in a consistent range, e.g. [-190, 10].
+            // Or simpler: offset = mod(u_time * u_scrollSpeed * 20.0, 200.0);
+            // zPos = iz + offset; if (zPos > 10.0) zPos -= 200.0;
+
+            float offset = mod(u_time * u_scrollSpeed * 20.0, 200.0);
+            float zPos = iz + offset;
             if (zPos > 10.0) {
-                zPos -= range;
+                zPos -= 200.0;
             }
 
             // Scale building
@@ -218,6 +235,12 @@ class NeonCityExperiment {
             // Color based on height and randomness
             float glow = 0.2 + 0.8 * iseed;
             vec3 buildingColor = mix(vec3(0.1, 0.0, 0.2), vec3(0.0, 0.8, 1.0), iseed);
+
+            // Highlight Hovered
+            if (abs(float(gl_InstanceID) - u_hoveredInstance) < 0.1) {
+                buildingColor = vec3(1.0, 0.0, 0.8); // Neon Pink Highlight
+                glow = 2.0;
+            }
 
             // Windows effect?
             if (mod(worldPos.y * 2.0, 1.0) > 0.5 && mod(worldPos.x + worldPos.z, 2.0) > 1.0) {
@@ -551,11 +574,13 @@ class NeonCityExperiment {
             const viewLoc = this.gl.getUniformLocation(this.glProgram, 'u_view');
             const timeLoc = this.gl.getUniformLocation(this.glProgram, 'u_time');
             const scrollLoc = this.gl.getUniformLocation(this.glProgram, 'u_scrollSpeed');
+            const hoverLoc = this.gl.getUniformLocation(this.glProgram, 'u_hoveredInstance');
 
             this.gl.uniformMatrix4fv(projLoc, false, projection);
             this.gl.uniformMatrix4fv(viewLoc, false, view);
             this.gl.uniform1f(timeLoc, time);
             this.gl.uniform1f(scrollLoc, this.speed);
+            this.gl.uniform1f(hoverLoc, this.hoveredInstance);
 
             this.gl.clearColor(0.02, 0.02, 0.05, 1.0);
             this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
@@ -651,6 +676,137 @@ class NeonCityExperiment {
             -(z[0]*eye[0] + z[1]*eye[1] + z[2]*eye[2]),
             1
         ]);
+    }
+
+    checkIntersection() {
+        if (!this.buildingDataArray) return;
+
+        // Current Camera State
+        const camX = this.mouse.x * 5.0;
+        const camY = 5.0 + this.mouse.y * 2.0;
+        const eye = [camX, camY, -20];
+        const target = [0, 0, 50];
+        const up = [0, 1, 0];
+
+        // Recompute Camera Basis (Forward/Right/Up) manually
+        let zAxis = [eye[0] - target[0], eye[1] - target[1], eye[2] - target[2]];
+        const lenZ = Math.sqrt(zAxis[0]*zAxis[0] + zAxis[1]*zAxis[1] + zAxis[2]*zAxis[2]);
+        zAxis = zAxis.map(v => v / lenZ); // Forward (Camera looks down -Z relative to itself, but View matrix Z axis points back)
+
+        let xAxis = [
+            up[1]*zAxis[2] - up[2]*zAxis[1],
+            up[2]*zAxis[0] - up[0]*zAxis[2],
+            up[0]*zAxis[1] - up[1]*zAxis[0]
+        ];
+        const lenX = Math.sqrt(xAxis[0]*xAxis[0] + xAxis[1]*xAxis[1] + xAxis[2]*xAxis[2]);
+        xAxis = xAxis.map(v => v / lenX);
+
+        let yAxis = [
+            zAxis[1]*xAxis[2] - zAxis[2]*xAxis[1],
+            zAxis[2]*xAxis[0] - zAxis[0]*xAxis[2],
+            zAxis[0]*xAxis[1] - zAxis[1]*xAxis[0]
+        ];
+
+        // Ray in World Space
+        const fov = 60;
+        const aspect = this.glCanvas.width / this.glCanvas.height;
+        const tanFov = Math.tan(fov * Math.PI / 360);
+
+        // Ray Direction
+        // NDC (mouse.x, mouse.y) -> Camera Space -> World Space
+        // Camera Space Dir = (mouse.x * aspect * tanFov, mouse.y * tanFov, -1)
+        // World Space Dir = x * xAxis + y * yAxis - 1 * zAxis
+
+        const dx = this.mouse.x * aspect * tanFov;
+        const dy = this.mouse.y * tanFov;
+
+        const rayDir = [
+            xAxis[0] * dx + yAxis[0] * dy - zAxis[0],
+            xAxis[1] * dx + yAxis[1] * dy - zAxis[1],
+            xAxis[2] * dx + yAxis[2] * dy - zAxis[2]
+        ];
+
+        // Normalize rayDir is not strictly necessary for intersection test if we are consistent, but good practice
+        // Actually, ray casting logic: Origin + t * Dir
+
+        // Time logic for buildings
+        const now = Date.now();
+        const time = (now - this.startTime) * 0.001;
+
+        let closestDist = Infinity;
+        let hoveredId = -1;
+
+        for (let i = 0; i < this.instanceCount; i++) {
+            const ix = this.buildingDataArray[i * 4 + 0];
+            const iz = this.buildingDataArray[i * 4 + 1];
+            const ih = this.buildingDataArray[i * 4 + 2];
+
+            // Recompute dynamic Z position
+            // Must match shader logic exactly
+            let offset = (time * this.speed * 20.0) % 200.0;
+            let zPos = iz + offset;
+            if (zPos > 10.0) {
+                zPos -= 200.0;
+            }
+
+            // Building AABB
+            // Center X: ix
+            // Base Y: 0, Top Y: ih
+            // Center Z: zPos
+            // Width/Depth: 1.0 -> Radius 0.5
+
+            const minX = ix - 0.5;
+            const maxX = ix + 0.5;
+            const minY = 0;
+            const maxY = ih;
+            const minZ = zPos - 0.5;
+            const maxZ = zPos + 0.5;
+
+            // Ray-AABB Intersection (Slab method)
+            let tMin = -Infinity;
+            let tMax = Infinity;
+
+            const bounds = [[minX, maxX], [minY, maxY], [minZ, maxZ]];
+
+            let hit = true;
+            for (let axis = 0; axis < 3; axis++) {
+                const origin = eye[axis];
+                const dir = rayDir[axis];
+
+                if (Math.abs(dir) < 1e-6) {
+                    if (origin < bounds[axis][0] || origin > bounds[axis][1]) {
+                        hit = false;
+                        break;
+                    }
+                } else {
+                    let t1 = (bounds[axis][0] - origin) / dir;
+                    let t2 = (bounds[axis][1] - origin) / dir;
+                    if (t1 > t2) [t1, t2] = [t2, t1];
+
+                    tMin = Math.max(tMin, t1);
+                    tMax = Math.min(tMax, t2);
+
+                    if (tMin > tMax || tMax < 0) {
+                        hit = false;
+                        break;
+                    }
+                }
+            }
+
+            if (hit) {
+                if (tMin < closestDist) {
+                    closestDist = tMin;
+                    hoveredId = i;
+                }
+            }
+        }
+
+        if (hoveredId !== this.hoveredInstance) {
+            this.hoveredInstance = hoveredId;
+            if (hoveredId !== -1) {
+                console.log(`Hovered building: ${hoveredId}`);
+            }
+        }
     }
 }
 
