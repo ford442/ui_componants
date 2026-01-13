@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chrono Excavation - Visual Experiments</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        #canvas-container { width: 100vw; height: 100vh; }
+        .back-link { position: absolute; top: 20px; left: 20px; z-index: 100; color: rgba(255, 255, 255, 0.7); text-decoration: none; font-family: monospace; }
+        .info-overlay {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            z-index: 10;
+            pointer-events: none;
+            color: rgba(255, 255, 255, 0.8);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 400px;
+        }
+        .info-overlay h1 { margin: 0 0 10px 0; font-size: 24px; font-weight: 300; letter-spacing: 2px; text-transform: uppercase; color: #ffcc66; }
+        .info-overlay p { margin: 0; font-size: 14px; line-height: 1.5; color: #ccc; }
+        .layer-tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        .layer-tag.webgl2 { background: rgba(50, 100, 255, 0.2); color: #88ccff; border: 1px solid #3366cc; }
+        .layer-tag.webgpu { background: rgba(255, 200, 50, 0.2); color: #ffdd88; border: 1px solid #ccaa44; }
+    </style>
+</head>
+<body>
+    <a href="experiments.html" class="back-link">← Back to Experiments</a>
+
+    <div id="canvas-container"></div>
+
+    <div class="info-overlay">
+        <h1>Chrono Excavation</h1>
+        <div>
+            <span class="layer-tag webgl2">WebGL2 Artifact</span>
+            <span class="layer-tag webgpu">WebGPU Dust</span>
+        </div>
+        <p>A hybrid rendering experiment simulating the excavation of an ancient digital artifact.
+           The WebGL2 layer renders the wireframe geometry, while a WebGPU compute shader
+           simulates thousands of dust particles that react to your mouse cursor.</p>
+        <p style="margin-top: 10px; font-size: 12px; color: #888;">Interaction: Move mouse to brush away dust.</p>
+    </div>
+
+    <script type="module">
+        import { ChronoExcavation } from '../js/chrono-excavation.js';
+
+        const container = document.getElementById('canvas-container');
+        const experiment = new ChronoExcavation(container, {
+            numParticles: 100000
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (experiment) experiment.destroy();
+        });
+    </script>
+</body>
+</html>
