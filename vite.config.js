@@ -41,6 +41,7 @@ export default defineConfig({
         photon_containment: resolve(__dirname, 'src/pages/photon-containment.html'),
         signage_lab: resolve(__dirname, 'src/pages/signage_lab.html'),
         bio_digital_synthesis: resolve(__dirname, 'src/pages/bio-digital-synthesis.html'),
+        chrono_excavation: resolve(__dirname, 'src/pages/chrono-excavation.html'),
       },
     },
   },
