@@ -3,7 +3,7 @@
  * Combines WebGL2 for procedural city rendering and WebGPU for compute-heavy effects.
  */
 
-class NeonCityExperiment {
+export class NeonCityExperiment {
     constructor(container, options = {}) {
         this.container = container;
         this.options = options;
@@ -25,6 +25,7 @@ class NeonCityExperiment {
         this.buildingDataArray = null; // CPU copy for raycasting
         this.buildingBuffer = null; // Buffer for building properties (pos, size)
         this.hoveredInstance = -1;
+        this.pulseStartTime = -100.0; // Initialize far in past
 
         // WebGPU State (Rain)
         this.gpuCanvas = null;
@@ -78,6 +79,10 @@ class NeonCityExperiment {
              // Reset or keep last position? Let's smoothly return to center logic if needed,
              // but for now keeping last pos is fine or resetting.
              // this.mouse.x = 0; this.mouse.y = 0;
+        });
+
+        this.container.addEventListener('click', () => {
+            this.triggerPulse();
         });
 
         // 1. Init WebGL2 (City Layer)
@@ -196,6 +201,7 @@ class NeonCityExperiment {
 
         out vec3 v_color;
         out float v_dist;
+        out vec3 v_worldPos;
 
         void main() {
             vec3 pos = a_position;
@@ -207,16 +213,6 @@ class NeonCityExperiment {
             float iseed = a_instanceData.w;
 
             // Scroll Logic
-            // We want zPos to move from negative to positive (or vice versa) and wrap
-            // Original logic: zPos = iz + offset. If zPos > 10.0, zPos -= 200.0.
-            // This implies the valid window is roughly [-190, 10].
-            // To make this robust for any time t:
-            // The offset increases indefinitely.
-            // The pattern repeats every 200 units.
-            // We want the resulting zPos to be in a consistent range, e.g. [-190, 10].
-            // Or simpler: offset = mod(u_time * u_scrollSpeed * 20.0, 200.0);
-            // zPos = iz + offset; if (zPos > 10.0) zPos -= 200.0;
-
             float offset = mod(u_time * u_scrollSpeed * 20.0, 200.0);
             float zPos = iz + offset;
             if (zPos > 10.0) {
@@ -242,13 +238,20 @@ class NeonCityExperiment {
                 glow = 2.0;
             }
 
-            // Windows effect?
-            if (mod(worldPos.y * 2.0, 1.0) > 0.5 && mod(worldPos.x + worldPos.z, 2.0) > 1.0) {
+            // Cyber-Grid Pattern
+            float grid = step(0.9, fract(worldPos.y * 0.5)) + step(0.9, fract(worldPos.x * 0.5));
+            if (grid > 0.5) {
+                buildingColor += vec3(0.1, 0.1, 0.2) * glow;
+            }
+
+            // Windows effect
+            if (mod(worldPos.y * 2.0, 1.0) > 0.6 && mod(worldPos.x + worldPos.z, 2.0) > 1.2) {
                  buildingColor += vec3(0.8, 0.8, 0.5) * glow;
             }
 
             v_color = buildingColor;
             v_dist = length(worldPos.xz);
+            v_worldPos = worldPos;
         }
         `;
 
@@ -257,13 +260,31 @@ class NeonCityExperiment {
 
         in vec3 v_color;
         in float v_dist;
+        in vec3 v_worldPos;
+
+        uniform float u_pulseTime; // Time since pulse start
+
         out vec4 outColor;
 
         void main() {
             vec3 color = v_color;
 
+            // Pulse Effect (Expanding Ring)
+            float distFromCenter = length(v_worldPos.xz);
+            float pulseRadius = u_pulseTime * 100.0; // Speed of pulse
+            float pulseWidth = 15.0;
+
+            float pulse = 0.0;
+            if (u_pulseTime > 0.0) {
+                float distDiff = abs(distFromCenter - pulseRadius);
+                pulse = smoothstep(pulseWidth, 0.0, distDiff) * max(0.0, 1.0 - u_pulseTime * 0.2); // Fade out over distance
+            }
+
+            vec3 pulseColor = vec3(0.0, 1.0, 1.0); // Cyan Pulse
+            color += pulseColor * pulse;
+
             // Fog
-            float fogFactor = smoothstep(10.0, 100.0, v_dist);
+            float fogFactor = smoothstep(10.0, 120.0, v_dist); // Extended fog slightly
             vec3 fogColor = vec3(0.05, 0.05, 0.1);
 
             color = mix(color, fogColor, fogFactor);
@@ -546,6 +567,11 @@ class NeonCityExperiment {
         this.gpuCanvas.height = h;
     }
 
+    triggerPulse() {
+        const now = Date.now();
+        this.pulseStartTime = (now - this.startTime) * 0.001;
+    }
+
     animate() {
         if (!this.isActive) return;
 
@@ -575,12 +601,16 @@ class NeonCityExperiment {
             const timeLoc = this.gl.getUniformLocation(this.glProgram, 'u_time');
             const scrollLoc = this.gl.getUniformLocation(this.glProgram, 'u_scrollSpeed');
             const hoverLoc = this.gl.getUniformLocation(this.glProgram, 'u_hoveredInstance');
+            const pulseLoc = this.gl.getUniformLocation(this.glProgram, 'u_pulseTime');
 
             this.gl.uniformMatrix4fv(projLoc, false, projection);
             this.gl.uniformMatrix4fv(viewLoc, false, view);
             this.gl.uniform1f(timeLoc, time);
             this.gl.uniform1f(scrollLoc, this.speed);
             this.gl.uniform1f(hoverLoc, this.hoveredInstance);
+
+            const pulseElapsed = time - this.pulseStartTime;
+            this.gl.uniform1f(pulseLoc, pulseElapsed);
 
             this.gl.clearColor(0.02, 0.02, 0.05, 1.0);
             this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
