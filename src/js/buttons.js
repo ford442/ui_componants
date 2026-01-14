@@ -4,6 +4,12 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+    checkWebGL2Support().then(supported => {
+        if (!supported) {
+            document.getElementById('webgl2-warning')?.setAttribute('style', 'display: block;');
+        }
+    });
+
     initBasicButtons();
     initRGBButtons();
     initMomentaryButtons();
@@ -470,7 +476,9 @@ function initButtonMatrix() {
             onToggle: (isOn) => {
                 if (isOn) {
                     wrapper.classList.add('animate-on');
-                    setTimeout(() => wrapper.classList.remove('animate-on'), 300);
+                    wrapper.addEventListener('animationend', () => {
+                        wrapper.classList.remove('animate-on');
+                    }, { once: true });
                 }
             }
         });
@@ -820,6 +828,11 @@ function initHolographicButtons() {
         button.className = 'holo-btn';
         button.textContent = label;
         container.appendChild(button);
+
+        button.addEventListener('click', () => {
+            button.classList.add('holo-active');
+            setTimeout(() => button.classList.remove('holo-active'), 300);
+        });
     });
 }
 
@@ -837,6 +850,11 @@ function initOrganicButtons() {
         button.className = `organic-btn ${color}`;
         button.style.animationDelay = `${i * 0.5}s`;
         container.appendChild(button);
+
+        button.addEventListener('click', () => {
+            button.classList.add('organic-active');
+            setTimeout(() => button.classList.remove('organic-active'), 400);
+        });
     });
 }
 
@@ -925,6 +943,19 @@ async function checkWebGPUSupport() {
     try {
         const adapter = await navigator.gpu.requestAdapter();
         return !!adapter;
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * Check WebGL2 Support
+ */
+async function checkWebGL2Support() {
+    try {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('webgl2');
+        return !!context;
     } catch (e) {
         return false;
     }

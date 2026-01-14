@@ -334,6 +334,15 @@
         inset 0 0 20px rgba(0, 255, 255, 0.1);
 }
 
+
+.holographic-style .holo-btn:active,
+.holographic-style .holo-btn.holo-active {
+    transform: scale(0.98);
+    box-shadow: 
+        0 0 30px rgba(0, 255, 255, 0.5),
+        inset 0 0 30px rgba(0, 255, 255, 0.3);
+}
+
 .holographic-style .holo-btn::after {
     content: '';
     position: absolute;
@@ -392,6 +401,13 @@
     filter: brightness(1.2);
 }
 
+.organic-style .organic-btn:active,
+.organic-style .organic-btn.organic-active {
+    animation-play-state: paused;
+    transform: scale(0.95);
+    filter: brightness(1.4);
+}
+
 .organic-style .organic-btn.purple {
     background: radial-gradient(circle at 40% 40%, 
         #cc88ff, 
@@ -422,7 +438,7 @@
     min-height: 60px;
 }
 
-.matrix-btn.animate-on .led-button-element {
+.matrix-btn.animate-on {
     animation: buttonActivate 0.3s ease;
 }
 
