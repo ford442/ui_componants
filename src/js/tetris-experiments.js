@@ -567,7 +567,9 @@ export class SampledGlassTetris {
             vec3 reflectDir = reflect(-lightDir, norm);
             float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
 
-            vec3 frameColor = uFrameColor1 * (diff * 0.5 + 0.5) + (uFrameColor2 * spec);
+            vec3 goldColor = vec3(1.0, 0.8, 0.2);
+            vec3 whiteMetal = vec3(0.9, 0.95, 1.0);
+            vec3 frameColor = goldColor * (diff * 0.5 + 0.5) + (whiteMetal * spec);
 
             // --- Combine ---
             vec3 finalColor = mix(frameColor, texColor.rgb * 1.5, isCenter);
@@ -576,7 +578,7 @@ export class SampledGlassTetris {
 
         this.program = this.createProgram(vs, fs);
         this.createCubeGeometry();
-        await this.loadMedia();
+        await this.loadTexture(this.imagePath);
         this.resetCubes();
 
         this.resizeObserver.observe(this.container);
@@ -646,10 +648,12 @@ export class SampledGlassTetris {
         return new Promise(resolve => {
             this.texture = this.gl.createTexture();
             this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 1, 1, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255])); // Black pixel
-
-            const setupTexture = () => {
+            this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 1, 1, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, new Uint8Array([0,255,255,255]));
+            const img = new Image();
+            img.onload = () => {
                 this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, img);
+                this.gl.generateMipmap(this.gl.TEXTURE_2D);
                 this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
                 this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
                 this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
