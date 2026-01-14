@@ -7,6 +7,20 @@ document.addEventListener('DOMContentLoaded', () => {
     checkWebGL2Support().then(supported => {
         if (!supported) {
             document.getElementById('webgl2-warning')?.setAttribute('style', 'display: block;');
+            document.body.classList.add('no-webgl2');
+        }
+    });
+
+    checkWebGPUSupport().then(supported => {
+        if (supported) {
+            initParticleSwarmButtons();
+            initQuantumFluxButtons();
+            initMagneticFieldButtons();
+            initNeuralNetworkButtons();
+            initCompositingShowcase();
+        } else {
+            document.getElementById('webgpu-warning')?.setAttribute('style', 'display: block;');
+            document.body.classList.add('no-webgpu');
         }
     });
 
@@ -25,19 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initLiquidMetalButtons();
     initKineticTypographyButtons();
     initEMPButtons();
-
-    // WebGPU Advanced Examples
-    checkWebGPUSupport().then(supported => {
-        if (supported) {
-            initParticleSwarmButtons();
-            initQuantumFluxButtons();
-            initMagneticFieldButtons();
-            initNeuralNetworkButtons();
-            initCompositingShowcase();
-        } else {
-            document.getElementById('webgpu-warning')?.setAttribute('style', 'display: block;');
-        }
-    });
 });
 
 /**

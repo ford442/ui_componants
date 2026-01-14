@@ -28,6 +28,13 @@
             <span class="info-text">Toggle components to see layered effects in action</span>
         </div>
 
+        <div class="support-warning" id="webgl2-warning" style="display: none;">
+            <strong>⚠️ WebGL2 Required:</strong> Many components on this page require WebGL2 support. These have been disabled.
+        </div>
+        <div class="support-warning" id="webgpu-warning" style="display: none;">
+            <strong>⚠️ WebGPU Required:</strong> These examples require WebGPU support (Chrome 113+ recommended). These have been disabled.
+        </div>
+
         <div class="component-grid">
             <!-- Basic LED Buttons -->
             <div class="component-card">
@@ -43,7 +50,7 @@
             </div>
 
             <!-- RGB LED Buttons -->
-            <div class="component-card">
+            <div class="component-card webgl2-required">
                 <h3>RGB LED Buttons</h3>
                 <p class="description">Multi-color LED buttons with color cycling</p>
                 <div class="layers">
@@ -70,7 +77,7 @@
             </div>
 
             <!-- Pulsing Buttons -->
-            <div class="component-card">
+            <div class="component-card webgl2-required">
                 <h3>Pulsing Buttons</h3>
                 <p class="description">Auto-pulsing LED indicators with adjustable speed</p>
                 <div class="layers">
@@ -99,7 +106,7 @@
         </section>
 
         <!-- Layered Effects Demo -->
-        <section class="layered-demo-section">
+        <section class="layered-demo-section webgl2-required">
             <h2>Layered Effects Demo</h2>
             <p class="description">Interactive demonstration of multiple canvas layers working together</p>
 
@@ -130,7 +137,7 @@
         </section>
 
         <!-- Advanced Button Styles -->
-        <section class="advanced-buttons-section">
+        <section class="advanced-buttons-section webgl2-required">
             <h2>Advanced Button Styles</h2>
             <div class="component-grid">
                 <!-- Arcade Style -->
@@ -190,17 +197,12 @@
         </section>
 
         <!-- WebGPU Advanced Examples Section -->
-        <section class="webgpu-advanced-section">
+        <section class="webgpu-advanced-section webgpu-required">
             <div class="section-header">
                 <h2>🚀 WebGPU Advanced Multi-Layer Examples</h2>
                 <p class="description">Next-generation GPU compute shaders and particle systems</p>
-                        <div class="webgpu-warning" id="webgpu-warning" style="display: none;">
-                            <strong>⚠️ WebGPU Required:</strong> These examples require WebGPU support (Chrome 113+ recommended)
-                        </div>
-                        <div class="webgpu-warning" id="webgl2-warning" style="display: none;">
-                            <strong>⚠️ WebGL2 Required:</strong> Many components on this page require WebGL2 support.
-                        </div>
-                    </div>
+            </div>
+
             <div class="component-grid">
                 <!-- Particle Swarm Button -->
                 <div class="component-card">
@@ -261,7 +263,7 @@
         </section>
 
         <!-- Multi-Layer Compositing Showcase -->
-        <section class="compositing-showcase-section">
+        <section class="compositing-showcase-section webgpu-required">
             <h2>🎨 Multi-Layer Compositing Showcase</h2>
             <p class="description">Real-time layer management with blend modes and effects</p>
 
@@ -324,7 +326,7 @@
         <!-- NEW EXPERIMENTS -->
 
         <!-- Liquid Metal Buttons -->
-        <section class="experiment-section">
+        <section class="experiment-section webgl2-required">
             <div class="section-header">
                 <h2>🪞 Mercury / Liquid Metal Buttons</h2>
                 <p class="description">Morphing liquid metal surfaces with reflective ripples and pooling effects</p>
@@ -345,7 +347,7 @@
         </section>
 
         <!-- Kinetic Typography Buttons -->
-        <section class="experiment-section">
+        <section class="experiment-section webgl2-required">
             <div class="section-header">
                 <h2>✨ Kinetic Typography Buttons</h2>
                 <p class="description">Text explodes into particles on hover and reforms with spring physics</p>
@@ -366,7 +368,7 @@
         </section>
 
         <!-- EMP Buttons -->
-        <section class="experiment-section">
+        <section class="experiment-section webgl2-required">
             <div class="section-header">
                 <h2>⚡ Electromagnetic Pulse Buttons</h2>
                 <p class="description">Shockwave rings emanate on click with glitch interference effects</p>
@@ -388,7 +390,7 @@
         </section>
 
         <!-- NEW VISUAL EXPERIMENTS -->
-        <section class="experiment-section">
+        <section class="experiment-section webgl2-required">
             <div class="section-header">
                 <h2>🎨 Visual Experiments</h2>
                 <p class="description">Cutting-edge UI experiments combining physics, shaders, and interaction design
@@ -449,7 +451,7 @@
         </section>
 
         <!-- NEW: 4 Additional Button Experiments -->
-        <section class="experiment-section">
+        <section class="experiment-section webgl2-required">
             <div class="section-header">
                 <h2>🔬 Advanced Physics Experiments</h2>
                 <p class="description">Cutting-edge physics simulations and visual effects</p>

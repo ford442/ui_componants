@@ -17,6 +17,24 @@
     margin-left: auto;
 }
 
+.support-warning {
+    padding: 1rem 1.5rem;
+    background: #442211;
+    border: 1px solid #ff8800;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    color: #ffccaa;
+}
+
+.support-warning strong {
+    color: #ff8800;
+}
+
+body.no-webgl2 .webgl2-required,
+body.no-webgpu .webgpu-required {
+    display: none;
+}
+
 /* Button Showcase */
 .button-showcase {
     display: flex;
