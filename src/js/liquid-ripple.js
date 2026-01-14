@@ -3,13 +3,13 @@
 
 class LiquidRipple {
     constructor(button) {
+        this.animate = this.animate.bind(this);
         this.button = button;
         this.canvas = document.createElement('canvas');
         this.ctx = this.canvas.getContext('2d');
         this.ripples = [];
 
         this.init();
-        this.animate = this.animate.bind(this);
     }
 
     init() {

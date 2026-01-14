@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NanoPlex Assembly - Visual Experiments</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 10;
+            pointer-events: none;
+        }
+        h1 { margin: 0; font-size: 1.5rem; text-shadow: 0 0 10px rgba(0, 255, 255, 0.5); }
+        p { margin: 5px 0 0; opacity: 0.8; font-size: 0.9rem; }
+        .back-link {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            z-index: 10;
+            padding: 8px 16px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+        }
+        .back-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="ui-overlay">
+        <h1>NanoPlex Assembly</h1>
+        <p>WebGL2 Gyroid Scaffolding + WebGPU Assembler Swarm</p>
+    </div>
+
+    <a href="experiments.html" class="back-link">Back to Hub</a>
+
+    <div id="canvas-container"></div>
+
+    <script type="module">
+        import { NanoPlexExperiment } from '../js/nano-plex.js';
+
+        const container = document.getElementById('canvas-container');
+        if (container) {
+            new NanoPlexExperiment(container, { numParticles: 50000 });
+        }
+    </script>
+</body>
+</html>

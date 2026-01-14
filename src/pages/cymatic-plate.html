@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cymatic Frequency Plate - UI Components</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            overflow: hidden;
+            background: #000;
+        }
+        #experiment-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            pointer-events: none;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="experiment-container"></div>
+
+    <div class="ui-overlay">
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+        <h1 style="margin-top: 1rem; font-size: 2rem; color: white; text-shadow: 0 0 10px rgba(0,0,0,0.5);">Cymatic Frequency Plate</h1>
+        <p style="color: #ccc; max-width: 400px; margin-top: 0.5rem; text-shadow: 0 0 5px rgba(0,0,0,0.8);">
+            Chladni patterns simulated with WebGPU compute shaders.
+            <br>
+            <span style="font-size: 0.9em; color: #888;">
+                <span class="layer-tag webgl2">WebGL2 Metal Plate</span>
+                <span class="layer-tag webgpu">WebGPU Sand Physics</span>
+            </span>
+        </p>
+    </div>
+
+    <script type="module">
+        import { CymaticPlate } from '../js/cymatic-plate.js';
+
+        const container = document.getElementById('experiment-container');
+        const experiment = new CymaticPlate(container, {
+            numParticles: 100000
+        });
+
+        // Handle page visibility/cleanup
+        window.addEventListener('beforeunload', () => {
+            experiment.destroy();
+        });
+    </script>
+</body>
+</html>

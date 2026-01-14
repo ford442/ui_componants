@@ -3,7 +3,7 @@
  * Combines WebGL2 for procedural city rendering and WebGPU for compute-heavy effects.
  */
 
-class NeonCityExperiment {
+export class NeonCityExperiment {
     constructor(container, options = {}) {
         this.container = container;
         this.options = options;
@@ -14,6 +14,7 @@ class NeonCityExperiment {
         this.animationId = null;
         this.speed = 0.5;
         this.rainDensity = 0.7;
+        this.mouse = { x: 0, y: 0 };
 
         // WebGL2 State (City)
         this.glCanvas = null;
@@ -21,7 +22,10 @@ class NeonCityExperiment {
         this.glProgram = null;
         this.glVao = null;
         this.instanceCount = 2000;
+        this.buildingDataArray = null; // CPU copy for raycasting
         this.buildingBuffer = null; // Buffer for building properties (pos, size)
+        this.hoveredInstance = -1;
+        this.pulseStartTime = -100.0; // Initialize far in past
 
         // WebGPU State (Rain)
         this.gpuCanvas = null;
@@ -59,6 +63,28 @@ class NeonCityExperiment {
             });
         }
 
+        // Mouse Interaction
+        this.container.addEventListener('mousemove', (e) => {
+            const rect = this.container.getBoundingClientRect();
+            // Normalize to [-1, 1]
+            this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            if (this.glCanvas) {
+                this.checkIntersection();
+            }
+        });
+
+        this.container.addEventListener('mouseleave', () => {
+             // Reset or keep last position? Let's smoothly return to center logic if needed,
+             // but for now keeping last pos is fine or resetting.
+             // this.mouse.x = 0; this.mouse.y = 0;
+        });
+
+        this.container.addEventListener('click', () => {
+            this.triggerPulse();
+        });
+
         // 1. Init WebGL2 (City Layer)
         this.initWebGL2();
 
@@ -70,6 +96,9 @@ class NeonCityExperiment {
                 console.warn("NeonCity: WebGPU failed to init", e);
             }
         }
+
+        // Initial resize to ensure canvases have correct size before rendering
+        this.resize();
 
         this.isActive = true;
         this.animate();
@@ -101,6 +130,7 @@ class NeonCityExperiment {
         // We pack this into attributes.
         // Let's keep it simple: Position X, Z, Scale Y (height), Random Seed
         const instanceData = new Float32Array(this.instanceCount * 4);
+        this.buildingDataArray = instanceData; // Store reference for Raycasting
         const range = 200;
 
         for (let i = 0; i < this.instanceCount; i++) {
@@ -167,9 +197,11 @@ class NeonCityExperiment {
         uniform mat4 u_view;
         uniform float u_time;
         uniform float u_scrollSpeed;
+        uniform float u_hoveredInstance;
 
         out vec3 v_color;
         out float v_dist;
+        out vec3 v_worldPos;
 
         void main() {
             vec3 pos = a_position;
@@ -181,11 +213,10 @@ class NeonCityExperiment {
             float iseed = a_instanceData.w;
 
             // Scroll Logic
-            float zPos = iz + u_time * u_scrollSpeed * 20.0;
-            // Wrap around
-            float range = 200.0;
+            float offset = mod(u_time * u_scrollSpeed * 20.0, 200.0);
+            float zPos = iz + offset;
             if (zPos > 10.0) {
-                zPos -= range;
+                zPos -= 200.0;
             }
 
             // Scale building
@@ -201,13 +232,26 @@ class NeonCityExperiment {
             float glow = 0.2 + 0.8 * iseed;
             vec3 buildingColor = mix(vec3(0.1, 0.0, 0.2), vec3(0.0, 0.8, 1.0), iseed);
 
-            // Windows effect?
-            if (mod(worldPos.y * 2.0, 1.0) > 0.5 && mod(worldPos.x + worldPos.z, 2.0) > 1.0) {
+            // Highlight Hovered
+            if (abs(float(gl_InstanceID) - u_hoveredInstance) < 0.1) {
+                buildingColor = vec3(1.0, 0.0, 0.8); // Neon Pink Highlight
+                glow = 2.0;
+            }
+
+            // Cyber-Grid Pattern
+            float grid = step(0.9, fract(worldPos.y * 0.5)) + step(0.9, fract(worldPos.x * 0.5));
+            if (grid > 0.5) {
+                buildingColor += vec3(0.1, 0.1, 0.2) * glow;
+            }
+
+            // Windows effect
+            if (mod(worldPos.y * 2.0, 1.0) > 0.6 && mod(worldPos.x + worldPos.z, 2.0) > 1.2) {
                  buildingColor += vec3(0.8, 0.8, 0.5) * glow;
             }
 
             v_color = buildingColor;
             v_dist = length(worldPos.xz);
+            v_worldPos = worldPos;
         }
         `;
 
@@ -216,13 +260,31 @@ class NeonCityExperiment {
 
         in vec3 v_color;
         in float v_dist;
+        in vec3 v_worldPos;
+
+        uniform float u_pulseTime; // Time since pulse start
+
         out vec4 outColor;
 
         void main() {
             vec3 color = v_color;
 
+            // Pulse Effect (Expanding Ring)
+            float distFromCenter = length(v_worldPos.xz);
+            float pulseRadius = u_pulseTime * 100.0; // Speed of pulse
+            float pulseWidth = 15.0;
+
+            float pulse = 0.0;
+            if (u_pulseTime > 0.0) {
+                float distDiff = abs(distFromCenter - pulseRadius);
+                pulse = smoothstep(pulseWidth, 0.0, distDiff) * max(0.0, 1.0 - u_pulseTime * 0.2); // Fade out over distance
+            }
+
+            vec3 pulseColor = vec3(0.0, 1.0, 1.0); // Cyan Pulse
+            color += pulseColor * pulse;
+
             // Fog
-            float fogFactor = smoothstep(10.0, 100.0, v_dist);
+            float fogFactor = smoothstep(10.0, 120.0, v_dist); // Extended fog slightly
             vec3 fogColor = vec3(0.05, 0.05, 0.1);
 
             color = mix(color, fogColor, fogFactor);
@@ -258,7 +320,8 @@ class NeonCityExperiment {
         this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, indices, this.gl.STATIC_DRAW);
 
         this.gl.enable(this.gl.DEPTH_TEST);
-        this.resizeGL();
+
+        // Removed call to resizeGL() here to avoid setting undefined size
     }
 
     createGLProgram(vsSource, fsSource) {
@@ -321,6 +384,8 @@ class NeonCityExperiment {
             struct Uniforms {
                 dt: f32,
                 density: f32,
+                mouseX: f32,
+                mouseY: f32,
             }
             @group(0) @binding(1) var<uniform> uniforms : Uniforms;
 
@@ -330,6 +395,14 @@ class NeonCityExperiment {
                 if (i >= ${this.numRainDrops}) { return; }
 
                 var p = particles[i];
+
+                // Interaction: Repel from mouse
+                let mousePos = vec2f(uniforms.mouseX, uniforms.mouseY);
+                let dist = distance(p.pos, mousePos);
+                if (dist < 0.3) {
+                    let dir = normalize(p.pos - mousePos);
+                    p.pos = p.pos + dir * (0.3 - dist) * 0.1;
+                }
 
                 // Fall down
                 p.pos.y = p.pos.y - p.speed * uniforms.dt;
@@ -401,31 +474,11 @@ class NeonCityExperiment {
         this.rainBuffer.unmap();
 
         this.uniformBuffer = this.device.createBuffer({
-            size: 16, // dt(4), density(4), pad(8)
+            size: 16, // dt(4), density(4), mouseX(4), mouseY(4)
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
 
         // Layouts & Pipelines
-        const bindGroupLayout = this.device.createBindGroupLayout({
-            entries: [
-                { binding: 0, visibility: GPUShaderStage.COMPUTE | GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } }, // Actually read-write in compute
-                { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } }
-            ]
-        });
-        // Note: For compute it needs to be storage (read_write). For vertex it is read-only.
-        // WebGPU separates these. We need to be careful.
-        // Actually, 'read-only-storage' in vertex and 'storage' in compute for the same buffer is tricky if using same bind group.
-        // Better:
-        // Compute BindGroup: Binding 0 (Storage), Binding 1 (Uniform)
-        // Render BindGroup: Binding 0 (ReadOnlyStorage)
-
-        // Let's try one BG layout with "buffer: { type: 'storage' }" which implies read-write in compute.
-        // In vertex shader, we can define it as `var<storage, read>`.
-        // However, standard says default storage is read-only. `read-write` needs explicit type.
-
-        // Let's create two layouts if needed, or just one that is permissive?
-        // Actually, `buffer: { type: 'storage' }` is fine for both if usage allows.
-
         const computeBGLayout = this.device.createBindGroupLayout({
             entries: [
                 { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }, // read-write
@@ -478,7 +531,7 @@ class NeonCityExperiment {
             primitive: { topology: 'line-list' }
         });
 
-        this.resizeGPU();
+        // Removed call to resizeGPU() here
     }
 
     updateRainParams() {
@@ -493,6 +546,9 @@ class NeonCityExperiment {
         const dpr = window.devicePixelRatio || 1;
         const w = this.container.clientWidth * dpr;
         const h = this.container.clientHeight * dpr;
+
+        // Ensure non-zero dimensions
+        if (w === 0 || h === 0) return;
 
         this.resizeGL(w, h);
         this.resizeGPU(w, h);
@@ -511,6 +567,11 @@ class NeonCityExperiment {
         this.gpuCanvas.height = h;
     }
 
+    triggerPulse() {
+        const now = Date.now();
+        this.pulseStartTime = (now - this.startTime) * 0.001;
+    }
+
     animate() {
         if (!this.isActive) return;
 
@@ -522,11 +583,15 @@ class NeonCityExperiment {
         if (this.gl && this.glProgram) {
             this.gl.useProgram(this.glProgram);
 
+            // Parallax Camera
+            const camX = this.mouse.x * 5.0;
+            const camY = 5.0 + this.mouse.y * 2.0;
+
             // Matrices
             const aspect = this.glCanvas.width / this.glCanvas.height;
             const projection = this.createPerspectiveMatrix(60, aspect, 0.1, 500.0);
             const view = this.createLookAtMatrix(
-                [0, 5, -20], // Eye
+                [camX, camY, -20], // Eye (Parallax)
                 [0, 0, 50],  // Target
                 [0, 1, 0]    // Up
             );
@@ -535,11 +600,17 @@ class NeonCityExperiment {
             const viewLoc = this.gl.getUniformLocation(this.glProgram, 'u_view');
             const timeLoc = this.gl.getUniformLocation(this.glProgram, 'u_time');
             const scrollLoc = this.gl.getUniformLocation(this.glProgram, 'u_scrollSpeed');
+            const hoverLoc = this.gl.getUniformLocation(this.glProgram, 'u_hoveredInstance');
+            const pulseLoc = this.gl.getUniformLocation(this.glProgram, 'u_pulseTime');
 
             this.gl.uniformMatrix4fv(projLoc, false, projection);
             this.gl.uniformMatrix4fv(viewLoc, false, view);
             this.gl.uniform1f(timeLoc, time);
             this.gl.uniform1f(scrollLoc, this.speed);
+            this.gl.uniform1f(hoverLoc, this.hoveredInstance);
+
+            const pulseElapsed = time - this.pulseStartTime;
+            this.gl.uniform1f(pulseLoc, pulseElapsed);
 
             this.gl.clearColor(0.02, 0.02, 0.05, 1.0);
             this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
@@ -552,7 +623,12 @@ class NeonCityExperiment {
         // 2. WebGPU Render
         if (this.device && this.rainPipeline) {
             // Update Uniforms
-            const uData = new Float32Array([dt * (1.0 + this.speed * 5.0), this.rainDensity]); // Speed up rain with scroll
+            const uData = new Float32Array([
+                dt * (1.0 + this.speed * 5.0),
+                this.rainDensity,
+                this.mouse.x,
+                this.mouse.y
+            ]);
             this.device.queue.writeBuffer(this.uniformBuffer, 0, uData);
 
             const encoder = this.device.createCommandEncoder();
@@ -565,20 +641,23 @@ class NeonCityExperiment {
             cPass.end();
 
             // Render
-            const textureView = this.context.getCurrentTexture().createView();
-            const rPass = encoder.beginRenderPass({
-                colorAttachments: [{
-                    view: textureView,
-                    clearValue: { r: 0, g: 0, b: 0, a: 0 },
-                    loadOp: 'load', // Load WebGL canvas content beneath? No, they are separate canvases.
-                    storeOp: 'store'
-                }]
-            });
-            rPass.setPipeline(this.rainPipeline);
-            rPass.setBindGroup(0, this.renderBindGroup);
-            // Draw 2 vertices per instance * numRainDrops instances
-            rPass.draw(2, this.numRainDrops);
-            rPass.end();
+            // Ensure width/height are valid (>0) to avoid validation errors
+            if (this.gpuCanvas.width > 0 && this.gpuCanvas.height > 0) {
+                const textureView = this.context.getCurrentTexture().createView();
+                const rPass = encoder.beginRenderPass({
+                    colorAttachments: [{
+                        view: textureView,
+                        clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                        loadOp: 'load', // Load WebGL canvas content beneath? No, they are separate canvases.
+                        storeOp: 'store'
+                    }]
+                });
+                rPass.setPipeline(this.rainPipeline);
+                rPass.setBindGroup(0, this.renderBindGroup);
+                // Draw 2 vertices per instance * numRainDrops instances
+                rPass.draw(2, this.numRainDrops);
+                rPass.end();
+            }
 
             this.device.queue.submit([encoder.finish()]);
         }
@@ -627,6 +706,137 @@ class NeonCityExperiment {
             -(z[0]*eye[0] + z[1]*eye[1] + z[2]*eye[2]),
             1
         ]);
+    }
+
+    checkIntersection() {
+        if (!this.buildingDataArray) return;
+
+        // Current Camera State
+        const camX = this.mouse.x * 5.0;
+        const camY = 5.0 + this.mouse.y * 2.0;
+        const eye = [camX, camY, -20];
+        const target = [0, 0, 50];
+        const up = [0, 1, 0];
+
+        // Recompute Camera Basis (Forward/Right/Up) manually
+        let zAxis = [eye[0] - target[0], eye[1] - target[1], eye[2] - target[2]];
+        const lenZ = Math.sqrt(zAxis[0]*zAxis[0] + zAxis[1]*zAxis[1] + zAxis[2]*zAxis[2]);
+        zAxis = zAxis.map(v => v / lenZ); // Forward (Camera looks down -Z relative to itself, but View matrix Z axis points back)
+
+        let xAxis = [
+            up[1]*zAxis[2] - up[2]*zAxis[1],
+            up[2]*zAxis[0] - up[0]*zAxis[2],
+            up[0]*zAxis[1] - up[1]*zAxis[0]
+        ];
+        const lenX = Math.sqrt(xAxis[0]*xAxis[0] + xAxis[1]*xAxis[1] + xAxis[2]*xAxis[2]);
+        xAxis = xAxis.map(v => v / lenX);
+
+        let yAxis = [
+            zAxis[1]*xAxis[2] - zAxis[2]*xAxis[1],
+            zAxis[2]*xAxis[0] - zAxis[0]*xAxis[2],
+            zAxis[0]*xAxis[1] - zAxis[1]*xAxis[0]
+        ];
+
+        // Ray in World Space
+        const fov = 60;
+        const aspect = this.glCanvas.width / this.glCanvas.height;
+        const tanFov = Math.tan(fov * Math.PI / 360);
+
+        // Ray Direction
+        // NDC (mouse.x, mouse.y) -> Camera Space -> World Space
+        // Camera Space Dir = (mouse.x * aspect * tanFov, mouse.y * tanFov, -1)
+        // World Space Dir = x * xAxis + y * yAxis - 1 * zAxis
+
+        const dx = this.mouse.x * aspect * tanFov;
+        const dy = this.mouse.y * tanFov;
+
+        const rayDir = [
+            xAxis[0] * dx + yAxis[0] * dy - zAxis[0],
+            xAxis[1] * dx + yAxis[1] * dy - zAxis[1],
+            xAxis[2] * dx + yAxis[2] * dy - zAxis[2]
+        ];
+
+        // Normalize rayDir is not strictly necessary for intersection test if we are consistent, but good practice
+        // Actually, ray casting logic: Origin + t * Dir
+
+        // Time logic for buildings
+        const now = Date.now();
+        const time = (now - this.startTime) * 0.001;
+
+        let closestDist = Infinity;
+        let hoveredId = -1;
+
+        for (let i = 0; i < this.instanceCount; i++) {
+            const ix = this.buildingDataArray[i * 4 + 0];
+            const iz = this.buildingDataArray[i * 4 + 1];
+            const ih = this.buildingDataArray[i * 4 + 2];
+
+            // Recompute dynamic Z position
+            // Must match shader logic exactly
+            let offset = (time * this.speed * 20.0) % 200.0;
+            let zPos = iz + offset;
+            if (zPos > 10.0) {
+                zPos -= 200.0;
+            }
+
+            // Building AABB
+            // Center X: ix
+            // Base Y: 0, Top Y: ih
+            // Center Z: zPos
+            // Width/Depth: 1.0 -> Radius 0.5
+
+            const minX = ix - 0.5;
+            const maxX = ix + 0.5;
+            const minY = 0;
+            const maxY = ih;
+            const minZ = zPos - 0.5;
+            const maxZ = zPos + 0.5;
+
+            // Ray-AABB Intersection (Slab method)
+            let tMin = -Infinity;
+            let tMax = Infinity;
+
+            const bounds = [[minX, maxX], [minY, maxY], [minZ, maxZ]];
+
+            let hit = true;
+            for (let axis = 0; axis < 3; axis++) {
+                const origin = eye[axis];
+                const dir = rayDir[axis];
+
+                if (Math.abs(dir) < 1e-6) {
+                    if (origin < bounds[axis][0] || origin > bounds[axis][1]) {
+                        hit = false;
+                        break;
+                    }
+                } else {
+                    let t1 = (bounds[axis][0] - origin) / dir;
+                    let t2 = (bounds[axis][1] - origin) / dir;
+                    if (t1 > t2) [t1, t2] = [t2, t1];
+
+                    tMin = Math.max(tMin, t1);
+                    tMax = Math.min(tMax, t2);
+
+                    if (tMin > tMax || tMax < 0) {
+                        hit = false;
+                        break;
+                    }
+                }
+            }
+
+            if (hit) {
+                if (tMin < closestDist) {
+                    closestDist = tMin;
+                    hoveredId = i;
+                }
+            }
+        }
+
+        if (hoveredId !== this.hoveredInstance) {
+            this.hoveredInstance = hoveredId;
+            if (hoveredId !== -1) {
+                console.log(`Hovered building: ${hoveredId}`);
+            }
+        }
     }
 }
 

@@ -12,6 +12,9 @@ export class BioluminescentAbyss {
         this.startTime = Date.now();
         this.animationId = null;
 
+        // Interaction State
+        this.mouse = { x: 0, y: 0 };
+
         // WebGL2 State
         this.glCanvas = null;
         this.gl = null;
@@ -30,6 +33,9 @@ export class BioluminescentAbyss {
         this.numParticles = options.numParticles || 30000;
 
         this.handleResize = this.resize.bind(this);
+        this.handleMouseMove = this.onMouseMove.bind(this);
+        this.handleTouchMove = this.onTouchMove.bind(this);
+
         this.init();
     }
 
@@ -60,6 +66,27 @@ export class BioluminescentAbyss {
         this.animate();
 
         window.addEventListener('resize', this.handleResize);
+        this.container.addEventListener('mousemove', this.handleMouseMove);
+        this.container.addEventListener('touchmove', this.handleTouchMove, { passive: false });
+    }
+
+    onMouseMove(e) {
+        const rect = this.container.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        // Normalize to -1 to 1
+        this.mouse.x = x * 2.0 - 1.0;
+        this.mouse.y = -(y * 2.0 - 1.0); // Invert Y
+    }
+
+    onTouchMove(e) {
+        if (e.touches && e.touches.length > 0) {
+            const rect = this.container.getBoundingClientRect();
+            const x = (e.touches[0].clientX - rect.left) / rect.width;
+            const y = (e.touches[0].clientY - rect.top) / rect.height;
+            this.mouse.x = x * 2.0 - 1.0;
+            this.mouse.y = -(y * 2.0 - 1.0);
+        }
     }
 
     // ========================================================================
@@ -104,6 +131,7 @@ export class BioluminescentAbyss {
             in vec2 v_uv;
             uniform float u_time;
             uniform vec2 u_resolution;
+            uniform vec2 u_mouse;
             out vec4 outColor;
 
             // 3D Noise for terrain
@@ -154,9 +182,9 @@ export class BioluminescentAbyss {
                 vec3 ro = vec3(0.0, 0.0, u_time * 2.0);
                 vec3 rd = normalize(vec3(uv, 1.0));
 
-                // Add some camera sway
-                rd.x += sin(u_time * 0.3) * 0.1;
-                rd.y += cos(u_time * 0.2) * 0.1;
+                // Add some camera sway + mouse look
+                rd.x += sin(u_time * 0.3) * 0.1 + u_mouse.x * 0.5;
+                rd.y += cos(u_time * 0.2) * 0.1 + u_mouse.y * 0.5;
                 rd = normalize(rd);
 
                 float t = 0.0;
@@ -276,6 +304,8 @@ export class BioluminescentAbyss {
             struct Uniforms {
                 dt: f32,
                 time: f32,
+                mouseX: f32,
+                mouseY: f32,
             }
 
             @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
@@ -298,15 +328,23 @@ export class BioluminescentAbyss {
                 // Add noise force for organic movement
                 let noiseForce = hash(p.pos.xyz * 0.5 + uniforms.time * 0.2) * 2.0;
 
+                // Mouse Attractor
+                // Mouse is -1..1 range. Map to rough world space bounds.
+                // Assuming view width ~40 units at standard depth.
+                let mousePos = vec3f(uniforms.mouseX * 20.0, uniforms.mouseY * 10.0, p.pos.z);
+                let dirToMouse = mousePos - p.pos.xyz;
+                let distToMouse = length(dirToMouse);
+                let mouseForce = normalize(dirToMouse) * (20.0 / (distToMouse + 1.0));
+
                 // Attract to center somewhat to keep them in view
                 let centerDir = -normalize(p.pos.xyz);
                 let dist = length(p.pos.xyz);
-                let attract = centerDir * smoothstep(5.0, 20.0, dist) * 1.0;
+                let centerAttract = centerDir * smoothstep(5.0, 20.0, dist) * 1.0;
 
-                // Move forward with velocity
-                p.vel.x += (noiseForce.x + attract.x) * uniforms.dt;
-                p.vel.y += (noiseForce.y + attract.y) * uniforms.dt;
-                p.vel.z += (noiseForce.z + attract.z) * uniforms.dt;
+                // Combine forces
+                p.vel.x += (noiseForce.x + centerAttract.x + mouseForce.x) * uniforms.dt;
+                p.vel.y += (noiseForce.y + centerAttract.y + mouseForce.y) * uniforms.dt;
+                p.vel.z += (noiseForce.z + centerAttract.z) * uniforms.dt;
 
                 // Dampen
                 p.vel.x *= 0.98;
@@ -320,15 +358,6 @@ export class BioluminescentAbyss {
 
                 // "Camera" moves at speed 2.0 in Z (matching WebGL)
                 // To keep particles relative to camera, we wrap them in Z
-                // Camera is at z = time * 2.0
-                // We simulate particles in a local box relative to camera
-
-                // Actually, let's keep particles in world space but wrap them relative to a moving frame?
-                // Or just simulate local space.
-                // Let's do local space simulation.
-                // WebGL camera moves +Z.
-                // So particles should move -Z relative to camera if they are stationary.
-                // But we want them to swim along.
 
                 p.pos.z -= 1.0 * uniforms.dt; // Swim slower than camera (so they pass by)
 
@@ -375,11 +404,6 @@ export class BioluminescentAbyss {
                 let x = pPos.x;
                 let y = pPos.y;
                 let z = pPos.z;
-
-                // Adjust for camera being at 0,0,0 looking +Z?
-                // Wait, in local space, we assume camera is at origin looking forward.
-                // Objects are at pPos.
-                // Just use simple perspective division.
 
                 let depth = z + 15.0; // Push forward to be visible
 
@@ -451,7 +475,7 @@ export class BioluminescentAbyss {
         this.device.queue.writeBuffer(this.particleBuffer, 0, data);
 
         this.uniformBuffer = this.device.createBuffer({
-            size: 16, // dt (f32), time (f32), pad, pad
+            size: 16, // dt (f32), time (f32), mouseX (f32), mouseY (f32)
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -563,13 +587,15 @@ export class BioluminescentAbyss {
             this.gl.useProgram(this.glProgram);
             this.gl.uniform1f(this.gl.getUniformLocation(this.glProgram, 'u_time'), time);
             this.gl.uniform2f(this.gl.getUniformLocation(this.glProgram, 'u_resolution'), this.glCanvas.width, this.glCanvas.height);
+            this.gl.uniform2f(this.gl.getUniformLocation(this.glProgram, 'u_mouse'), this.mouse.x, this.mouse.y);
             this.gl.clear(this.gl.COLOR_BUFFER_BIT);
             this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
         }
 
         // Render WebGPU
         if (this.device && this.renderPipeline) {
-            this.device.queue.writeBuffer(this.uniformBuffer, 0, new Float32Array([dt, time, 0, 0]));
+            // Update Uniforms: dt, time, mouseX, mouseY
+            this.device.queue.writeBuffer(this.uniformBuffer, 0, new Float32Array([dt, time, this.mouse.x, this.mouse.y]));
 
             const encoder = this.device.createCommandEncoder();
 
@@ -605,7 +631,12 @@ export class BioluminescentAbyss {
     destroy() {
         this.isActive = false;
         if (this.animationId) cancelAnimationFrame(this.animationId);
+
         window.removeEventListener('resize', this.handleResize);
+        if (this.container) {
+            this.container.removeEventListener('mousemove', this.handleMouseMove);
+            this.container.removeEventListener('touchmove', this.handleTouchMove);
+        }
 
         // WebGL Cleanup
         if (this.gl) {
