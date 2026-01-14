@@ -42,6 +42,7 @@ export default defineConfig({
         signage_lab: resolve(__dirname, 'src/pages/signage_lab.html'),
         bio_digital_synthesis: resolve(__dirname, 'src/pages/bio-digital-synthesis.html'),
         chrono_excavation: resolve(__dirname, 'src/pages/chrono-excavation.html'),
+        quantum_tensor: resolve(__dirname, 'src/pages/quantum-tensor.html'),
       },
     },
   },
