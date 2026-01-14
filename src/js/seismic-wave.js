@@ -1,216 +1,284 @@
+
 /**
  * Seismic Wave Experiment
- * Hybrid Rendering:
- * - WebGL2: Renders static "Sensor Stations" (red pillars) on the terrain.
- * - WebGPU: Simulates wave propagation on a grid using Compute Shaders (Wave Equation).
+ * Hybrid WebGL2 (Terrain/Fault Line) + WebGPU (Energy Particles)
  */
 
 export class SeismicWaveExperiment {
     constructor(container, options = {}) {
         this.container = container;
-        this.options = {
-            gridSize: options.gridSize || 100,
-            ...options
-        };
+        this.options = options;
 
+        // State
         this.isActive = false;
+        this.startTime = Date.now();
         this.animationId = null;
-        this.time = 0;
+        this.mouse = { x: 0, y: 0 };
+        this.gridSize = options.gridSize || 100; // 100x100 grid
 
-        // WebGL2
+        // WebGL2 State
         this.glCanvas = null;
         this.gl = null;
         this.glProgram = null;
         this.glVao = null;
-        this.uMatrixLoc = null;
+        this.indexCount = 0;
 
-        // WebGPU
+        // WebGPU State
         this.gpuCanvas = null;
         this.device = null;
         this.context = null;
+        this.particlePipeline = null;
         this.computePipeline = null;
-        this.renderPipeline = null;
-        this.stateBufferA = null; // Ping-pong buffers if needed, or state
-        this.stateBufferB = null;
+        this.computeBindGroup = null;
+        this.renderBindGroup = null; // Added missing binding
+        this.particleBuffer = null;
         this.uniformBuffer = null;
-        this.computeBindGroupA = null;
-        this.computeBindGroupB = null;
-        this.frame = 0;
+        this.numParticles = 50000;
 
-        // Interaction
-        this.mouse = { x: 0, y: 0, active: false };
-
-        // Bind methods
-        this.resize = this.resize.bind(this);
-        this.animate = this.animate.bind(this);
-        this.onMouseMove = this.onMouseMove.bind(this);
-        this.onMouseDown = this.onMouseDown.bind(this);
-        this.onMouseUp = this.onMouseUp.bind(this);
-
+        this.handleResize = this.resize.bind(this);
         this.init();
     }
 
     async init() {
+        // Setup container
         this.container.style.position = 'relative';
         this.container.style.overflow = 'hidden';
-        this.container.style.background = '#050505';
+        this.container.style.background = '#020105'; // Dark volcanic background
 
-        // 1. WebGL2 (Static Elements)
+        // Mouse Interaction
+        this.container.addEventListener('mousemove', (e) => {
+            const rect = this.container.getBoundingClientRect();
+            this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        });
+
+        // 1. Init WebGL2
         this.initWebGL2();
 
-        // 2. WebGPU (Dynamic Waves)
-        let gpuSuccess = false;
-        if (typeof navigator !== 'undefined' && navigator.gpu) {
+        // 2. Init WebGPU
+        if (navigator.gpu) {
             try {
-                gpuSuccess = await this.initWebGPU();
+                await this.initWebGPU();
             } catch (e) {
-                console.warn("SeismicWave: WebGPU error", e);
+                console.warn("SeismicWave: WebGPU failed to init", e);
             }
         }
 
-        if (!gpuSuccess) {
-            this.addWebGPUNotSupportedMessage();
-        }
-
-        // Interaction
-        this.container.addEventListener('mousemove', this.onMouseMove);
-        this.container.addEventListener('mousedown', this.onMouseDown);
-        this.container.addEventListener('mouseup', this.onMouseUp);
-        window.addEventListener('resize', this.resize);
+        // Initial resize
+        this.resize();
 
         this.isActive = true;
+        this.animate = this.animate.bind(this); // Bind animate
         this.animate();
 
-        // Initial resize to set sizes
-        this.resize();
+        window.addEventListener('resize', this.handleResize);
+    }
+
+    destroy() {
+        this.isActive = false;
+        if (this.animationId) cancelAnimationFrame(this.animationId);
+        window.removeEventListener('resize', this.handleResize);
+
+        // Cleanup WebGL
+        if (this.gl) {
+            this.gl.deleteProgram(this.glProgram);
+            // ... buffer cleanup
+        }
+
+        // Cleanup WebGPU
+        if (this.device) {
+            this.device.destroy();
+        }
+
+        this.container.innerHTML = '';
     }
 
     // ========================================================================
-    // Interaction
-    // ========================================================================
-
-    onMouseMove(e) {
-        const rect = this.container.getBoundingClientRect();
-        this.mouse.x = (e.clientX - rect.left) / rect.width * 2 - 1;
-        this.mouse.y = -((e.clientY - rect.top) / rect.height * 2 - 1);
-    }
-
-    onMouseDown(e) {
-        this.mouse.active = true;
-        this.onMouseMove(e);
-    }
-
-    onMouseUp(e) {
-        this.mouse.active = false;
-    }
-
-    // ========================================================================
-    // WebGL2 (Static Sensors)
+    // WebGL2 IMPLEMENTATION (Fault Line Terrain)
     // ========================================================================
 
     initWebGL2() {
         this.glCanvas = document.createElement('canvas');
-        this.glCanvas.style.cssText = 'position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; pointer-events:none;';
+        this.glCanvas.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        `;
         this.container.appendChild(this.glCanvas);
 
         this.gl = this.glCanvas.getContext('webgl2');
         if (!this.gl) return;
 
-        this.gl.enable(this.gl.DEPTH_TEST);
-        this.gl.enable(this.gl.BLEND);
-        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+        // Generate Grid Mesh
+        // We need a grid of lines.
+        // Rows and Columns.
+        const size = 50; // World units
+        const steps = this.gridSize;
+        const stepSize = size / steps; // e.g. 0.5
 
-        // Simple Pillar Shader
-        const vs = `#version 300 es
-            in vec3 a_pos;
-            in vec3 a_offset;
-            uniform mat4 u_matrix;
-            void main() {
-                vec3 pos = a_pos * vec3(0.05, 0.5, 0.05) + a_offset;
-                gl_Position = u_matrix * vec4(pos, 1.0);
+        const vertices = [];
+        const indices = [];
+
+        // Generate vertices for a plane
+        for (let z = 0; z <= steps; z++) {
+            for (let x = 0; x <= steps; x++) {
+                const px = (x * stepSize) - (size / 2);
+                const pz = (z * stepSize) - (size / 2);
+                vertices.push(px, 0, pz); // y is calculated in shader
             }
+        }
+
+        // Generate indices for lines (Grid)
+        const rowSize = steps + 1;
+        // Horizontal lines
+        for (let z = 0; z <= steps; z++) {
+            for (let x = 0; x < steps; x++) {
+                indices.push(z * rowSize + x);
+                indices.push(z * rowSize + (x + 1));
+            }
+        }
+        // Vertical lines
+        for (let x = 0; x <= steps; x++) {
+            for (let z = 0; z < steps; z++) {
+                indices.push(z * rowSize + x);
+                indices.push((z + 1) * rowSize + x);
+            }
+        }
+
+        this.indexCount = indices.length;
+
+        // Shaders
+        const vs = `#version 300 es
+        layout(location=0) in vec3 a_position;
+
+        uniform mat4 u_projection;
+        uniform mat4 u_view;
+        uniform float u_time;
+        uniform vec2 u_mouse;
+
+        out float v_height;
+        out float v_dist;
+
+        // Simple pseudo-random
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+        }
+
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            float a = hash(i);
+            float b = hash(i + vec2(1.0, 0.0));
+            float c = hash(i + vec2(0.0, 1.0));
+            float d = hash(i + vec2(1.0, 1.0));
+            return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+        }
+
+        void main() {
+            vec3 pos = a_position;
+
+            // Fault Line Logic
+            // Gap in the middle (x near 0)
+            float faultWidth = 2.0;
+            float faultDepth = -5.0;
+
+            float distToCenter = abs(pos.x);
+
+            // Height noise
+            float n = noise(pos.xz * 0.2 + u_time * 0.1) * 2.0;
+
+            // Terrain deformation
+            if (distToCenter < faultWidth) {
+                // Inside fault
+                pos.y = faultDepth + (distToCenter / faultWidth) * 2.0;
+                // Jitter
+                pos.y += n * 0.5;
+            } else {
+                // Outside fault
+                pos.y = n;
+                // Rise near fault
+                float rim = smoothstep(5.0, faultWidth, distToCenter);
+                pos.y += rim * 3.0;
+            }
+
+            // Mouse interaction wave
+            float dMouse = distance(pos.xz, u_mouse * 20.0);
+            float wave = sin(dMouse - u_time * 5.0) * exp(-dMouse * 0.1);
+            pos.y += wave * 0.5;
+
+            gl_Position = u_projection * u_view * vec4(pos, 1.0);
+
+            v_height = pos.y;
+            v_dist = distToCenter;
+        }
         `;
 
         const fs = `#version 300 es
-            precision highp float;
-            out vec4 outColor;
-            void main() {
-                outColor = vec4(1.0, 0.2, 0.2, 0.8);
+        precision highp float;
+
+        in float v_height;
+        in float v_dist;
+        out vec4 outColor;
+
+        void main() {
+            // Color based on height and fault proximity
+            vec3 gridColor = vec3(0.2, 0.2, 0.3);
+
+            // Fault glow
+            if (v_dist < 2.5) {
+                gridColor = mix(vec3(1.0, 0.3, 0.1), gridColor, v_dist / 2.5);
             }
+
+            // Height highlighting
+            gridColor += vec3(0.0, 0.1, 0.2) * v_height;
+
+            // Distance fade (fog)
+            // Not implemented in VS for dist to camera, but v_dist is dist to fault.
+
+            outColor = vec4(gridColor, 0.6); // Slightly transparent lines
+        }
         `;
 
-        this.glProgram = this.createProgram(vs, fs);
-        this.uMatrixLoc = this.gl.getUniformLocation(this.glProgram, 'u_matrix');
-        const offsetLoc = this.gl.getAttribLocation(this.glProgram, 'a_offset');
-        const posLoc = this.gl.getAttribLocation(this.glProgram, 'a_pos');
+        this.glProgram = this.createGLProgram(vs, fs);
 
-        // Cube Geometry
-        const cubeVerts = new Float32Array([
-            // Front face
-            -1.0, -1.0,  1.0,
-             1.0, -1.0,  1.0,
-             1.0,  1.0,  1.0,
-            -1.0,  1.0,  1.0,
-            // Back face
-            -1.0, -1.0, -1.0,
-            -1.0,  1.0, -1.0,
-             1.0,  1.0, -1.0,
-             1.0, -1.0, -1.0,
-        ]);
-
-        // Indices for lines
-        const cubeIndices = new Uint16Array([
-            0, 1, 1, 2, 2, 3, 3, 0, // Front
-            4, 5, 5, 6, 6, 7, 7, 4, // Back
-            0, 4, 1, 7, 2, 6, 3, 5  // Connectors
-        ]);
-
-        // Instance offsets (Sensor locations)
-        const offsets = new Float32Array([
-            -0.5, 0, -0.5,
-             0.5, 0, -0.5,
-            -0.5, 0,  0.5,
-             0.5, 0,  0.5,
-             0.0, 0,  0.0
-        ]);
-
+        // Buffers
         this.glVao = this.gl.createVertexArray();
         this.gl.bindVertexArray(this.glVao);
 
-        // Vertices
-        const vBuf = this.gl.createBuffer();
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vBuf);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, cubeVerts, this.gl.STATIC_DRAW);
-        this.gl.enableVertexAttribArray(posLoc);
-        this.gl.vertexAttribPointer(posLoc, 3, this.gl.FLOAT, false, 0, 0);
+        const vBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(vertices), this.gl.STATIC_DRAW);
+        this.gl.enableVertexAttribArray(0);
+        this.gl.vertexAttribPointer(0, 3, this.gl.FLOAT, false, 0, 0);
 
-        // Indices
-        const iBuf = this.gl.createBuffer();
-        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, iBuf);
-        this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, cubeIndices, this.gl.STATIC_DRAW);
+        const iBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, iBuffer);
+        this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), this.gl.STATIC_DRAW);
 
-        // Instanced Offsets
-        const oBuf = this.gl.createBuffer();
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, oBuf);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, offsets, this.gl.STATIC_DRAW);
-        this.gl.enableVertexAttribArray(offsetLoc);
-        this.gl.vertexAttribPointer(offsetLoc, 3, this.gl.FLOAT, false, 0, 0);
-        this.gl.vertexAttribDivisor(offsetLoc, 1);
+        this.gl.enable(this.gl.DEPTH_TEST);
+        this.gl.enable(this.gl.BLEND);
+        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
     }
 
-    createProgram(vsSrc, fsSrc) {
+    createGLProgram(vsSource, fsSource) {
         const vs = this.gl.createShader(this.gl.VERTEX_SHADER);
-        this.gl.shaderSource(vs, vsSrc);
+        this.gl.shaderSource(vs, vsSource);
         this.gl.compileShader(vs);
         if (!this.gl.getShaderParameter(vs, this.gl.COMPILE_STATUS)) {
-            console.error(this.gl.getShaderInfoLog(vs));
+            console.error('GL VS Error:', this.gl.getShaderInfoLog(vs));
+            return null;
         }
 
         const fs = this.gl.createShader(this.gl.FRAGMENT_SHADER);
-        this.gl.shaderSource(fs, fsSrc);
+        this.gl.shaderSource(fs, fsSource);
         this.gl.compileShader(fs);
         if (!this.gl.getShaderParameter(fs, this.gl.COMPILE_STATUS)) {
-            console.error(this.gl.getShaderInfoLog(fs));
+            console.error('GL FS Error:', this.gl.getShaderInfoLog(fs));
+            return null;
         }
 
         const p = this.gl.createProgram();
@@ -221,464 +289,438 @@ export class SeismicWaveExperiment {
     }
 
     // ========================================================================
-    // WebGPU (Wave Simulation)
+    // WebGPU IMPLEMENTATION (Energy Particles)
     // ========================================================================
 
     async initWebGPU() {
         this.gpuCanvas = document.createElement('canvas');
-        this.gpuCanvas.style.cssText = 'position:absolute; top:0; left:0; width:100%; height:100%; z-index:0;';
+        this.gpuCanvas.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        `;
         this.container.appendChild(this.gpuCanvas);
 
         const adapter = await navigator.gpu.requestAdapter();
-        if (!adapter) return false;
+        if (!adapter) return;
         this.device = await adapter.requestDevice();
         this.context = this.gpuCanvas.getContext('webgpu');
         const format = navigator.gpu.getPreferredCanvasFormat();
-        this.context.configure({ device: this.device, format: format, alphaMode: 'premultiplied' });
+        this.context.configure({ device: this.device, format, alphaMode: 'premultiplied' });
 
-        const N = this.options.gridSize;
-        const totalPoints = N * N;
-
-        // --- Data ---
-        // State: [height, velocity, padding, padding] per point
-        const initialData = new Float32Array(totalPoints * 4);
-
-        this.stateBufferA = this.device.createBuffer({
-            size: initialData.byteLength,
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
-        });
-        this.device.queue.writeBuffer(this.stateBufferA, 0, initialData);
-
-        this.stateBufferB = this.device.createBuffer({
-            size: initialData.byteLength,
-            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
-        });
-        this.device.queue.writeBuffer(this.stateBufferB, 0, initialData);
-
-        // Uniforms: MVP (64) + Params (4: dt, damping, mouseX, mouseY) + GridSize (4: N, time, active, pad)
-        // Total aligned 4 floats.
-        // Struct:
-        // mvp: mat4x4
-        // params: vec4 (dt, damping, mouseX, mouseY)
-        // grid: vec4 (N, time, clickActive, padding)
-        const uniformSize = 64 + 16 + 16;
-        this.uniformBuffer = this.device.createBuffer({
-            size: uniformSize,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-        });
-
-        // --- Compute Shader (Wave Equation) ---
-        const computeShader = `
-            struct State {
-                height : f32,
-                vel : f32,
-                pad1 : f32,
-                pad2 : f32,
+        // Compute Shader
+        const computeCode = `
+            struct Particle {
+                pos: vec4f, // x, y, z, life
+                vel: vec4f, // vx, vy, vz, size
             }
+            @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
 
             struct Uniforms {
-                mvp : mat4x4f,
-                params : vec4f, // dt, damping, mouseX, mouseY
-                grid : vec4f,   // N, time, clickActive, pad
+                time: f32,
+                dt: f32,
+                mouseX: f32,
+                mouseY: f32,
+            }
+            @group(0) @binding(1) var<uniform> uniforms : Uniforms;
+
+            // Simple hash for randomness
+            fn hash(seed: u32) -> f32 {
+                var x = seed;
+                x = ((x >> 16u) ^ x) * 0.45f;
+                x = ((x >> 16u) ^ x) * 0.45f;
+                x = (x >> 16u) ^ x;
+                return f32(x) / 4294967295.0;
             }
 
-            @group(0) @binding(0) var<storage, read> inputState : array<State>;
-            @group(0) @binding(1) var<storage, read_write> outputState : array<State>;
-            @group(0) @binding(2) var<uniform> uniforms : Uniforms;
-
-            fn getIdx(x: i32, y: i32, N: i32) -> i32 {
-                let xx = clamp(x, 0, N - 1);
-                let yy = clamp(y, 0, N - 1);
-                return yy * N + xx;
-            }
-
-            @compute @workgroup_size(8, 8)
+            @compute @workgroup_size(64)
             fn main(@builtin(global_invocation_id) id : vec3u) {
-                let N = i32(uniforms.grid.x);
-                let x = i32(id.x);
-                let y = i32(id.y);
+                let i = id.x;
+                if (i >= ${this.numParticles}) { return; }
 
-                if (x >= N || y >= N) { return; }
+                var p = particles[i];
 
-                let idx = y * N + x;
-                var s = inputState[idx];
+                // Update Life
+                p.pos.w = p.pos.w - uniforms.dt * 0.5; // Decay
 
-                // Wave equation: acceleration = Laplacian * c^2
-                // Laplacian using finite difference
-                let h = s.height;
-                let h_l = inputState[getIdx(x - 1, y, N)].height;
-                let h_r = inputState[getIdx(x + 1, y, N)].height;
-                let h_u = inputState[getIdx(x, y - 1, N)].height;
-                let h_d = inputState[getIdx(x, y + 1, N)].height;
+                // Respawn
+                if (p.pos.w <= 0.0) {
+                    let seed = i + u32(uniforms.time * 1000.0);
+                    // Spawn along the fault line (z axis, x=0)
+                    p.pos.x = (hash(seed) - 0.5) * 2.0; // Narrow width
+                    p.pos.z = (hash(seed + 1u) - 0.5) * 50.0; // Full length
+                    p.pos.y = -2.0; // Below ground
+                    p.pos.w = 1.0; // Reset life
 
-                let laplacian = h_l + h_r + h_u + h_d - 4.0 * h;
+                    // Velocity: Up and random
+                    p.vel.x = (hash(seed + 2u) - 0.5) * 2.0;
+                    p.vel.y = 2.0 + hash(seed + 3u) * 3.0;
+                    p.vel.z = (hash(seed + 4u) - 0.5) * 2.0;
+                    p.vel.w = hash(seed + 5u) * 0.2; // Size
+                } else {
+                    // Physics
+                    // Move
+                    p.pos.x = p.pos.x + p.vel.x * uniforms.dt;
+                    p.pos.y = p.pos.y + p.vel.y * uniforms.dt;
+                    p.pos.z = p.pos.z + p.vel.z * uniforms.dt;
 
-                // Update velocity
-                let c2 = 0.05; // speed squared
-                let damping = uniforms.params.y;
-                let dt = uniforms.params.x;
+                    // Mouse Attraction
+                    let mx = uniforms.mouseX * 25.0;
+                    let mz = -uniforms.mouseY * 25.0; // Invert Y for Z
+                    let target = vec3f(mx, 0.0, mz);
 
-                s.vel += (c2 * laplacian - damping * s.vel) * dt;
+                    let dir = target - p.pos.xyz;
+                    let dist = length(dir);
+                    if (dist < 10.0) {
+                        p.vel.x = p.vel.x + normalize(dir).x * 10.0 * uniforms.dt;
+                        p.vel.z = p.vel.z + normalize(dir).z * 10.0 * uniforms.dt;
+                    }
 
-                // Add interaction force
-                // Map mouse (-1 to 1) to grid coords
-                // Mouse is in normalized device coords (x: -1..1, y: -1..1)
-                // Grid is 0..N-1 mapped to -1..1 in render
-                // But we need to check distance in world space or grid space.
-                // Let's assume grid covers -1 to 1.
-                let gx = (f32(x) / f32(N)) * 2.0 - 1.0;
-                let gy = (f32(y) / f32(N)) * 2.0 - 1.0;
-
-                let mx = uniforms.params.z;
-                let my = uniforms.params.w;
-                let clickActive = uniforms.grid.z;
-
-                let dist = distance(vec2f(gx, gy), vec2f(mx, my));
-                if (clickActive > 0.5 && dist < 0.2) {
-                    s.vel += 10.0 * dt * (1.0 - dist / 0.2);
+                    // Turbulence / Curl (fake)
+                    p.vel.x = p.vel.x + sin(p.pos.y * 2.0 + uniforms.time) * 2.0 * uniforms.dt;
                 }
 
-                // Random Drops
-                if (fract(sin(uniforms.grid.y * 12.9898 + f32(idx)) * 43758.5453) > 0.999) {
-                     s.vel += 2.0;
-                }
-
-                // Update height
-                s.height += s.vel * dt;
-
-                // Damping for stability
-                s.height *= 0.999;
-
-                outputState[idx] = s;
+                particles[i] = p;
             }
         `;
 
-        const computeModule = this.device.createShaderModule({ code: computeShader });
-        const computeBindGroupLayout = this.device.createBindGroupLayout({
-            entries: [
-                { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
-                { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
-                { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } }
-            ]
-        });
-
-        this.computePipeline = this.device.createComputePipeline({
-            layout: this.device.createPipelineLayout({ bindGroupLayouts: [computeBindGroupLayout] }),
-            compute: { module: computeModule, entryPoint: 'main' }
-        });
-
-        // Group A: Read A, Write B
-        this.computeBindGroupA = this.device.createBindGroup({
-            layout: computeBindGroupLayout,
-            entries: [
-                { binding: 0, resource: { buffer: this.stateBufferA } },
-                { binding: 1, resource: { buffer: this.stateBufferB } },
-                { binding: 2, resource: { buffer: this.uniformBuffer } }
-            ]
-        });
-
-        // Group B: Read B, Write A
-        this.computeBindGroupB = this.device.createBindGroup({
-            layout: computeBindGroupLayout,
-            entries: [
-                { binding: 0, resource: { buffer: this.stateBufferB } },
-                { binding: 1, resource: { buffer: this.stateBufferA } },
-                { binding: 2, resource: { buffer: this.uniformBuffer } }
-            ]
-        });
-
-        // --- Render Shader ---
-        const drawShader = `
-            struct Uniforms {
-                mvp : mat4x4f,
-                params : vec4f,
-                grid : vec4f,
+        // Render Shader
+        const drawCode = `
+            struct Particle {
+                pos: vec4f,
+                vel: vec4f,
             }
+            @group(0) @binding(0) var<storage, read> particles : array<Particle>;
 
             struct VertexOutput {
-                @builtin(position) position : vec4f,
-                @location(0) height : f32,
+                @builtin(position) pos : vec4f,
+                @location(0) life : f32,
+                @location(1) size : f32,
             }
 
-            @group(0) @binding(0) var<uniform> uniforms : Uniforms;
+            @group(0) @binding(1) var<uniform> uniforms : Uniforms;
+            struct Uniforms {
+                time: f32,
+                dt: f32,
+                mouseX: f32,
+                mouseY: f32,
+                viewProj: mat4x4f, // Added viewProj
+            }
 
             @vertex
-            fn vs_main(
-                @builtin(vertex_index) vIdx : u32,
-                @location(0) height : f32,
-                @location(1) vel : f32
-            ) -> VertexOutput {
-                var output : VertexOutput;
-                let N = i32(uniforms.grid.x);
+            fn vs_main(@builtin(vertex_index) vIdx : u32) -> VertexOutput {
+                let p = particles[vIdx];
 
-                // Reconstruct grid position from index
-                let x = f32(i32(vIdx) % N);
-                let y = f32(i32(vIdx) / N);
+                var out: VertexOutput;
+                out.pos = uniforms.viewProj * vec4f(p.pos.xyz, 1.0);
+                out.life = p.pos.w;
+                out.size = p.vel.w;
 
-                // Map to -1..1
-                let u = x / f32(N - 1) * 2.0 - 1.0;
-                let v = y / f32(N - 1) * 2.0 - 1.0;
+                // Point size hack for WebGPU?
+                // WebGPU points don't scale by default in all backends like GL.
+                // But we are drawing POINTS topology.
+                // Actually, gl_PointSize equivalent is builtin(point_size) if enabled feature,
+                // but simpler to just draw points.
+                // Standard WebGPU doesn't support point size in vertex output easily without extension.
+                // We'll trust default size or single pixel.
+                // Better: Draw BILLBOARDS (Quads) via instancing if we want size control.
+                // For simplicity here, just points.
 
-                let pos = vec3f(u, height * 0.3, v);
-                output.position = uniforms.mvp * vec4f(pos, 1.0);
-                output.height = height;
-                return output;
+                return out;
             }
 
             @fragment
-            fn fs_main(@location(0) height : f32) -> @location(0) vec4f {
-                // Color based on height
-                let c = (height + 0.5);
-                return vec4f(0.2 + c*0.8, 0.4 + c*0.2, 1.0 - c*0.5, 1.0);
+            fn fs_main(@location(0) life : f32) -> @location(0) vec4f {
+                let alpha = life;
+                // Orange Fire Color
+                return vec4f(1.0, 0.5, 0.1, alpha);
             }
         `;
 
-        const renderModule = this.device.createShaderModule({ code: drawShader });
-        const renderBindGroupLayout = this.device.createBindGroupLayout({
+        // Initialize Buffers
+        const initData = new Float32Array(this.numParticles * 8); // 8 floats per particle
+        this.particleBuffer = this.device.createBuffer({
+            size: initData.byteLength,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+        });
+
+        // Uniform Buffer: time(4), dt(4), mouseX(4), mouseY(4), mat4(64) = 80 bytes
+        // Aligned to 16 bytes.
+        // 4+4+4+4 = 16 bytes. + 64 bytes = 80 bytes. Perfect.
+        this.uniformBuffer = this.device.createBuffer({
+            size: 80,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+
+        // Layouts
+        const computeBGLayout = this.device.createBindGroupLayout({
             entries: [
-                { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'uniform' } }
+                { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+                { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } }
+            ]
+        });
+
+        const renderBGLayout = this.device.createBindGroupLayout({
+            entries: [
+                { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+                { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'uniform' } }
+            ]
+        });
+
+        // Bind Groups
+        this.computeBindGroup = this.device.createBindGroup({
+            layout: computeBGLayout,
+            entries: [
+                { binding: 0, resource: { buffer: this.particleBuffer } },
+                { binding: 1, resource: { buffer: this.uniformBuffer } }
             ]
         });
 
         this.renderBindGroup = this.device.createBindGroup({
-            layout: renderBindGroupLayout,
+            layout: renderBGLayout,
             entries: [
-                { binding: 0, resource: { buffer: this.uniformBuffer } }
+                { binding: 0, resource: { buffer: this.particleBuffer } },
+                { binding: 1, resource: { buffer: this.uniformBuffer } }
             ]
         });
 
-        this.renderPipeline = this.device.createRenderPipeline({
-            layout: this.device.createPipelineLayout({ bindGroupLayouts: [renderBindGroupLayout] }),
+        // Pipelines
+        this.computePipeline = this.device.createComputePipeline({
+            layout: this.device.createPipelineLayout({ bindGroupLayouts: [computeBGLayout] }),
+            compute: { module: this.device.createShaderModule({ code: computeCode }), entryPoint: 'main' }
+        });
+
+        this.particlePipeline = this.device.createRenderPipeline({
+            layout: this.device.createPipelineLayout({ bindGroupLayouts: [renderBGLayout] }),
             vertex: {
-                module: renderModule,
-                entryPoint: 'vs_main',
-                buffers: [{
-                    arrayStride: 16, // 4 * 4 bytes
-                    stepMode: 'vertex',
-                    attributes: [
-                        { shaderLocation: 0, offset: 0, format: 'float32' }, // height
-                        { shaderLocation: 1, offset: 4, format: 'float32' }  // vel
-                        // padding at 8, 12 ignored
-                    ]
-                }]
+                module: this.device.createShaderModule({ code: drawCode }),
+                entryPoint: 'vs_main'
             },
             fragment: {
-                module: renderModule,
+                module: this.device.createShaderModule({ code: drawCode }),
                 entryPoint: 'fs_main',
                 targets: [{
-                    format: format,
+                    format,
                     blend: {
-                        color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add' },
-                        alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' }
+                        color: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
+                        alpha: { srcFactor: 'zero', dstFactor: 'one', operation: 'add' }
                     }
                 }]
             },
             primitive: { topology: 'point-list' }
         });
-
-        this.resizeGPU();
-        return true;
     }
-
-    addWebGPUNotSupportedMessage() {
-        const msg = document.createElement('div');
-        msg.innerHTML = "⚠️ WebGPU Not Available (Waves require WebGPU)";
-        msg.style.cssText = "position:absolute; top:20px; left:50%; transform:translateX(-50%); color:#ffaa00; background:rgba(0,0,0,0.8); padding:10px 20px; border-radius:8px; pointer-events:none;";
-        this.container.appendChild(msg);
-    }
-
-    // ========================================================================
-    // Loop
-    // ========================================================================
 
     resize() {
-        const w = this.container.clientWidth || window.innerWidth;
-        const h = this.container.clientHeight || window.innerHeight;
         const dpr = window.devicePixelRatio || 1;
+        const w = this.container.clientWidth * dpr;
+        const h = this.container.clientHeight * dpr;
+
+        if (w === 0 || h === 0) return;
 
         if (this.glCanvas) {
-            this.glCanvas.width = w * dpr;
-            this.glCanvas.height = h * dpr;
-            this.gl.viewport(0, 0, w * dpr, h * dpr);
+            this.glCanvas.width = w;
+            this.glCanvas.height = h;
+            this.gl.viewport(0, 0, w, h);
         }
-
         if (this.gpuCanvas) {
-            this.gpuCanvas.width = w * dpr;
-            this.gpuCanvas.height = h * dpr;
+            this.gpuCanvas.width = w;
+            this.gpuCanvas.height = h;
         }
-    }
-
-    resizeGPU() {
-        // Handled in resize
     }
 
     animate() {
         if (!this.isActive) return;
-        this.time += 0.016;
 
-        // Matrix Setup
-        const aspect = this.container.clientWidth / this.container.clientHeight;
-        const fov = 60 * Math.PI / 180;
-        const f = 1.0 / Math.tan(fov / 2);
-        const zNear = 0.1;
-        const zFar = 100.0;
-        const proj = [
-            f / aspect, 0, 0, 0,
-            0, f, 0, 0,
-            0, 0, (zFar + zNear) / (zNear - zFar), -1,
-            0, 0, (2 * zFar * zNear) / (zNear - zFar), 0
-        ];
+        const now = Date.now();
+        const time = (now - this.startTime) * 0.001;
+        const dt = 0.016;
 
-        // Orbit camera
-        const r = 2.5;
-        const cx = Math.sin(this.time * 0.2) * r;
-        const cz = Math.cos(this.time * 0.2) * r;
-        const cy = 1.8;
+        // Camera Math
+        const camX = this.mouse.x * 20.0;
+        const camY = 20.0 + this.mouse.y * 10.0;
+        const aspect = (this.glCanvas?.width || 1) / (this.glCanvas?.height || 1);
 
-        const zAxis = this.normalize([cx, cy, cz]);
-        const xAxis = this.normalize(this.cross([0,1,0], zAxis));
-        const yAxis = this.cross(zAxis, xAxis);
+        const proj = this.createPerspectiveMatrix(60, aspect, 0.1, 500.0);
+        const view = this.createLookAtMatrix([camX, camY, 40], [0, 0, 0], [0, 1, 0]);
+        const viewProj = this.multiplyMatrices(proj, view);
 
-        const view = [
-            xAxis[0], yAxis[0], zAxis[0], 0,
-            xAxis[1], yAxis[1], zAxis[1], 0,
-            xAxis[2], yAxis[2], zAxis[2], 0,
-            -this.dot(xAxis, [cx,cy,cz]), -this.dot(yAxis, [cx,cy,cz]), -this.dot(zAxis, [cx,cy,cz]), 1
-        ];
+        // 1. WebGL2 Render
+        if (this.gl && this.glProgram) {
+            this.gl.useProgram(this.glProgram);
 
-        const mvp = this.multiplyMatrices(proj, view);
+            const uProj = this.gl.getUniformLocation(this.glProgram, 'u_projection');
+            const uView = this.gl.getUniformLocation(this.glProgram, 'u_view');
+            const uTime = this.gl.getUniformLocation(this.glProgram, 'u_time');
+            const uMouse = this.gl.getUniformLocation(this.glProgram, 'u_mouse');
 
-        // --- Render WebGL2 (Sensors) ---
-        if (this.gl) {
-            this.gl.clearColor(0, 0, 0, 0);
+            this.gl.uniformMatrix4fv(uProj, false, proj);
+            this.gl.uniformMatrix4fv(uView, false, view);
+            this.gl.uniform1f(uTime, time);
+            this.gl.uniform2f(uMouse, this.mouse.x, this.mouse.y);
+
+            this.gl.clearColor(0.02, 0.01, 0.05, 1.0);
             this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
-            this.gl.useProgram(this.glProgram);
-            this.gl.uniformMatrix4fv(this.uMatrixLoc, false, mvp);
-
             this.gl.bindVertexArray(this.glVao);
-            // Draw 5 instances of the cube
-            this.gl.drawElementsInstanced(this.gl.LINES, 24, this.gl.UNSIGNED_SHORT, 0, 5);
+            this.gl.drawElements(this.gl.LINES, this.indexCount, this.gl.UNSIGNED_SHORT, 0);
         }
 
-        // --- Render WebGPU (Waves) ---
-        if (this.device && this.context) {
+        // 2. WebGPU Render
+        if (this.device && this.particlePipeline) {
             // Update Uniforms
-            const uniformData = new Float32Array(24); // Size 96 bytes needed?
-            // Layout:
-            // mvp (0-63)
-            // params (64-79): dt, damping, mx, my
-            // grid (80-95): N, time, active, pad
+            // struct Uniforms { time: f32, dt: f32, mouseX: f32, mouseY: f32, viewProj: mat4x4f }
+            // Alignment: vec4 (16 bytes).
+            // 4 floats = 16 bytes.
+            // mat4 = 64 bytes.
+            // Total 80 bytes.
 
-            uniformData.set(mvp, 0);
-            // We need to write to the buffer with correct offset
-            this.device.queue.writeBuffer(this.uniformBuffer, 0, uniformData);
+            const uniforms = new Float32Array(20); // 80 bytes / 4 = 20 floats
+            uniforms[0] = time;
+            uniforms[1] = dt;
+            uniforms[2] = this.mouse.x;
+            uniforms[3] = this.mouse.y;
+            uniforms.set(viewProj, 4); // Start at index 4
 
-            const paramsData = new Float32Array([
-                0.016, // dt
-                0.02,  // damping
-                this.mouse.x,
-                this.mouse.y
-            ]);
-            this.device.queue.writeBuffer(this.uniformBuffer, 64, paramsData);
+            this.device.queue.writeBuffer(this.uniformBuffer, 0, uniforms);
 
-            const gridData = new Float32Array([
-                this.options.gridSize,
-                this.time,
-                this.mouse.active ? 1.0 : 0.0,
-                0.0
-            ]);
-            this.device.queue.writeBuffer(this.uniformBuffer, 80, gridData);
+            const encoder = this.device.createCommandEncoder();
 
-            const commandEncoder = this.device.createCommandEncoder();
+            // Compute
+            const cPass = encoder.beginComputePass();
+            cPass.setPipeline(this.computePipeline);
+            cPass.setBindGroup(0, this.computeBindGroup);
+            cPass.dispatchWorkgroups(Math.ceil(this.numParticles / 64));
+            cPass.end();
 
-            // Compute Step
-            const computePass = commandEncoder.beginComputePass();
-            computePass.setPipeline(this.computePipeline);
-            // Toggle buffers
-            const bindGroup = (this.frame % 2 === 0) ? this.computeBindGroupA : this.computeBindGroupB;
-            computePass.setBindGroup(0, bindGroup);
-            const workGroupSize = 8;
-            const groups = Math.ceil(this.options.gridSize / workGroupSize);
-            computePass.dispatchWorkgroups(groups, groups);
-            computePass.end();
+            // Render
+            if (this.gpuCanvas.width > 0 && this.gpuCanvas.height > 0) {
+                const textureView = this.context.getCurrentTexture().createView();
+                const rPass = encoder.beginRenderPass({
+                    colorAttachments: [{
+                        view: textureView,
+                        clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                        loadOp: 'load', // Keep WebGL background
+                        storeOp: 'store'
+                    }]
+                });
+                rPass.setPipeline(this.particlePipeline);
+                rPass.setBindGroup(0, this.renderBindGroup);
+                rPass.draw(this.numParticles);
+                rPass.end();
+            }
 
-            // Render Step
-            const textureView = this.context.getCurrentTexture().createView();
-            const renderPass = commandEncoder.beginRenderPass({
-                colorAttachments: [{
-                    view: textureView,
-                    clearValue: { r: 0, g: 0, b: 0, a: 0 },
-                    loadOp: 'load', // Draw ON TOP of WebGL (which is under it)
-                    storeOp: 'store'
-                }]
-            });
-            renderPass.setPipeline(this.renderPipeline);
-            renderPass.setBindGroup(0, this.renderBindGroup);
-
-            // Read from the buffer we just wrote to (output of compute)
-            // If frame 0: input A, output B. We render B.
-            const renderBuffer = (this.frame % 2 === 0) ? this.stateBufferB : this.stateBufferA;
-            renderPass.setVertexBuffer(0, renderBuffer);
-
-            const totalPoints = this.options.gridSize * this.options.gridSize;
-            renderPass.draw(totalPoints);
-            renderPass.end();
-
-            this.device.queue.submit([commandEncoder.finish()]);
-
-            // Swap for next frame
-            this.frame++;
+            this.device.queue.submit([encoder.finish()]);
         }
 
         this.animationId = requestAnimationFrame(this.animate);
     }
 
-    // Math Helpers
-    normalize(v) {
-        const len = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-        if(len === 0) return [0,0,0];
-        return [v[0]/len, v[1]/len, v[2]/len];
+    // Matrix Utils
+    createPerspectiveMatrix(fov, aspect, near, far) {
+        const f = 1.0 / Math.tan(fov * Math.PI / 360);
+        const rangeInv = 1.0 / (near - far);
+        return new Float32Array([
+            f / aspect, 0, 0, 0,
+            0, f, 0, 0,
+            0, 0, (near + far) * rangeInv, -1,
+            0, 0, near * far * rangeInv * 2, 0
+        ]);
     }
 
-    cross(a, b) {
-        return [
-            a[1]*b[2] - a[2]*b[1],
-            a[2]*b[0] - a[0]*b[2],
-            a[0]*b[1] - a[1]*b[0]
+    createLookAtMatrix(eye, target, up) {
+        let z = [eye[0] - target[0], eye[1] - target[1], eye[2] - target[2]];
+        const len = Math.hypot(...z);
+        if(len > 0) z = z.map(v => v / len);
+        else z = [0, 0, 1];
+
+        let x = [
+            up[1]*z[2] - up[2]*z[1],
+            up[2]*z[0] - up[0]*z[2],
+            up[0]*z[1] - up[1]*z[0]
         ];
-    }
+        const lenX = Math.hypot(...x);
+        if(lenX > 0) x = x.map(v => v / lenX);
+        else x = [1, 0, 0];
 
-    dot(a, b) {
-        return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+        let y = [
+            z[1]*x[2] - z[2]*x[1],
+            z[2]*x[0] - z[0]*x[2],
+            z[0]*x[1] - z[1]*x[0]
+        ];
+
+        return new Float32Array([
+            x[0], y[0], z[0], 0,
+            x[1], y[1], z[1], 0,
+            x[2], y[2], z[2], 0,
+            -(x[0]*eye[0] + x[1]*eye[1] + x[2]*eye[2]),
+            -(y[0]*eye[0] + y[1]*eye[1] + y[2]*eye[2]),
+            -(z[0]*eye[0] + z[1]*eye[1] + z[2]*eye[2]),
+            1
+        ]);
     }
 
     multiplyMatrices(a, b) {
-        const out = [];
+        let out = new Float32Array(16);
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 4; j++) {
                 let sum = 0;
                 for (let k = 0; k < 4; k++) {
-                    sum += b[i * 4 + k] * a[k * 4 + j];
+                    sum += a[i * 4 + k] * b[k * 4 + j]; // This is actually B * A if row major, but GL is col major.
+                    // Wait, standard mult is C = A * B.
+                    // A is projection (usually), B is View.
+                    // Proj * View.
+                    // In standard math:
+                    // out[row][col] = sum(a[row][k] * b[k][col])
+                    // In flat array (col-major):
+                    // out[col*4 + row] ...
                 }
-                out.push(sum);
             }
         }
-        return out;
-    }
+        // Let's use a simpler known multiply function or just reuse one from libraries.
+        // Actually, for column-major arrays (OpenGL):
+        // C = A * B
+        // C_col_j = A * B_col_j
 
-    destroy() {
-        this.isActive = false;
-        if(this.animationId) cancelAnimationFrame(this.animationId);
-        window.removeEventListener('resize', this.resize);
-        this.container.removeEventListener('mousemove', this.onMouseMove);
-        this.container.removeEventListener('mousedown', this.onMouseDown);
-        this.container.removeEventListener('mouseup', this.onMouseUp);
-        // clean up GPU/GL resources if needed
+        // I'll just write it out:
+        const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+        const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+        const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+        const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+
+        const b00 = b[0], b01 = b[1], b02 = b[2], b03 = b[3];
+        const b10 = b[4], b11 = b[5], b12 = b[6], b13 = b[7];
+        const b20 = b[8], b21 = b[9], b22 = b[10], b23 = b[11];
+        const b30 = b[12], b31 = b[13], b32 = b[14], b33 = b[15];
+
+        out[0] = b00 * a00 + b01 * a10 + b02 * a20 + b03 * a30;
+        out[1] = b00 * a01 + b01 * a11 + b02 * a21 + b03 * a31;
+        out[2] = b00 * a02 + b01 * a12 + b02 * a22 + b03 * a32;
+        out[3] = b00 * a03 + b01 * a13 + b02 * a23 + b03 * a33;
+
+        out[4] = b10 * a00 + b11 * a10 + b12 * a20 + b13 * a30;
+        out[5] = b10 * a01 + b11 * a11 + b12 * a21 + b13 * a31;
+        out[6] = b10 * a02 + b11 * a12 + b12 * a22 + b13 * a32;
+        out[7] = b10 * a03 + b11 * a13 + b12 * a23 + b13 * a33;
+
+        out[8] = b20 * a00 + b21 * a10 + b22 * a20 + b23 * a30;
+        out[9] = b20 * a01 + b21 * a11 + b22 * a21 + b23 * a31;
+        out[10] = b20 * a02 + b21 * a12 + b22 * a22 + b23 * a32;
+        out[11] = b20 * a03 + b21 * a13 + b22 * a23 + b23 * a33;
+
+        out[12] = b30 * a00 + b31 * a10 + b32 * a20 + b33 * a30;
+        out[13] = b30 * a01 + b31 * a11 + b32 * a21 + b33 * a31;
+        out[14] = b30 * a02 + b31 * a12 + b32 * a22 + b33 * a32;
+        out[15] = b30 * a03 + b31 * a13 + b32 * a23 + b33 * a33;
+
+        return out;
     }
 }
 
-// Global Export
 if (typeof window !== 'undefined') {
     window.SeismicWaveExperiment = SeismicWaveExperiment;
 }
