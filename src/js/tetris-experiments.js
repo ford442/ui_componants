@@ -578,7 +578,7 @@ export class SampledGlassTetris {
 
         this.program = this.createProgram(vs, fs);
         this.createCubeGeometry();
-        await this.loadTexture(this.imagePath);
+        await this.loadMedia();
         this.resetCubes();
 
         this.resizeObserver.observe(this.container);
@@ -649,15 +649,13 @@ export class SampledGlassTetris {
             this.texture = this.gl.createTexture();
             this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
             this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 1, 1, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, new Uint8Array([0,255,255,255]));
-            const img = new Image();
-            img.onload = () => {
-                this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
-                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, img);
-                this.gl.generateMipmap(this.gl.TEXTURE_2D);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+
+            const setupTexture = () => {
+                 this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+                 this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+                 this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+                 this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+                 this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
             };
 
             if (this.videoPath) {
