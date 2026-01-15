@@ -44,6 +44,7 @@ export default defineConfig({
         fiber_optics: resolve(__dirname, 'src/pages/fiber-optics.html'),
         chrono_excavation: resolve(__dirname, 'src/pages/chrono-excavation.html'),
         quantum_tensor: resolve(__dirname, 'src/pages/quantum-tensor.html'),
+        temporal_fissure: resolve(__dirname, 'src/pages/temporal-fissure.html'),
       },
     },
   },
