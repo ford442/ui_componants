@@ -601,7 +601,7 @@ class PatternTests {
 
                   // BLIP LOGIC: Instant strike when playhead hits
                   let onPlayhead = (in.row == uniforms.playheadRow);
-                  let strike = select(0.0, 3.0, onPlayhead);
+                  let strike = select(0.0, 4.0 * exp(-uniforms.tickOffset * 10.0), onPlayhead);
 
                   let flash = f32(ch.trigger) * 1.0;
                   var d = f32(in.row) + uniforms.tickOffset - f32(uniforms.playheadRow);
