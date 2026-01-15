@@ -279,11 +279,6 @@
         } else {
             console.log("Device does not support 'texture-component-swizzle'.");
         }
-        if (adapter.features.has('shader-f16')) {
-            requiredFeatures.push('shader-f16');
-        } else {
-            console.log("Device does not support 'shader-f16'.");
-        }
         
         const device = await adapter.requestDevice({
             requiredFeatures,
@@ -344,7 +339,7 @@
                 `
             });
 
-            const U_SIZE = 16 + 16;
+            const U_SIZE = 256 + 16;
             const uBuf = device.createBuffer({ size: U_SIZE, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 
             const pipeline = device.createRenderPipeline({
@@ -358,7 +353,7 @@
                 layout: pipeline.getBindGroupLayout(0),
                 entries: [
                     { binding: 0, resource: { buffer: uBuf, offset: 0, size: 4 } },
-                    { binding: 1, resource: { buffer: uBuf, offset: 16, size: 8 } }
+                    { binding: 1, resource: { buffer: uBuf, offset: 256, size: 8 } }
                 ],
             });
 
@@ -378,7 +373,7 @@
             return {
                 render: (t) => {
                     device.queue.writeBuffer(uBuf, 0, new Float32Array([t]));
-                    device.queue.writeBuffer(uBuf, 16, new Float32Array([canvas.width, canvas.height]));
+                    device.queue.writeBuffer(uBuf, 256, new Float32Array([canvas.width, canvas.height]));
                     const enc = device.createCommandEncoder();
                     const pass = enc.beginRenderPass({
                         colorAttachments: [{

@@ -13,11 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     checkWebGPUSupport().then(supported => {
         if (supported) {
-            initParticleSwarmButtons();
-            initQuantumFluxButtons();
-            initMagneticFieldButtons();
-            initNeuralNetworkButtons();
-            initCompositingShowcase();
+            document.getElementById('enable-webgpu-btn')?.addEventListener('click', () => {
+                initWebGPUExperiments();
+                document.getElementById('webgpu-experiments-container').style.display = 'block';
+                document.getElementById('webgpu-enable-section').style.display = 'none';
+            });
         } else {
             document.getElementById('webgpu-warning')?.setAttribute('style', 'display: block;');
             document.body.classList.add('no-webgpu');
@@ -40,6 +40,14 @@ document.addEventListener('DOMContentLoaded', () => {
     initKineticTypographyButtons();
     initEMPButtons();
 });
+
+function initWebGPUExperiments() {
+    initParticleSwarmButtons();
+    initQuantumFluxButtons();
+    initMagneticFieldButtons();
+    initNeuralNetworkButtons();
+    initCompositingShowcase();
+}
 
 /**
  * Initialize basic LED buttons
@@ -72,7 +80,6 @@ function initRGBButtons() {
     const container = document.getElementById('rgb-buttons');
     if (!container) return;
 
-    // Create custom RGB button with color cycling
     const createRGBButton = (label) => {
         const wrapper = document.createElement('div');
         wrapper.className = 'rgb-button-wrapper';
@@ -80,18 +87,6 @@ function initRGBButtons() {
             width: 100px;
             height: 60px;
             position: relative;
-        `;
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 200;
-        canvas.height = 120;
-        canvas.style.cssText = `
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            pointer-events: none;
         `;
 
         const button = document.createElement('button');
@@ -114,13 +109,18 @@ function initRGBButtons() {
                 0 4px 8px rgba(0, 0, 0, 0.5);
         `;
 
-        wrapper.appendChild(canvas);
         wrapper.appendChild(button);
         container.appendChild(wrapper);
 
-        // Initialize WebGL2 for RGB effect
-        const gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: false });
-        if (!gl) return;
+        const layeredCanvas = new UIComponents.LayeredCanvas(wrapper, { width: 100, height: 60 });
+        const webglLayer = layeredCanvas.addLayer('webgl', 'webgl2', 0);
+        webglLayer.canvas.style.pointerEvents = 'none';
+
+        if (!webglLayer.context) {
+            return;
+        }
+
+        const gl = webglLayer.context;
 
         const fragmentShader = `#version 300 es
             precision mediump float;
@@ -157,12 +157,8 @@ function initRGBButtons() {
 
         const vertexShader = `#version 300 es
             in vec4 a_position;
-            in vec2 a_texCoord;
-            out vec2 v_texCoord;
-            
             void main() {
                 gl_Position = a_position;
-                v_texCoord = a_texCoord;
             }
         `;
 
@@ -178,7 +174,6 @@ function initRGBButtons() {
         };
 
         let isOn = false;
-
         button.addEventListener('click', () => {
             isOn = !isOn;
         });
@@ -186,25 +181,23 @@ function initRGBButtons() {
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-        const animate = (timestamp) => {
+        layeredCanvas.setRenderFunction('webgl', (layer, timestamp) => {
             const time = timestamp * 0.001;
-
-            gl.viewport(0, 0, canvas.width, canvas.height);
+            
+            gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT);
 
             gl.useProgram(program);
 
             gl.uniform1f(uniforms.time, time);
-            gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+            gl.uniform2f(uniforms.resolution, layer.canvas.width, layer.canvas.height);
             gl.uniform1f(uniforms.on, isOn ? 1.0 : 0.0);
 
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        });
 
-            requestAnimationFrame(animate);
-        };
-
-        requestAnimationFrame(animate);
+        layeredCanvas.startAnimation();
     };
 
     createRGBButton('RGB 1');
@@ -343,18 +336,6 @@ function initPulsingButtons() {
             position: relative;
         `;
 
-        const canvas = document.createElement('canvas');
-        canvas.width = 160;
-        canvas.height = 100;
-        canvas.style.cssText = `
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            pointer-events: none;
-        `;
-
         const button = document.createElement('div');
         button.textContent = label;
         button.style.cssText = `
@@ -374,14 +355,19 @@ function initPulsingButtons() {
                 inset 0 2px 4px rgba(255, 255, 255, 0.1),
                 0 4px 8px rgba(0, 0, 0, 0.5);
         `;
-
-        wrapper.appendChild(canvas);
+        
         wrapper.appendChild(button);
         container.appendChild(wrapper);
 
-        // Initialize WebGL for pulse effect
-        const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: false });
-        if (!gl) return;
+        const layeredCanvas = new UIComponents.LayeredCanvas(wrapper, { width: 80, height: 50 });
+        const webglLayer = layeredCanvas.addLayer('webgl', 'webgl', 0);
+        webglLayer.canvas.style.pointerEvents = 'none';
+
+        if (!webglLayer.context) {
+            return;
+        }
+
+        const gl = webglLayer.context;
 
         const fragmentShader = `
             precision mediump float;
@@ -428,26 +414,24 @@ function initPulsingButtons() {
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-        const animate = (timestamp) => {
+        layeredCanvas.setRenderFunction('webgl', (layer, timestamp) => {
             const time = timestamp * 0.001;
-
-            gl.viewport(0, 0, canvas.width, canvas.height);
+            
+            gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT);
 
             gl.useProgram(program);
 
             gl.uniform1f(uniforms.time, time);
-            gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+            gl.uniform2f(uniforms.resolution, layer.canvas.width, layer.canvas.height);
             gl.uniform3fv(uniforms.color, color);
             gl.uniform1f(uniforms.speed, speed);
 
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-            requestAnimationFrame(animate);
-        };
-
-        requestAnimationFrame(animate);
+        });
+        
+        layeredCanvas.startAnimation();
     });
 }
 
@@ -455,7 +439,7 @@ function initPulsingButtons() {
  * Initialize button matrix
  */
 function initButtonMatrix() {
-    const container = document.getElementById('button-matrix');
+    const container = document.getElementById('button-matrix-container');
     if (!container) return;
 
     const buttons = [];
@@ -465,38 +449,128 @@ function initButtonMatrix() {
         [0.7, 0, 1], [0, 1, 0.3], [0.3, 0.7, 1], [1, 1, 0],
         [1, 0, 0.5], [0, 0.8, 0.5], [0, 0.4, 1], [1, 0.6, 0]
     ];
+    
+    const matrixSize = 4;
+    const buttonSize = 60;
+    const gap = 10;
+    const canvasSize = matrixSize * buttonSize + (matrixSize - 1) * gap;
+
+    const layeredCanvas = new UIComponents.LayeredCanvas(container, { width: canvasSize, height: canvasSize });
+    const webglLayer = layeredCanvas.addLayer('webgl', 'webgl2', 0);
+    if (!webglLayer.context) {
+        return;
+    }
+    const gl = webglLayer.context;
 
     for (let i = 0; i < 16; i++) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'matrix-btn';
-
-        const btn = new UIComponents.LEDButton(wrapper, {
-            width: 60,
-            height: 60,
+        const row = Math.floor(i / matrixSize);
+        const col = i % matrixSize;
+        buttons.push({
+            x: col * (buttonSize + gap),
+            y: row * (buttonSize + gap),
+            width: buttonSize,
+            height: buttonSize,
             color: colors[i],
-            onToggle: (isOn) => {
-                if (isOn) {
-                    wrapper.classList.add('animate-on');
-                    wrapper.addEventListener('animationend', () => {
-                        wrapper.classList.remove('animate-on');
-                    }, { once: true });
-                }
+            isOn: false
+        });
+    }
+
+    const fragmentShader = `#version 300 es
+        precision mediump float;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+        uniform vec3 u_color;
+        uniform float u_on;
+        out vec4 fragColor;
+        
+        void main() {
+            vec2 uv = gl_FragCoord.xy / u_resolution;
+            vec2 center = vec2(0.5, 0.5);
+            float dist = distance(uv, center);
+            
+            // LED core
+            float core = 1.0 - smoothstep(0.0, 0.15, dist);
+            
+            // Outer glow
+            float glow = 1.0 - smoothstep(0.0, 0.4, dist);
+            glow = pow(glow, 2.0);
+            
+            // Pulsing effect
+            float pulse = 0.9 + 0.1 * sin(u_time * 3.0);
+            
+            float intensity = mix(0.1, 1.0, u_on);
+            vec3 color = u_color * (core + glow * 0.5) * intensity * pulse;
+            float alpha = (core + glow * 0.3) * intensity;
+            
+            fragColor = vec4(color, alpha);
+        }
+    `;
+
+    const vertexShader = `#version 300 es
+        in vec4 a_position;
+        void main() {
+            gl_Position = a_position;
+        }
+    `;
+
+    const program = createProgram(gl, vertexShader, fragmentShader);
+    if (!program) return;
+
+    setupQuad(gl, program);
+
+    const uniforms = {
+        time: gl.getUniformLocation(program, 'u_time'),
+        resolution: gl.getUniformLocation(program, 'u_resolution'),
+        color: gl.getUniformLocation(program, 'u_color'),
+        on: gl.getUniformLocation(program, 'u_on')
+    };
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    layeredCanvas.setRenderFunction('webgl', (layer, timestamp) => {
+        const time = timestamp * 0.001;
+        
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.useProgram(program);
+        gl.uniform1f(uniforms.time, time);
+
+        buttons.forEach(btn => {
+            gl.viewport(btn.x, layer.canvas.height - btn.y - btn.height, btn.width, btn.height);
+            
+            gl.uniform2f(uniforms.resolution, btn.width, btn.height);
+            gl.uniform3fv(uniforms.color, btn.color);
+            gl.uniform1f(uniforms.on, btn.isOn ? 1.0 : 0.0);
+
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        });
+    });
+
+    layeredCanvas.startAnimation();
+
+    webglLayer.canvas.addEventListener('click', (e) => {
+        const rect = webglLayer.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        buttons.forEach(btn => {
+            if (x >= btn.x && x <= btn.x + btn.width && y >= btn.y && y <= btn.y + btn.height) {
+                btn.isOn = !btn.isOn;
             }
         });
-
-        buttons.push(btn);
-        container.appendChild(wrapper);
-    }
+    });
 
     // Matrix control buttons
     document.getElementById('matrix-random')?.addEventListener('click', () => {
         buttons.forEach(btn => {
-            btn.setOn(Math.random() > 0.5);
+            btn.isOn = Math.random() > 0.5;
         });
     });
 
     document.getElementById('matrix-wave')?.addEventListener('click', () => {
-        buttons.forEach(btn => btn.setOn(false));
+        buttons.forEach(btn => btn.isOn = false);
 
         let index = 0;
         const interval = setInterval(() => {
@@ -504,19 +578,19 @@ function initButtonMatrix() {
                 clearInterval(interval);
                 return;
             }
-            buttons[index].setOn(true);
-            if (index > 0) buttons[index - 1].setOn(false);
+            buttons[index].isOn = true;
+            if (index > 0) buttons[index - 1].isOn = false;
             index++;
         }, 150);
 
         setTimeout(() => {
-            if (buttons[15]) buttons[15].setOn(false);
+            if (buttons[15]) buttons[15].isOn = false;
         }, 150 * 17);
     });
 
     document.getElementById('matrix-chase')?.addEventListener('click', () => {
         const sequence = [0, 1, 2, 3, 7, 11, 15, 14, 13, 12, 8, 4, 5, 6, 10, 9];
-        buttons.forEach(btn => btn.setOn(false));
+        buttons.forEach(btn => btn.isOn = false);
 
         let index = 0;
         const interval = setInterval(() => {
@@ -524,18 +598,18 @@ function initButtonMatrix() {
                 clearInterval(interval);
                 return;
             }
-            buttons[sequence[index]].setOn(true);
-            if (index > 0) buttons[sequence[index - 1]].setOn(false);
+            buttons[sequence[index]].isOn = true;
+            if (index > 0) buttons[sequence[index - 1]].isOn = false;
             index++;
         }, 100);
 
         setTimeout(() => {
-            buttons[sequence[sequence.length - 1]]?.setOn(false);
+            buttons[sequence[sequence.length - 1]].isOn = false;
         }, 100 * (sequence.length + 1));
     });
 
     document.getElementById('matrix-clear')?.addEventListener('click', () => {
-        buttons.forEach(btn => btn.setOn(false));
+        buttons.forEach(btn => btn.isOn = false);
     });
 }
 
@@ -866,7 +940,6 @@ function createProgram(gl, vertexSource, fragmentSource) {
     gl.compileShader(vertexShader);
 
     if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-        console.error('Vertex shader error:', gl.getShaderInfoLog(vertexShader));
         return null;
     }
 
@@ -875,7 +948,6 @@ function createProgram(gl, vertexSource, fragmentSource) {
     gl.compileShader(fragmentShader);
 
     if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-        console.error('Fragment shader error:', gl.getShaderInfoLog(fragmentShader));
         return null;
     }
 
@@ -885,7 +957,6 @@ function createProgram(gl, vertexSource, fragmentSource) {
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        console.error('Program link error:', gl.getProgramInfoLog(program));
         return null;
     }
 
@@ -970,82 +1041,78 @@ function initParticleSwarmButtons() {
     const container = document.getElementById('particle-swarm-buttons');
     if (!container) return;
 
-    const configs = [
-        { label: 'ATTRACT', color: [0, 1, 0.5, 0.8], physics: 'attract' },
-        { label: 'REPEL', color: [1, 0.3, 0, 0.8], physics: 'repel' },
-        { label: 'ORBIT', color: [0.3, 0.6, 1, 0.8], physics: 'orbit' }
-    ];
+    const config = { label: 'ATTRACT', color: [0, 1, 0.5, 0.8], physics: 'attract' };
 
-    configs.forEach(async (config) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'particle-button-wrapper';
-        wrapper.style.cssText = `
-            width: 140px;
-            height: 80px;
-            position: relative;
-            margin: 0.5rem;
-        `;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'particle-button-wrapper';
+    wrapper.style.cssText = `
+        width: 140px;
+        height: 80px;
+        position: relative;
+        margin: 0.5rem;
+    `;
 
-        // WebGPU particle canvas (back layer)
-        const particleCanvas = document.createElement('canvas');
-        particleCanvas.width = 280;
-        particleCanvas.height = 160;
-        particleCanvas.style.cssText = `
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 0;
-        `;
+    // WebGPU particle canvas (back layer)
+    const particleCanvas = document.createElement('canvas');
+    particleCanvas.width = 280;
+    particleCanvas.height = 160;
+    particleCanvas.style.cssText = `
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 0;
+    `;
 
-        // WebGL2 glow canvas (middle layer)
-        const glowCanvas = document.createElement('canvas');
-        glowCanvas.width = 280;
-        glowCanvas.height = 160;
-        glowCanvas.style.cssText = `
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-            pointer-events: none;
-        `;
+    // WebGL2 glow canvas (middle layer)
+    const glowCanvas = document.createElement('canvas');
+    glowCanvas.width = 280;
+    glowCanvas.height = 160;
+    glowCanvas.style.cssText = `
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+        pointer-events: none;
+    `;
 
-        // CSS button (top layer)
-        const button = document.createElement('button');
-        button.textContent = config.label;
-        button.style.cssText = `
-            width: 100%;
-            height: 100%;
-            background: rgba(20, 20, 30, 0.7);
-            border: 2px solid rgba(${config.color[0] * 255}, ${config.color[1] * 255}, ${config.color[2] * 255}, 0.5);
-            border-radius: 8px;
-            color: rgb(${config.color[0] * 255}, ${config.color[1] * 255}, ${config.color[2] * 255});
-            font-size: 0.9rem;
-            font-weight: bold;
-            cursor: pointer;
-            position: relative;
-            z-index: 2;
-            backdrop-filter: blur(2px);
-            transition: all 0.2s;
-        `;
+    // CSS button (top layer)
+    const button = document.createElement('button');
+    button.textContent = config.label;
+    button.style.cssText = `
+        width: 100%;
+        height: 100%;
+        background: rgba(20, 20, 30, 0.7);
+        border: 2px solid rgba(${config.color[0] * 255}, ${config.color[1] * 255}, ${config.color[2] * 255}, 0.5);
+        border-radius: 8px;
+        color: rgb(${config.color[0] * 255}, ${config.color[1] * 255}, ${config.color[2] * 255});
+        font-size: 0.9rem;
+        font-weight: bold;
+        cursor: pointer;
+        position: relative;
+        z-index: 2;
+        backdrop-filter: blur(2px);
+        transition: all 0.2s;
+    `;
 
-        wrapper.appendChild(particleCanvas);
-        wrapper.appendChild(glowCanvas);
-        wrapper.appendChild(button);
-        container.appendChild(wrapper);
+    wrapper.appendChild(particleCanvas);
+    wrapper.appendChild(glowCanvas);
+    wrapper.appendChild(button);
+    container.appendChild(wrapper);
 
-        // Initialize WebGPU particle system
-        const particleSystem = new UIComponents.WebGPUParticleSystem(particleCanvas, {
-            particleCount: 10000,
-            particleSize: 2,
-            color: config.color,
-            attractorStrength: 0.3,
-            damping: 0.98
-        });
+    // Initialize WebGPU particle system
+    const particleSystem = new UIComponents.WebGPUParticleSystem(particleCanvas, {
+        particleCount: 10000,
+        particleSize: 2,
+        color: config.color,
+        attractorStrength: 0.3,
+        damping: 0.98
+    });
 
+    (async () => {
         const initialized = await particleSystem.init();
         if (!initialized) return;
 
@@ -1141,7 +1208,7 @@ function initParticleSwarmButtons() {
                 requestAnimationFrame(animate);
             }
         }
-    });
+    })();
 }
 
 /**
@@ -1152,55 +1219,56 @@ function initQuantumFluxButtons() {
     const container = document.getElementById('quantum-flux-buttons');
     if (!container) return;
 
-    const labels = ['QUANTUM A', 'QUANTUM B', 'QUANTUM C'];
+    const label = 'QUANTUM';
+    const index = 0; // Only one button
 
-    labels.forEach(async (label, index) => {
-        const wrapper = document.createElement('div');
-        wrapper.style.cssText = `
-            width: 140px;
-            height: 80px;
-            position: relative;
-            margin: 0.5rem;
-        `;
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = `
+        width: 140px;
+        height: 80px;
+        position: relative;
+        margin: 0.5rem;
+    `;
 
-        const canvas = document.createElement('canvas');
-        canvas.width = 280;
-        canvas.height = 160;
-        canvas.style.cssText = `
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-        `;
+    const canvas = document.createElement('canvas');
+    canvas.width = 280;
+    canvas.height = 160;
+    canvas.style.cssText = `
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+    `;
 
-        const button = document.createElement('button');
-        button.textContent = label;
-        button.style.cssText = `
-            width: 100%;
-            height: 100%;
-            background: rgba(10, 10, 20, 0.5);
-            border: 2px solid rgba(100, 150, 255, 0.6);
-            border-radius: 8px;
-            color: #6af;
-            font-size: 0.8rem;
-            font-weight: bold;
-            cursor: pointer;
-            position: relative;
-            z-index: 2;
-            backdrop-filter: blur(3px);
-        `;
+    const button = document.createElement('button');
+    button.textContent = label;
+    button.style.cssText = `
+        width: 100%;
+        height: 100%;
+        background: rgba(10, 10, 20, 0.5);
+        border: 2px solid rgba(100, 150, 255, 0.6);
+        border-radius: 8px;
+        color: #6af;
+        font-size: 0.8rem;
+        font-weight: bold;
+        cursor: pointer;
+        position: relative;
+        z-index: 2;
+        backdrop-filter: blur(3px);
+    `;
 
-        wrapper.appendChild(canvas);
-        wrapper.appendChild(button);
-        container.appendChild(wrapper);
+    wrapper.appendChild(canvas);
+    wrapper.appendChild(button);
+    container.appendChild(wrapper);
 
-        // Initialize WebGPU volumetric renderer for quantum effects
-        const volumetric = new UIComponents.WebGPUVolumetricRenderer(canvas, {
-            raySteps: 32,
-            density: 0.3 + index * 0.1
-        });
+    // Initialize WebGPU volumetric renderer for quantum effects
+    const volumetric = new UIComponents.WebGPUVolumetricRenderer(canvas, {
+        raySteps: 32,
+        density: 0.3 + index * 0.1
+    });
 
+    (async () => {
         const initialized = await volumetric.init();
         if (!initialized) return;
 
@@ -1220,7 +1288,7 @@ function initQuantumFluxButtons() {
         };
 
         requestAnimationFrame(animate);
-    });
+    })();
 }
 
 /**
@@ -1245,17 +1313,6 @@ function initMagneticFieldButtons() {
             margin: 0.5rem;
         `;
 
-        const canvas = document.createElement('canvas');
-        canvas.width = 200;
-        canvas.height = 200;
-        canvas.style.cssText = `
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-        `;
-
         const button = document.createElement('button');
         button.textContent = config.label;
         button.style.cssText = `
@@ -1275,72 +1332,75 @@ function initMagneticFieldButtons() {
             box-shadow: 0 0 20px ${config.color}80;
         `;
 
-        wrapper.appendChild(canvas);
         wrapper.appendChild(button);
         container.appendChild(wrapper);
 
-        // Draw magnetic field lines with WebGL
-        const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: false });
-        if (gl) {
-            const fragmentShader = `
-                precision mediump float;
-                uniform float u_time;
-                uniform vec2 u_resolution;
-                uniform float u_polarity;
+        const layeredCanvas = new UIComponents.LayeredCanvas(wrapper, { width: 100, height: 100 });
+        const webglLayer = layeredCanvas.addLayer('webgl', 'webgl', 0);
+        webglLayer.canvas.style.pointerEvents = 'none';
+
+        if (!webglLayer.context) {
+            return;
+        }
+        
+        const gl = webglLayer.context;
+
+        const fragmentShader = `
+            precision mediump float;
+            uniform float u_time;
+            uniform vec2 u_resolution;
+            uniform float u_polarity;
+            
+            void main() {
+                vec2 uv = gl_FragCoord.xy / u_resolution;
+                vec2 center = vec2(0.5, 0.5);
+                vec2 toCenter = uv - center;
+                float dist = length(toCenter);
+                float angle = atan(toCenter.y, toCenter.x);
                 
-                void main() {
-                    vec2 uv = gl_FragCoord.xy / u_resolution;
-                    vec2 center = vec2(0.5, 0.5);
-                    vec2 toCenter = uv - center;
-                    float dist = length(toCenter);
-                    float angle = atan(toCenter.y, toCenter.x);
-                    
-                    // Field lines
-                    float fieldLine = sin(angle * 6.0 + u_time) * 0.5 + 0.5;
-                    fieldLine *= smoothstep(0.5, 0.2, dist) * smoothstep(0.05, 0.2, dist);
-                    
-                    vec3 color = u_polarity > 0.0 ? vec3(1.0, 0.3, 0.3) : vec3(0.3, 0.3, 1.0);
-                    gl_FragColor = vec4(color * fieldLine, fieldLine * 0.5);
-                }
-            `;
-
-            const program = UIComponents.ShaderUtils.createProgram(
-                gl,
-                UIComponents.ShaderUtils.vertexShader2D,
-                fragmentShader
-            );
-
-            if (program) {
-                setupQuadWebGL1(gl, program);
-
-                gl.enable(gl.BLEND);
-                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-                const uniforms = {
-                    time: gl.getUniformLocation(program, 'u_time'),
-                    resolution: gl.getUniformLocation(program, 'u_resolution'),
-                    polarity: gl.getUniformLocation(program, 'u_polarity')
-                };
-
-                const animate = (timestamp) => {
-                    const time = timestamp * 0.001;
-
-                    gl.viewport(0, 0, canvas.width, canvas.height);
-                    gl.clearColor(0, 0, 0, 0);
-                    gl.clear(gl.COLOR_BUFFER_BIT);
-
-                    gl.useProgram(program);
-                    gl.uniform1f(uniforms.time, time);
-                    gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
-                    gl.uniform1f(uniforms.polarity, config.polarity);
-
-                    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-                    requestAnimationFrame(animate);
-                };
-
-                requestAnimationFrame(animate);
+                // Field lines
+                float fieldLine = sin(angle * 6.0 + u_time) * 0.5 + 0.5;
+                fieldLine *= smoothstep(0.5, 0.2, dist) * smoothstep(0.05, 0.2, dist);
+                
+                vec3 color = u_polarity > 0.0 ? vec3(1.0, 0.3, 0.3) : vec3(0.3, 0.3, 1.0);
+                gl_FragColor = vec4(color * fieldLine, fieldLine * 0.5);
             }
+        `;
+
+        const program = UIComponents.ShaderUtils.createProgram(
+            gl,
+            UIComponents.ShaderUtils.vertexShader2D,
+            fragmentShader
+        );
+
+        if (program) {
+            setupQuadWebGL1(gl, program);
+
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+            const uniforms = {
+                time: gl.getUniformLocation(program, 'u_time'),
+                resolution: gl.getUniformLocation(program, 'u_resolution'),
+                polarity: gl.getUniformLocation(program, 'u_polarity')
+            };
+
+            layeredCanvas.setRenderFunction('webgl', (layer, timestamp) => {
+                const time = timestamp * 0.001;
+
+                gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
+                gl.clearColor(0, 0, 0, 0);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+
+                gl.useProgram(program);
+                gl.uniform1f(uniforms.time, time);
+                gl.uniform2f(uniforms.resolution, layer.canvas.width, layer.canvas.height);
+                gl.uniform1f(uniforms.polarity, config.polarity);
+
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            });
+
+            layeredCanvas.startAnimation();
         }
     });
 }
@@ -1701,24 +1761,19 @@ function initLiquidMetalButtons() {
         margin: 1rem auto;
     `;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = 600;
-    canvas.height = 400;
-    canvas.style.cssText = `
-        width: 100%;
-        height: 100%;
-        border-radius: 12px;
-        cursor: pointer;
-    `;
-
-    wrapper.appendChild(canvas);
     container.appendChild(wrapper);
 
-    const gl = canvas.getContext('webgl2');
-    if (!gl) {
+    const layeredCanvas = new UIComponents.LayeredCanvas(wrapper, { width: 300, height: 200 });
+    const webglLayer = layeredCanvas.addLayer('webgl', 'webgl2', 0);
+    webglLayer.canvas.style.borderRadius = '12px';
+    webglLayer.canvas.style.cursor = 'pointer';
+
+    if (!webglLayer.context) {
         container.innerHTML = '<p style="color: #ff6666;">WebGL2 required</p>';
         return;
     }
+
+    const gl = webglLayer.context;
 
     const vs = `#version 300 es
     in vec4 a_position;
@@ -1846,35 +1901,35 @@ function initLiquidMetalButtons() {
     const uMouse = gl.getUniformLocation(program, 'u_mouse');
     const uClick = gl.getUniformLocation(program, 'u_click');
 
-    let mouseX = canvas.width / 2, mouseY = canvas.height / 2;
+    let mouseX = webglLayer.canvas.width / 2, mouseY = webglLayer.canvas.height / 2;
     let clickTime = 0;
 
-    canvas.addEventListener('mousemove', e => {
-        const rect = canvas.getBoundingClientRect();
-        mouseX = (e.clientX - rect.left) * 2;
-        mouseY = (rect.height - (e.clientY - rect.top)) * 2;
+    webglLayer.canvas.addEventListener('mousemove', e => {
+        const rect = webglLayer.canvas.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = rect.height - (e.clientY - rect.top);
     });
 
-    canvas.addEventListener('click', () => {
+    webglLayer.canvas.addEventListener('click', () => {
         clickTime = performance.now();
     });
 
-    function render(time) {
-        const click = Math.max(0, 1 - (time - clickTime) / 500);
+    layeredCanvas.setRenderFunction('webgl', (layer, timestamp) => {
+        const click = Math.max(0, 1 - (timestamp - clickTime) / 500);
 
-        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
         gl.clearColor(0.05, 0.05, 0.08, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         gl.useProgram(program);
-        gl.uniform1f(uTime, time * 0.001);
-        gl.uniform2f(uRes, canvas.width, canvas.height);
+        gl.uniform1f(uTime, timestamp * 0.001);
+        gl.uniform2f(uRes, layer.canvas.width, layer.canvas.height);
         gl.uniform2f(uMouse, mouseX, mouseY);
         gl.uniform1f(uClick, click);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        requestAnimationFrame(render);
-    }
-    requestAnimationFrame(render);
+    });
+
+    layeredCanvas.startAnimation();
 }
 
 /**
@@ -2042,16 +2097,6 @@ function initEMPButtons() {
         margin: 1rem auto;
     `;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = 600;
-    canvas.height = 400;
-    canvas.style.cssText = `
-        width: 100%;
-        height: 100%;
-        border-radius: 12px;
-        cursor: pointer;
-    `;
-
     // Create SVG scanline overlay
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.style.cssText = `
@@ -2073,12 +2118,17 @@ function initEMPButtons() {
         <rect width="100%" height="100%" fill="url(#scanlines)"/>
     `;
 
-    wrapper.appendChild(canvas);
     wrapper.appendChild(svg);
     container.appendChild(wrapper);
 
-    const gl = canvas.getContext('webgl2');
-    if (!gl) return;
+    const layeredCanvas = new UIComponents.LayeredCanvas(wrapper, { width: 300, height: 200 });
+    const webglLayer = layeredCanvas.addLayer('webgl', 'webgl2', 0);
+    webglLayer.canvas.style.borderRadius = '12px';
+    webglLayer.canvas.style.cursor = 'pointer';
+
+    if (!webglLayer.context) return;
+
+    const gl = webglLayer.context;
 
     const vs = `#version 300 es
     in vec4 a_position;
@@ -2177,10 +2227,10 @@ function initEMPButtons() {
     const emps = new Float32Array(15).fill(-100);
     let empIndex = 0;
 
-    canvas.addEventListener('click', e => {
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) * 2;
-        const y = (rect.height - (e.clientY - rect.top)) * 2;
+    webglLayer.canvas.addEventListener('click', e => {
+        const rect = webglLayer.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = rect.height - (e.clientY - rect.top);
 
         emps[empIndex * 3] = x;
         emps[empIndex * 3 + 1] = y;
@@ -2193,19 +2243,19 @@ function initEMPButtons() {
         setTimeout(() => wrapper.style.transform = 'none', 100);
     });
 
-    function render(time) {
-        const t = time * 0.001;
+    layeredCanvas.setRenderFunction('webgl', (layer, timestamp) => {
+        const t = timestamp * 0.001;
 
-        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
         gl.clearColor(0.02, 0.03, 0.05, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         gl.useProgram(program);
         gl.uniform1f(uTime, t);
-        gl.uniform2f(uRes, canvas.width, canvas.height);
+        gl.uniform2f(uRes, layer.canvas.width, layer.canvas.height);
         gl.uniform3fv(uEmps, emps);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        requestAnimationFrame(render);
-    }
-    requestAnimationFrame(render);
+    });
+    
+    layeredCanvas.startAnimation();
 }

@@ -249,7 +249,6 @@ const ShaderUtils = {
         gl.compileShader(shader);
 
         if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-            console.error('Shader compile error:', gl.getShaderInfoLog(shader));
             gl.deleteShader(shader);
             return null;
         }
@@ -271,7 +270,6 @@ const ShaderUtils = {
         gl.linkProgram(program);
 
         if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            console.error('Program link error:', gl.getProgramInfoLog(program));
             return null;
         }
 
@@ -961,7 +959,6 @@ class WebGPUParticleSystem {
             this.initialized = true;
             return true;
         } catch (e) {
-            console.error('WebGPU initialization failed:', e);
             return false;
         }
     }
@@ -1274,14 +1271,12 @@ class WebGPUVolumetricRenderer {
 
     async init() {
         if (!navigator.gpu) {
-            console.warn('WebGPU not supported');
             return false;
         }
 
         try {
             const adapter = await navigator.gpu.requestAdapter();
             if (!adapter) {
-                console.warn('WebGPU adapter not found');
                 return false;
             }
             this.device = await adapter.requestDevice();
@@ -1300,7 +1295,6 @@ class WebGPUVolumetricRenderer {
             this.initialized = true;
             return true;
         } catch (e) {
-            console.error('WebGPU volumetric renderer initialization failed:', e);
             return false;
         }
     }
@@ -1492,7 +1486,5 @@ window.UIComponents = {
 
 // Initialize rendering support detection
 document.addEventListener('DOMContentLoaded', () => {
-    RenderingSupport.detect().then(support => {
-        console.log('Rendering Support:', support.getStatus());
-    });
+    RenderingSupport.detect();
 });
