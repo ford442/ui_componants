@@ -994,6 +994,7 @@ function initParticleSwarmButtons(webgl2Manager, webgpuManager) {
     container.appendChild(wrapper);
 
     const particleSystem = new window.WebGPUParticleSystem(webgpuManager, {
+        element: wrapper,
         particleCount: 10000,
         particleSize: 2,
         color: config.color,
@@ -1006,11 +1007,15 @@ function initParticleSwarmButtons(webgl2Manager, webgpuManager) {
         if (!initialized) return;
 
         let frame = 0;
+        let mouseX = 0;
+        let mouseY = 0;
+
         webgpuManager.addRenderable({
             element: wrapper,
             render: (passEncoder, time, deltaTime) => {
-                particleSystem.compute(time, deltaTime, frame);
-                particleSystem.render(passEncoder, time, deltaTime, frame);
+                particleSystem.updateUniforms(deltaTime, mouseX, mouseY);
+                particleSystem.compute(deltaTime);
+                particleSystem.render(passEncoder);
                 frame++;
             }
         });
@@ -1055,9 +1060,7 @@ function initParticleSwarmButtons(webgl2Manager, webgpuManager) {
         };
 
         let isActive = false;
-        let mouseX = 0;
-        let mouseY = 0;
-
+        
         button.addEventListener('mouseenter', () => { isActive = true; });
         button.addEventListener('mouseleave', () => { isActive = false; });
         button.addEventListener('click', () => {
@@ -1069,7 +1072,6 @@ function initParticleSwarmButtons(webgl2Manager, webgpuManager) {
             const rect = wrapper.getBoundingClientRect();
             mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-            particleSystem.updateUniforms(0, 0, mouseX, mouseY);
         });
 
         webgl2Manager.addRenderable({
@@ -1090,9 +1092,9 @@ function initParticleSwarmButtons(webgl2Manager, webgpuManager) {
  * Initialize Quantum Flux Buttons
  * WebGPU rendering with probabilistic shader effects
  */
-function initQuantumFluxButtons() {
+function initQuantumFluxButtons(webgpuManager) {
     const container = document.getElementById('quantum-flux-buttons');
-    if (!container) return;
+    if (!container || !webgpuManager) return;
 
     const label = 'QUANTUM';
     const index = 0; // Only one button
@@ -1103,17 +1105,6 @@ function initQuantumFluxButtons() {
         height: 80px;
         position: relative;
         margin: 0.5rem;
-    `;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 280;
-    canvas.height = 160;
-    canvas.style.cssText = `
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        top: 0;
-        left: 0;
     `;
 
     const button = document.createElement('button');
@@ -1133,12 +1124,12 @@ function initQuantumFluxButtons() {
         backdrop-filter: blur(3px);
     `;
 
-    wrapper.appendChild(canvas);
     wrapper.appendChild(button);
     container.appendChild(wrapper);
 
     // Initialize WebGPU volumetric renderer for quantum effects
-    const volumetric = new UIComponents.WebGPUVolumetricRenderer(canvas, {
+    const volumetric = new UIComponents.WebGPUVolumetricRenderer(webgpuManager, {
+        element: wrapper,
         raySteps: 32,
         density: 0.3 + index * 0.1
     });
@@ -1151,18 +1142,16 @@ function initQuantumFluxButtons() {
         button.addEventListener('mouseenter', () => { isActive = true; });
         button.addEventListener('mouseleave', () => { isActive = false; });
 
-        const animate = (timestamp) => {
-            const time = timestamp * 0.001 * (1 + index * 0.3);
-            volumetric.render(time);
+        webgpuManager.addRenderable({
+            element: wrapper,
+            render: (passEncoder, time, deltaTime) => {
+                volumetric.render(passEncoder, time, deltaTime);
 
-            if (isActive) {
-                button.style.borderColor = `rgba(${100 + Math.sin(time * 5) * 50}, 150, 255, 0.9)`;
+                if (isActive) {
+                    button.style.borderColor = `rgba(${100 + Math.sin(time * 5) * 50}, 150, 255, 0.9)`;
+                }
             }
-
-            requestAnimationFrame(animate);
-        };
-
-        requestAnimationFrame(animate);
+        });
     })();
 }
 
@@ -1373,9 +1362,9 @@ function initNeuralNetworkButtons() {
  * Initialize Multi-Layer Compositing Showcase
  * Real-time layer management with blend modes
  */
-function initCompositingShowcase() {
+function initCompositingShowcase(webgl2Manager, webgpuManager) {
     const container = document.getElementById('compositing-display');
-    if (!container) return;
+    if (!container || !webgl2Manager || !webgpuManager) return;
 
     container.style.cssText = `
         width: 100%;
@@ -1386,36 +1375,6 @@ function initCompositingShowcase() {
         overflow: hidden;
     `;
 
-    // WebGPU particle layer
-    const gpuCanvas = document.createElement('canvas');
-    gpuCanvas.width = 800;
-    gpuCanvas.height = 400;
-    gpuCanvas.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 1;
-    `;
-    gpuCanvas.id = 'comp-gpu-layer';
-
-    // WebGL2 glow layer
-    const gl2Canvas = document.createElement('canvas');
-    gl2Canvas.width = 800;
-    gl2Canvas.height = 400;
-    gl2Canvas.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 2;
-        mix-blend-mode: screen;
-    `;
-    gl2Canvas.id = 'comp-gl2-layer';
-
-    // SVG UI layer
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', '100%');
     svg.setAttribute('height', '100%');
@@ -1428,7 +1387,6 @@ function initCompositingShowcase() {
     `;
     svg.id = 'comp-svg-layer';
 
-    // Add UI elements to SVG
     for (let i = 0; i < 3; i++) {
         const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         rect.setAttribute('x', 50 + i * 250);
@@ -1451,37 +1409,31 @@ function initCompositingShowcase() {
         svg.appendChild(text);
     }
 
-    container.appendChild(gpuCanvas);
-    container.appendChild(gl2Canvas);
     container.appendChild(svg);
 
-    // Initialize particle system
     (async () => {
-        const particleSystem = new UIComponents.WebGPUParticleSystem(gpuCanvas, {
+        const particleSystem = new window.WebGPUParticleSystem(webgpuManager, {
+            element: container,
             particleCount: 5000,
             color: [0, 1, 0.5, 0.6],
             attractorStrength: 0.2,
             damping: 0.95
         });
-
         const initialized = await particleSystem.init();
-        if (initialized) {
-            let lastTime = 0;
-            const animate = (timestamp) => {
-                const time = timestamp * 0.001;
-                const deltaTime = timestamp - lastTime > 0 ? (timestamp - lastTime) * 0.001 : 0.016;
-                lastTime = timestamp;
+        if (!initialized) return;
 
-                particleSystem.render(time, deltaTime);
-                requestAnimationFrame(animate);
-            };
-            requestAnimationFrame(animate);
-        }
-    })();
+        let frame = 0;
+        webgpuManager.addRenderable({
+            id: 'compositing-particles',
+            element: container,
+            render: (passEncoder, time, deltaTime) => {
+                particleSystem.updateUniforms(deltaTime, 0, 0);
+                particleSystem.compute(deltaTime);
+                particleSystem.render(passEncoder);
+                frame++;
+            }
+        });
 
-    // Initialize WebGL2 glow
-    const gl2 = gl2Canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: false });
-    if (gl2) {
         const shaderCode = `#version 300 es
             precision mediump float;
             uniform float u_time;
@@ -1506,96 +1458,45 @@ function initCompositingShowcase() {
                 fragColor = vec4(color, min(length(color), 1.0));
             }
         `;
-
         const vertexShader = `#version 300 es
-            in vec4 a_position;
-            void main() {
-                gl_Position = a_position;
+            in vec4 a_position; void main() { gl_Position = a_position; }`;
+        const program = webgl2Manager.createProgram(vertexShader, shaderCode);
+        if (!program) return;
+
+        const uniforms = {
+            time: webgl2Manager.gl.getUniformLocation(program, 'u_time'),
+            resolution: webgl2Manager.gl.getUniformLocation(program, 'u_resolution')
+        };
+        
+        const glowRenderable = {
+            id: 'compositing-glow',
+            element: container,
+            program: program,
+            uniformsCallback: (gl, time) => {
+                const rect = container.getBoundingClientRect();
+                gl.uniform1f(uniforms.time, time);
+                gl.uniform2f(uniforms.resolution, rect.width, rect.height);
             }
-        `;
+        };
+        webgl2Manager.addRenderable(glowRenderable);
 
-        const program = createProgram(gl2, vertexShader, shaderCode);
-        if (program) {
-            setupQuad(gl2, program);
-
-            gl2.enable(gl2.BLEND);
-            gl2.blendFunc(gl2.SRC_ALPHA, gl2.ONE_MINUS_SRC_ALPHA);
-
-            const uniforms = {
-                time: gl2.getUniformLocation(program, 'u_time'),
-                resolution: gl2.getUniformLocation(program, 'u_resolution')
-            };
-
-            const animate = (timestamp) => {
-                const time = timestamp * 0.001;
-
-                gl2.viewport(0, 0, gl2Canvas.width, gl2Canvas.height);
-                gl2.clearColor(0, 0, 0, 0);
-                gl2.clear(gl2.COLOR_BUFFER_BIT);
-
-                gl2.useProgram(program);
-                gl2.uniform1f(uniforms.time, time);
-                gl2.uniform2f(uniforms.resolution, gl2Canvas.width, gl2Canvas.height);
-
-                gl2.drawArrays(gl2.TRIANGLE_STRIP, 0, 4);
-
-                requestAnimationFrame(animate);
-            };
-
-            requestAnimationFrame(animate);
-        }
-    }
-
-    // Setup layer controls
-    document.getElementById('comp-webgpu')?.addEventListener('change', (e) => {
-        gpuCanvas.style.display = e.target.checked ? 'block' : 'none';
-    });
-
-    document.getElementById('comp-webgl2')?.addEventListener('change', (e) => {
-        gl2Canvas.style.display = e.target.checked ? 'block' : 'none';
-    });
-
-    document.getElementById('comp-svg')?.addEventListener('change', (e) => {
-        svg.style.display = e.target.checked ? 'block' : 'none';
-    });
-
-    document.getElementById('comp-css')?.addEventListener('change', (e) => {
-        container.style.filter = e.target.checked ? 'contrast(1.1) saturate(1.2)' : 'none';
-    });
-
-    document.getElementById('comp-webgpu-opacity')?.addEventListener('input', (e) => {
-        gpuCanvas.style.opacity = e.target.value / 100;
-    });
-
-    document.getElementById('comp-webgl2-opacity')?.addEventListener('input', (e) => {
-        gl2Canvas.style.opacity = e.target.value / 100;
-    });
-
-    document.getElementById('comp-svg-opacity')?.addEventListener('input', (e) => {
-        svg.style.opacity = e.target.value / 100;
-    });
-
-    document.getElementById('comp-blend-mode')?.addEventListener('change', (e) => {
-        gl2Canvas.style.mixBlendMode = e.target.value;
-    });
-
-    // Layer order controls
-    document.querySelectorAll('.order-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const action = btn.getAttribute('data-action');
-            if (action === 'swap-gpu-gl2') {
-                const z1 = gpuCanvas.style.zIndex;
-                gpuCanvas.style.zIndex = gl2Canvas.style.zIndex;
-                gl2Canvas.style.zIndex = z1;
-            } else if (action === 'svg-to-back') {
-                svg.style.zIndex = '0';
-            } else if (action === 'reset-order') {
-                gpuCanvas.style.zIndex = '1';
-                gl2Canvas.style.zIndex = '2';
-                svg.style.zIndex = '3';
-            }
+        // Setup layer controls
+        document.getElementById('comp-webgpu')?.addEventListener('change', (e) => {
+            const r = webgpuManager.renderables.find(r => r.id === 'compositing-particles');
+            if (r) r.element.style.display = e.target.checked ? 'block' : 'none';
         });
-    });
+
+        document.getElementById('comp-webgl2')?.addEventListener('change', (e) => {
+            const r = webgl2Manager.renderables.find(r => r.id === 'compositing-glow');
+            if (r) r.element.style.display = e.target.checked ? 'block' : 'none';
+        });
+
+        document.getElementById('comp-svg')?.addEventListener('change', (e) => {
+            svg.style.display = e.target.checked ? 'block' : 'none';
+        });
+        
+        // Opacity and blend mode are handled by CSS, no change needed there.
+    })();
 }
 
 // ============================================================================
