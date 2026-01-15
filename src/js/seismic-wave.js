@@ -371,9 +371,9 @@ export class SeismicWaveExperiment {
                     // Mouse Attraction
                     let mx = uniforms.mouseX * 25.0;
                     let mz = -uniforms.mouseY * 25.0; // Invert Y for Z
-                    let target = vec3f(mx, 0.0, mz);
+                    let mouseTarget = vec3f(mx, 0.0, mz);
 
-                    let dir = target - p.pos.xyz;
+                    let dir = mouseTarget - p.pos.xyz;
                     let dist = length(dir);
                     if (dist < 10.0) {
                         p.vel.x = p.vel.x + normalize(dir).x * 10.0 * uniforms.dt;

@@ -502,6 +502,7 @@ function setupControls(state, uploadGeometryFn) {
 document.addEventListener('DOMContentLoaded', () => {
     initSurfaceViewer(); // Assuming this is the original init function
     initTranslucencyDemo();
+    initHolographicSurface();
     initLiquidChrome();
     initForceField();
     // New experiments

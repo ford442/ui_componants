@@ -206,8 +206,8 @@ export class FireworksExperiment {
                     // Our vertex shader doesn't correct aspect, it just uses raw pos.
                     // But assume particles are in standard clip space [-1, 1].
 
-                    let target = vec2<f32>(mX, mY);
-                    let delta = target - p.pos;
+                    let mouseTarget = vec2<f32>(mX, mY);
+                    let delta = mouseTarget - p.pos;
                     let dist = length(delta);
                     if (dist < 0.5) {
                         let force = normalize(delta) * 5.0 * uniforms.deltaTime;

@@ -4,49 +4,73 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+    const webgl2Canvas = document.getElementById('webgl2-manager-canvas');
+    let webgl2Manager;
+
     checkWebGL2Support().then(supported => {
         if (!supported) {
             document.getElementById('webgl2-warning')?.setAttribute('style', 'display: block;');
             document.body.classList.add('no-webgl2');
+        } else {
+            if (webgl2Canvas) {
+                webgl2Manager = new window.WebGL2Manager(webgl2Canvas);
+                webgl2Canvas.width = webgl2Canvas.clientWidth;
+                webgl2Canvas.height = webgl2Canvas.clientHeight;
+                window.addEventListener('resize', () => {
+                    webgl2Canvas.width = webgl2Canvas.clientWidth;
+                    webgl2Canvas.height = webgl2Canvas.clientHeight;
+                });
+            }
         }
+
+        // Initialize all components regardless of support,
+        // but pass the manager to those that need it.
+        initBasicButtons(); // This one uses WebGL1, will need its own refactor later
+        initRGBButtons(webgl2Manager);
+        initMomentaryButtons();
+        initPulsingButtons(webgl2Manager);
+        initButtonMatrix(webgl2Manager);
+        initLayeredDemo(webgl2Manager);
+        initArcadeButtons();
+        initIndustrialButtons();
+        initHolographicButtons();
+        initOrganicButtons();
+
+        // New Experiments
+        initLiquidMetalButtons(webgl2Manager);
+        initKineticTypographyButtons();
+        initEMPButtons(webgl2Manager);
+        initMagneticFieldButtons(webgl2Manager);
     });
 
     checkWebGPUSupport().then(supported => {
         if (supported) {
-            document.getElementById('enable-webgpu-btn')?.addEventListener('click', () => {
-                initWebGPUExperiments();
-                document.getElementById('webgpu-experiments-container').style.display = 'block';
-                document.getElementById('webgpu-enable-section').style.display = 'none';
+            const webgpuCanvas = document.getElementById('webgpu-manager-canvas');
+            const webgpuManager = new window.WebGPUManager(webgpuCanvas);
+            webgpuManager.init().then(success => {
+                if (success) {
+                    document.getElementById('enable-webgpu-btn')?.addEventListener('click', () => {
+                        initWebGPUExperiments(webgl2Manager, webgpuManager);
+                        document.getElementById('webgpu-experiments-container').style.display = 'block';
+                        document.getElementById('webgpu-enable-section').style.display = 'none';
+                    });
+                } else {
+                    document.getElementById('webgpu-warning')?.setAttribute('style', 'display: block;');
+                    document.body.classList.add('no-webgpu');
+                }
             });
         } else {
             document.getElementById('webgpu-warning')?.setAttribute('style', 'display: block;');
             document.body.classList.add('no-webgpu');
         }
     });
-
-    initBasicButtons();
-    initRGBButtons();
-    initMomentaryButtons();
-    initPulsingButtons();
-    initButtonMatrix();
-    initLayeredDemo();
-    initArcadeButtons();
-    initIndustrialButtons();
-    initHolographicButtons();
-    initOrganicButtons();
-
-    // New Experiments
-    initLiquidMetalButtons();
-    initKineticTypographyButtons();
-    initEMPButtons();
 });
 
-function initWebGPUExperiments() {
-    initParticleSwarmButtons();
-    initQuantumFluxButtons();
-    initMagneticFieldButtons();
+function initWebGPUExperiments(webgl2Manager, webgpuManager) {
+    initParticleSwarmButtons(webgl2Manager, webgpuManager);
+    initQuantumFluxButtons(webgpuManager);
     initNeuralNetworkButtons();
-    initCompositingShowcase();
+    initCompositingShowcase(webgl2Manager, webgpuManager);
 }
 
 /**
@@ -76,9 +100,52 @@ function initBasicButtons() {
 /**
  * Initialize RGB cycling buttons
  */
-function initRGBButtons() {
+function initRGBButtons(manager) {
     const container = document.getElementById('rgb-buttons');
-    if (!container) return;
+    if (!container || !manager) return;
+
+    const fragmentShader = `#version 300 es
+        precision mediump float;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+        uniform float u_on;
+        out vec4 fragColor;
+        
+        vec3 hsv2rgb(vec3 c) {
+            vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+            vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+            return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+        }
+        
+        void main() {
+            vec2 uv = gl_FragCoord.xy / u_resolution;
+            vec2 center = vec2(0.5, 0.5);
+            float dist = distance(uv, center);
+            
+            float hue = fract(u_time * 0.2);
+            vec3 color = hsv2rgb(vec3(hue, 1.0, 1.0));
+            
+            float core = 1.0 - smoothstep(0.0, 0.15, dist);
+            float glow = 1.0 - smoothstep(0.0, 0.4, dist);
+            glow = pow(glow, 2.0);
+            
+            float intensity = mix(0.1, 1.0, u_on);
+            vec3 finalColor = color * (core + glow * 0.5) * intensity;
+            float alpha = (core + glow * 0.3) * intensity;
+            
+            fragColor = vec4(finalColor, alpha);
+        }
+    `;
+
+    const vertexShader = `#version 300 es
+        in vec4 a_position;
+        void main() {
+            gl_Position = a_position;
+        }
+    `;
+
+    const program = manager.createProgram(vertexShader, fragmentShader);
+    if (!program) return;
 
     const createRGBButton = (label) => {
         const wrapper = document.createElement('div');
@@ -112,92 +179,27 @@ function initRGBButtons() {
         wrapper.appendChild(button);
         container.appendChild(wrapper);
 
-        const layeredCanvas = new UIComponents.LayeredCanvas(wrapper, { width: 100, height: 60 });
-        const webglLayer = layeredCanvas.addLayer('webgl', 'webgl2', 0);
-        webglLayer.canvas.style.pointerEvents = 'none';
-
-        if (!webglLayer.context) {
-            return;
-        }
-
-        const gl = webglLayer.context;
-
-        const fragmentShader = `#version 300 es
-            precision mediump float;
-            uniform float u_time;
-            uniform vec2 u_resolution;
-            uniform float u_on;
-            out vec4 fragColor;
-            
-            vec3 hsv2rgb(vec3 c) {
-                vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
-                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-            }
-            
-            void main() {
-                vec2 uv = gl_FragCoord.xy / u_resolution;
-                vec2 center = vec2(0.5, 0.5);
-                float dist = distance(uv, center);
-                
-                float hue = fract(u_time * 0.2);
-                vec3 color = hsv2rgb(vec3(hue, 1.0, 1.0));
-                
-                float core = 1.0 - smoothstep(0.0, 0.15, dist);
-                float glow = 1.0 - smoothstep(0.0, 0.4, dist);
-                glow = pow(glow, 2.0);
-                
-                float intensity = mix(0.1, 1.0, u_on);
-                vec3 finalColor = color * (core + glow * 0.5) * intensity;
-                float alpha = (core + glow * 0.3) * intensity;
-                
-                fragColor = vec4(finalColor, alpha);
-            }
-        `;
-
-        const vertexShader = `#version 300 es
-            in vec4 a_position;
-            void main() {
-                gl_Position = a_position;
-            }
-        `;
-
-        const program = createProgram(gl, vertexShader, fragmentShader);
-        if (!program) return;
-
-        setupQuad(gl, program);
-
-        const uniforms = {
-            time: gl.getUniformLocation(program, 'u_time'),
-            resolution: gl.getUniformLocation(program, 'u_resolution'),
-            on: gl.getUniformLocation(program, 'u_on')
-        };
-
         let isOn = false;
         button.addEventListener('click', () => {
             isOn = !isOn;
         });
 
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-        layeredCanvas.setRenderFunction('webgl', (layer, timestamp) => {
-            const time = timestamp * 0.001;
-            
-            gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
-            gl.clearColor(0, 0, 0, 0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-
-            gl.useProgram(program);
-
-            gl.uniform1f(uniforms.time, time);
-            gl.uniform2f(uniforms.resolution, layer.canvas.width, layer.canvas.height);
-            gl.uniform1f(uniforms.on, isOn ? 1.0 : 0.0);
-
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        const uniforms = {
+            time: manager.gl.getUniformLocation(program, 'u_time'),
+            resolution: manager.gl.getUniformLocation(program, 'u_resolution'),
+            on: manager.gl.getUniformLocation(program, 'u_on')
+        };
+        
+        manager.addRenderable({
+            element: wrapper,
+            program: program,
+            uniformsCallback: (gl, time) => {
+                const rect = wrapper.getBoundingClientRect();
+                gl.uniform1f(uniforms.time, time);
+                gl.uniform2f(uniforms.resolution, rect.width, rect.height);
+                gl.uniform1f(uniforms.on, isOn ? 1.0 : 0.0);
+            }
         });
-
-        layeredCanvas.startAnimation();
     };
 
     createRGBButton('RGB 1');
@@ -317,9 +319,9 @@ function initMomentaryButtons() {
 /**
  * Initialize pulsing buttons
  */
-function initPulsingButtons() {
+function initPulsingButtons(manager) {
     const container = document.getElementById('pulsing-buttons');
-    if (!container) return;
+    if (!container || !manager) return;
 
     const configs = [
         { label: 'Slow', speed: 1, color: [0, 1, 0.5] },
@@ -327,6 +329,42 @@ function initPulsingButtons() {
         { label: 'Fast', speed: 4, color: [1, 0, 0.3] },
         { label: 'Strobe', speed: 10, color: [0, 0.7, 1] }
     ];
+
+    const vertexShader = `#version 300 es
+        in vec4 a_position;
+        void main() {
+            gl_Position = a_position;
+        }
+    `;
+
+    const fragmentShader = `#version 300 es
+        precision mediump float;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+        uniform vec3 u_color;
+        uniform float u_speed;
+        out vec4 fragColor;
+        
+        void main() {
+            vec2 uv = gl_FragCoord.xy / u_resolution;
+            vec2 center = vec2(0.5, 0.5);
+            float dist = distance(uv, center);
+            
+            float pulse = 0.5 + 0.5 * sin(u_time * u_speed);
+            
+            float core = 1.0 - smoothstep(0.0, 0.15, dist);
+            float glow = 1.0 - smoothstep(0.0, 0.4, dist);
+            glow = pow(glow, 2.0);
+            
+            vec3 finalColor = u_color * (core + glow * 0.5) * pulse;
+            float alpha = (core + glow * 0.3) * pulse;
+            
+            fragColor = vec4(finalColor, alpha);
+        }
+    `;
+    
+    const program = manager.createProgram(vertexShader, fragmentShader);
+    if (!program) return;
 
     configs.forEach(({ label, speed, color }) => {
         const wrapper = document.createElement('div');
@@ -359,88 +397,33 @@ function initPulsingButtons() {
         wrapper.appendChild(button);
         container.appendChild(wrapper);
 
-        const layeredCanvas = new UIComponents.LayeredCanvas(wrapper, { width: 80, height: 50 });
-        const webglLayer = layeredCanvas.addLayer('webgl', 'webgl', 0);
-        webglLayer.canvas.style.pointerEvents = 'none';
-
-        if (!webglLayer.context) {
-            return;
-        }
-
-        const gl = webglLayer.context;
-
-        const fragmentShader = `
-            precision mediump float;
-            uniform float u_time;
-            uniform vec2 u_resolution;
-            uniform vec3 u_color;
-            uniform float u_speed;
-            
-            void main() {
-                vec2 uv = gl_FragCoord.xy / u_resolution;
-                vec2 center = vec2(0.5, 0.5);
-                float dist = distance(uv, center);
-                
-                float pulse = 0.5 + 0.5 * sin(u_time * u_speed);
-                
-                float core = 1.0 - smoothstep(0.0, 0.15, dist);
-                float glow = 1.0 - smoothstep(0.0, 0.4, dist);
-                glow = pow(glow, 2.0);
-                
-                vec3 finalColor = u_color * (core + glow * 0.5) * pulse;
-                float alpha = (core + glow * 0.3) * pulse;
-                
-                gl_FragColor = vec4(finalColor, alpha);
-            }
-        `;
-
-        const program = UIComponents.ShaderUtils.createProgram(
-            gl,
-            UIComponents.ShaderUtils.vertexShader2D,
-            fragmentShader
-        );
-
-        if (!program) return;
-
-        setupQuadWebGL1(gl, program);
-
         const uniforms = {
-            time: gl.getUniformLocation(program, 'u_time'),
-            resolution: gl.getUniformLocation(program, 'u_resolution'),
-            color: gl.getUniformLocation(program, 'u_color'),
-            speed: gl.getUniformLocation(program, 'u_speed')
+            time: manager.gl.getUniformLocation(program, 'u_time'),
+            resolution: manager.gl.getUniformLocation(program, 'u_resolution'),
+            color: manager.gl.getUniformLocation(program, 'u_color'),
+            speed: manager.gl.getUniformLocation(program, 'u_speed')
         };
 
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-        layeredCanvas.setRenderFunction('webgl', (layer, timestamp) => {
-            const time = timestamp * 0.001;
-            
-            gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
-            gl.clearColor(0, 0, 0, 0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-
-            gl.useProgram(program);
-
-            gl.uniform1f(uniforms.time, time);
-            gl.uniform2f(uniforms.resolution, layer.canvas.width, layer.canvas.height);
-            gl.uniform3fv(uniforms.color, color);
-            gl.uniform1f(uniforms.speed, speed);
-
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        manager.addRenderable({
+            element: wrapper,
+            program: program,
+            uniformsCallback: (gl, time) => {
+                const rect = wrapper.getBoundingClientRect();
+                gl.uniform1f(uniforms.time, time);
+                gl.uniform2f(uniforms.resolution, rect.width, rect.height);
+                gl.uniform3fv(uniforms.color, color);
+                gl.uniform1f(uniforms.speed, speed);
+            }
         });
-        
-        layeredCanvas.startAnimation();
     });
 }
 
 /**
  * Initialize button matrix
  */
-function initButtonMatrix() {
+function initButtonMatrix(manager) {
     const container = document.getElementById('button-matrix-container');
-    if (!container) return;
+    if (!container || !manager) return;
 
     const buttons = [];
     const colors = [
@@ -455,24 +438,38 @@ function initButtonMatrix() {
     const gap = 10;
     const canvasSize = matrixSize * buttonSize + (matrixSize - 1) * gap;
 
-    const layeredCanvas = new UIComponents.LayeredCanvas(container, { width: canvasSize, height: canvasSize });
-    const webglLayer = layeredCanvas.addLayer('webgl', 'webgl2', 0);
-    if (!webglLayer.context) {
-        return;
-    }
-    const gl = webglLayer.context;
+    // Create a container for the buttons that can receive clicks
+    const clickContainer = document.createElement('div');
+    clickContainer.style.width = `${canvasSize}px`;
+    clickContainer.style.height = `${canvasSize}px`;
+    clickContainer.style.position = 'relative';
+    container.appendChild(clickContainer);
 
     for (let i = 0; i < 16; i++) {
         const row = Math.floor(i / matrixSize);
         const col = i % matrixSize;
-        buttons.push({
+        const btn = {
             x: col * (buttonSize + gap),
             y: row * (buttonSize + gap),
             width: buttonSize,
             height: buttonSize,
             color: colors[i],
             isOn: false
+        };
+        buttons.push(btn);
+
+        // Create divs for clicking
+        const btnDiv = document.createElement('div');
+        btnDiv.style.position = 'absolute';
+        btnDiv.style.left = `${btn.x}px`;
+        btnDiv.style.top = `${btn.y}px`;
+        btnDiv.style.width = `${btn.width}px`;
+        btnDiv.style.height = `${btn.height}px`;
+        btnDiv.style.cursor = 'pointer';
+        btnDiv.addEventListener('click', () => {
+            btn.isOn = !btn.isOn;
         });
+        clickContainer.appendChild(btnDiv);
     }
 
     const fragmentShader = `#version 300 es
@@ -488,14 +485,10 @@ function initButtonMatrix() {
             vec2 center = vec2(0.5, 0.5);
             float dist = distance(uv, center);
             
-            // LED core
             float core = 1.0 - smoothstep(0.0, 0.15, dist);
-            
-            // Outer glow
             float glow = 1.0 - smoothstep(0.0, 0.4, dist);
             glow = pow(glow, 2.0);
             
-            // Pulsing effect
             float pulse = 0.9 + 0.1 * sin(u_time * 3.0);
             
             float intensity = mix(0.1, 1.0, u_on);
@@ -513,53 +506,42 @@ function initButtonMatrix() {
         }
     `;
 
-    const program = createProgram(gl, vertexShader, fragmentShader);
+    const program = manager.createProgram(vertexShader, fragmentShader);
     if (!program) return;
 
-    setupQuad(gl, program);
-
     const uniforms = {
-        time: gl.getUniformLocation(program, 'u_time'),
-        resolution: gl.getUniformLocation(program, 'u_resolution'),
-        color: gl.getUniformLocation(program, 'u_color'),
-        on: gl.getUniformLocation(program, 'u_on')
+        time: manager.gl.getUniformLocation(program, 'u_time'),
+        resolution: manager.gl.getUniformLocation(program, 'u_resolution'),
+        color: manager.gl.getUniformLocation(program, 'u_color'),
+        on: manager.gl.getUniformLocation(program, 'u_on')
     };
 
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-    layeredCanvas.setRenderFunction('webgl', (layer, timestamp) => {
-        const time = timestamp * 0.001;
-        
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
-        gl.useProgram(program);
-        gl.uniform1f(uniforms.time, time);
-
-        buttons.forEach(btn => {
-            gl.viewport(btn.x, layer.canvas.height - btn.y - btn.height, btn.width, btn.height);
+    manager.addRenderable({
+        element: clickContainer,
+        program: program,
+        customDraw: (gl, time) => {
+            gl.uniform1f(uniforms.time, time);
             
-            gl.uniform2f(uniforms.resolution, btn.width, btn.height);
-            gl.uniform3fv(uniforms.color, btn.color);
-            gl.uniform1f(uniforms.on, btn.isOn ? 1.0 : 0.0);
+            const matrixRect = clickContainer.getBoundingClientRect();
+            const canvasRect = manager.canvas.getBoundingClientRect();
 
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        });
-    });
+            buttons.forEach(btn => {
+                const btnRect = {
+                    x: matrixRect.left - canvasRect.left + btn.x,
+                    y: canvasRect.height - (matrixRect.top - canvasRect.top + btn.y + btn.height),
+                    width: btn.width,
+                    height: btn.height
+                };
 
-    layeredCanvas.startAnimation();
+                gl.viewport(btnRect.x, btnRect.y, btnRect.width, btnRect.height);
+                
+                gl.uniform2f(uniforms.resolution, btn.width, btn.height);
+                gl.uniform3fv(uniforms.color, btn.color);
+                gl.uniform1f(uniforms.on, btn.isOn ? 1.0 : 0.0);
 
-    webglLayer.canvas.addEventListener('click', (e) => {
-        const rect = webglLayer.canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        buttons.forEach(btn => {
-            if (x >= btn.x && x <= btn.x + btn.width && y >= btn.y && y <= btn.y + btn.height) {
-                btn.isOn = !btn.isOn;
-            }
-        });
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            });
+        }
     });
 
     // Matrix control buttons
@@ -616,216 +598,154 @@ function initButtonMatrix() {
 /**
  * Initialize layered demo
  */
-function initLayeredDemo() {
+function initLayeredDemo(manager) {
     const container = document.getElementById('layered-demo');
-    if (!container) return;
+    if (!container || !manager) return;
 
-    const layeredCanvas = new UIComponents.LayeredCanvas(container, {
-        width: 800,
-        height: 400
-    });
+    // The manager's canvas will be used for WebGL content.
+    // We just need to add the SVG layer to the container.
+    container.style.position = 'relative';
+    container.style.width = '800px';
+    container.style.height = '400px';
 
-    // Add WebGL base layer
-    const webglLayer = layeredCanvas.addLayer('webgl-base', 'webgl', 0);
-
-    // Add WebGL2 effects layer
-    const webgl2Layer = layeredCanvas.addLayer('webgl2-effects', 'webgl2', 1);
-
-    // Add SVG overlay layer
-    const svgLayer = layeredCanvas.addSVGLayer('svg-overlay', 2);
-
-    // Setup WebGL base layer shader
-    if (webglLayer.context) {
-        const gl = webglLayer.context;
-
-        const fragmentShader = `
-            precision mediump float;
-            uniform float u_time;
-            uniform vec2 u_resolution;
-            
-            void main() {
-                vec2 uv = gl_FragCoord.xy / u_resolution;
-                
-                // Grid pattern
-                vec2 grid = fract(uv * 20.0);
-                float gridLine = step(0.95, grid.x) + step(0.95, grid.y);
-                
-                // Background gradient
-                vec3 bg = mix(vec3(0.02, 0.02, 0.05), vec3(0.05, 0.08, 0.1), uv.y);
-                
-                vec3 color = bg + vec3(0.0, 0.1, 0.15) * gridLine * 0.3;
-                
-                gl_FragColor = vec4(color, 1.0);
-            }
-        `;
-
-        const program = UIComponents.ShaderUtils.createProgram(
-            gl,
-            UIComponents.ShaderUtils.vertexShader2D,
-            fragmentShader
-        );
-
-        if (program) {
-            setupQuadWebGL1(gl, program);
-
-            const uniforms = {
-                time: gl.getUniformLocation(program, 'u_time'),
-                resolution: gl.getUniformLocation(program, 'u_resolution')
-            };
-
-            layeredCanvas.setRenderFunction('webgl-base', (layer, timestamp) => {
-                const time = timestamp * 0.001;
-
-                gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
-                gl.clearColor(0, 0, 0, 1);
-                gl.clear(gl.COLOR_BUFFER_BIT);
-
-                gl.useProgram(program);
-                gl.uniform1f(uniforms.time, time);
-                gl.uniform2f(uniforms.resolution, layer.canvas.width, layer.canvas.height);
-
-                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-            });
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 800 400');
+    svg.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+        pointer-events: none;
+    `;
+    container.appendChild(svg);
+    
+    // --- Renderable 1: Base Grid Layer ---
+    const baseVs = `#version 300 es
+        in vec4 a_position; void main() { gl_Position = a_position; }
+    `;
+    const baseFs = `#version 300 es
+        precision mediump float;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+        out vec4 fragColor;
+        void main() {
+            vec2 uv = gl_FragCoord.xy / u_resolution;
+            vec2 grid = fract(uv * 20.0);
+            float gridLine = step(0.95, grid.x) + step(0.95, grid.y);
+            vec3 bg = mix(vec3(0.02, 0.02, 0.05), vec3(0.05, 0.08, 0.1), uv.y);
+            vec3 color = bg + vec3(0.0, 0.1, 0.15) * gridLine * 0.3;
+            fragColor = vec4(color, 1.0);
         }
-    }
-
-    // Setup WebGL2 effects layer
-    if (webgl2Layer.context) {
-        const gl = webgl2Layer.context;
-
-        const fragmentShader = `#version 300 es
-            precision mediump float;
-            uniform float u_time;
-            uniform vec2 u_resolution;
-            out vec4 fragColor;
-            
-            void main() {
-                vec2 uv = gl_FragCoord.xy / u_resolution;
-                
-                // Multiple glowing orbs
-                float glow = 0.0;
-                
-                for (int i = 0; i < 5; i++) {
-                    float fi = float(i);
-                    vec2 center = vec2(
-                        0.2 + 0.15 * fi + 0.1 * sin(u_time + fi),
-                        0.5 + 0.2 * sin(u_time * 0.7 + fi * 1.5)
-                    );
-                    float dist = distance(uv, center);
-                    glow += 0.03 / (dist * dist + 0.01);
-                }
-                
-                vec3 color = vec3(0.0, glow * 0.5, glow);
-                float alpha = min(glow * 0.5, 1.0);
-                
-                fragColor = vec4(color, alpha);
-            }
-        `;
-
-        const vertexShader = `#version 300 es
-            in vec4 a_position;
-            void main() {
-                gl_Position = a_position;
-            }
-        `;
-
-        const program = createProgram(gl, vertexShader, fragmentShader);
-
-        if (program) {
-            setupQuad(gl, program);
-
-            gl.enable(gl.BLEND);
-            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-            const uniforms = {
-                time: gl.getUniformLocation(program, 'u_time'),
-                resolution: gl.getUniformLocation(program, 'u_resolution')
-            };
-
-            layeredCanvas.setRenderFunction('webgl2-effects', (layer, timestamp) => {
-                const time = timestamp * 0.001;
-
-                gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
-                gl.clearColor(0, 0, 0, 0);
-                gl.clear(gl.COLOR_BUFFER_BIT);
-
-                gl.useProgram(program);
-                gl.uniform1f(uniforms.time, time);
-                gl.uniform2f(uniforms.resolution, layer.canvas.width, layer.canvas.height);
-
-                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-            });
+    `;
+    const baseProgram = manager.createProgram(baseVs, baseFs);
+    const baseUniforms = {
+        time: manager.gl.getUniformLocation(baseProgram, 'u_time'),
+        resolution: manager.gl.getUniformLocation(baseProgram, 'u_resolution'),
+    };
+    const baseRenderable = {
+        id: 'layered-demo-base',
+        element: container,
+        program: baseProgram,
+        uniformsCallback: (gl, time) => {
+            const rect = container.getBoundingClientRect();
+            gl.uniform1f(baseUniforms.time, time);
+            gl.uniform2f(baseUniforms.resolution, rect.width, rect.height);
         }
-    }
-
-    // Setup SVG overlay
-    if (svgLayer.element) {
-        const svg = svgLayer.element;
-        svg.setAttribute('viewBox', '0 0 800 400');
-
-        // Add decorative elements
-        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-        defs.innerHTML = `
-            <filter id="svg-glow">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-            </filter>
-        `;
-        svg.appendChild(defs);
-
-        // Add animated rings
-        for (let i = 0; i < 3; i++) {
-            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            circle.setAttribute('cx', 200 + i * 200);
-            circle.setAttribute('cy', 200);
-            circle.setAttribute('r', 40 + i * 10);
-            circle.setAttribute('fill', 'none');
-            circle.setAttribute('stroke', `rgba(0, 255, 200, ${0.3 - i * 0.08})`);
-            circle.setAttribute('stroke-width', '2');
-            circle.setAttribute('filter', 'url(#svg-glow)');
-
-            // Add animation
-            const animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
-            animate.setAttribute('attributeName', 'r');
-            animate.setAttribute('values', `${40 + i * 10};${50 + i * 10};${40 + i * 10}`);
-            animate.setAttribute('dur', `${2 + i * 0.5}s`);
-            animate.setAttribute('repeatCount', 'indefinite');
-            circle.appendChild(animate);
-
-            svg.appendChild(circle);
-        }
-    }
-
-    // Start animation
-    layeredCanvas.startAnimation();
-
-    // Layer toggle controls
-    const toggleLayer = (checkbox, layerName) => {
-        checkbox?.addEventListener('change', (e) => {
-            const layer = layeredCanvas.getLayer(layerName);
-            if (layer) {
-                if (layer.canvas) {
-                    layer.canvas.style.display = e.target.checked ? 'block' : 'none';
-                }
-                if (layer.element) {
-                    layer.element.style.display = e.target.checked ? 'block' : 'none';
-                }
-            }
-        });
     };
 
-    toggleLayer(document.getElementById('layer-webgl'), 'webgl-base');
-    toggleLayer(document.getElementById('layer-webgl2'), 'webgl2-effects');
-    toggleLayer(document.getElementById('layer-svg'), 'svg-overlay');
+    // --- Renderable 2: Effects Layer ---
+    const effectsVs = `#version 300 es
+        in vec4 a_position; void main() { gl_Position = a_position; }
+    `;
+    const effectsFs = `#version 300 es
+        precision mediump float;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+        out vec4 fragColor;
+        void main() {
+            vec2 uv = gl_FragCoord.xy / u_resolution;
+            float glow = 0.0;
+            for (int i = 0; i < 5; i++) {
+                float fi = float(i);
+                vec2 center = vec2(
+                    0.2 + 0.15 * fi + 0.1 * sin(u_time + fi),
+                    0.5 + 0.2 * sin(u_time * 0.7 + fi * 1.5)
+                );
+                float dist = distance(uv, center);
+                glow += 0.03 / (dist * dist + 0.01);
+            }
+            vec3 color = vec3(0.0, glow * 0.5, glow);
+            float alpha = min(glow * 0.5, 1.0);
+            fragColor = vec4(color, alpha);
+        }
+    `;
+    const effectsProgram = manager.createProgram(effectsVs, effectsFs);
+    const effectsUniforms = {
+        time: manager.gl.getUniformLocation(effectsProgram, 'u_time'),
+        resolution: manager.gl.getUniformLocation(effectsProgram, 'u_resolution'),
+    };
+    const effectsRenderable = {
+        id: 'layered-demo-effects',
+        element: container,
+        program: effectsProgram,
+        uniformsCallback: (gl, time) => {
+            const rect = container.getBoundingClientRect();
+            gl.uniform1f(effectsUniforms.time, time);
+            gl.uniform2f(effectsUniforms.resolution, rect.width, rect.height);
+        }
+    };
+    
+    // --- SVG Setup ---
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    defs.innerHTML = `<filter id="svg-glow"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+    svg.appendChild(defs);
+    for (let i = 0; i < 3; i++) {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', 200 + i * 200);
+        circle.setAttribute('cy', 200);
+        circle.setAttribute('r', 40 + i * 10);
+        circle.setAttribute('fill', 'none');
+        circle.setAttribute('stroke', `rgba(0, 255, 200, ${0.3 - i * 0.08})`);
+        circle.setAttribute('stroke-width', '2');
+        circle.setAttribute('filter', 'url(#svg-glow)');
+        const animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+        animate.setAttribute('attributeName', 'r');
+        animate.setAttribute('values', `${40 + i * 10};${50 + i * 10};${40 + i * 10}`);
+        animate.setAttribute('dur', `${2 + i * 0.5}s`);
+        animate.setAttribute('repeatCount', 'indefinite');
+        circle.appendChild(animate);
+        svg.appendChild(circle);
+    }
 
-    // CSS filter toggle
+    // --- Controls ---
+    const layers = {
+        'layer-webgl': baseRenderable,
+        'layer-webgl2': effectsRenderable,
+    };
+
+    // Initial state
+    manager.addRenderable(baseRenderable);
+    manager.addRenderable(effectsRenderable);
+
+    Object.keys(layers).forEach(id => {
+        document.getElementById(id)?.addEventListener('change', (e) => {
+            const renderable = layers[id];
+            if (e.target.checked) {
+                manager.addRenderable(renderable);
+            } else {
+                manager.renderables = manager.renderables.filter(r => r.id !== renderable.id);
+            }
+        });
+    });
+
+    document.getElementById('layer-svg')?.addEventListener('change', (e) => {
+        svg.style.display = e.target.checked ? 'block' : 'none';
+    });
+
     document.getElementById('layer-css')?.addEventListener('change', (e) => {
-        container.style.filter = e.target.checked
-            ? 'contrast(1.1) saturate(1.2)'
-            : 'none';
+        container.style.filter = e.target.checked ? 'contrast(1.1) saturate(1.2)' : 'none';
     });
 }
 
@@ -1037,9 +957,9 @@ async function checkWebGL2Support() {
  * Initialize Particle Swarm Buttons
  * WebGPU compute shader with 10K particles that react to mouse interaction
  */
-function initParticleSwarmButtons() {
+function initParticleSwarmButtons(webgl2Manager, webgpuManager) {
     const container = document.getElementById('particle-swarm-buttons');
-    if (!container) return;
+    if (!container || !webgl2Manager || !webgpuManager) return;
 
     const config = { label: 'ATTRACT', color: [0, 1, 0.5, 0.8], physics: 'attract' };
 
@@ -1052,34 +972,6 @@ function initParticleSwarmButtons() {
         margin: 0.5rem;
     `;
 
-    // WebGPU particle canvas (back layer)
-    const particleCanvas = document.createElement('canvas');
-    particleCanvas.width = 280;
-    particleCanvas.height = 160;
-    particleCanvas.style.cssText = `
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        top: 0;
-        left: 0;
-        z-index: 0;
-    `;
-
-    // WebGL2 glow canvas (middle layer)
-    const glowCanvas = document.createElement('canvas');
-    glowCanvas.width = 280;
-    glowCanvas.height = 160;
-    glowCanvas.style.cssText = `
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        top: 0;
-        left: 0;
-        z-index: 1;
-        pointer-events: none;
-    `;
-
-    // CSS button (top layer)
     const button = document.createElement('button');
     button.textContent = config.label;
     button.style.cssText = `
@@ -1098,13 +990,10 @@ function initParticleSwarmButtons() {
         transition: all 0.2s;
     `;
 
-    wrapper.appendChild(particleCanvas);
-    wrapper.appendChild(glowCanvas);
     wrapper.appendChild(button);
     container.appendChild(wrapper);
 
-    // Initialize WebGPU particle system
-    const particleSystem = new UIComponents.WebGPUParticleSystem(particleCanvas, {
+    const particleSystem = new window.WebGPUParticleSystem(webgpuManager, {
         particleCount: 10000,
         particleSize: 2,
         color: config.color,
@@ -1116,98 +1005,84 @@ function initParticleSwarmButtons() {
         const initialized = await particleSystem.init();
         if (!initialized) return;
 
-        // Initialize WebGL2 glow effect
-        const gl2 = glowCanvas.getContext('webgl2', { alpha: true, premultipliedAlpha: false });
-        if (gl2) {
-            const glowShader = `#version 300 es
-                precision mediump float;
-                uniform float u_time;
-                uniform vec2 u_resolution;
-                uniform vec3 u_color;
-                uniform float u_active;
-                out vec4 fragColor;
-                
-                void main() {
-                    vec2 uv = gl_FragCoord.xy / u_resolution;
-                    vec2 center = vec2(0.5, 0.5);
-                    float dist = distance(uv, center);
-                    
-                    float glow = 1.0 - smoothstep(0.0, 0.6, dist);
-                    glow = pow(glow, 3.0);
-                    glow *= u_active * 0.5;
-                    glow *= 0.9 + 0.1 * sin(u_time * 3.0);
-                    
-                    fragColor = vec4(u_color * glow, glow * 0.3);
-                }
-            `;
-
-            const vertexShader = `#version 300 es
-                in vec4 a_position;
-                void main() {
-                    gl_Position = a_position;
-                }
-            `;
-
-            const program = createProgram(gl2, vertexShader, glowShader);
-            if (program) {
-                setupQuad(gl2, program);
-
-                gl2.enable(gl2.BLEND);
-                gl2.blendFunc(gl2.SRC_ALPHA, gl2.ONE_MINUS_SRC_ALPHA);
-
-                const uniforms = {
-                    time: gl2.getUniformLocation(program, 'u_time'),
-                    resolution: gl2.getUniformLocation(program, 'u_resolution'),
-                    color: gl2.getUniformLocation(program, 'u_color'),
-                    active: gl2.getUniformLocation(program, 'u_active')
-                };
-
-                let isActive = false;
-                let mouseX = 0;
-                let mouseY = 0;
-
-                button.addEventListener('mouseenter', () => { isActive = true; });
-                button.addEventListener('mouseleave', () => { isActive = false; });
-                button.addEventListener('click', () => {
-                    button.style.transform = 'scale(0.95)';
-                    setTimeout(() => { button.style.transform = 'scale(1)'; }, 100);
-                });
-
-                wrapper.addEventListener('mousemove', (e) => {
-                    const rect = wrapper.getBoundingClientRect();
-                    mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-                    mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-                });
-
-                let lastTime = 0;
-                const animate = (timestamp) => {
-                    const time = timestamp * 0.001;
-                    const deltaTime = timestamp - lastTime > 0 ? (timestamp - lastTime) * 0.001 : 0.016;
-                    lastTime = timestamp;
-
-                    // Update particle system
-                    particleSystem.updateUniforms(time, deltaTime, mouseX, mouseY);
-                    particleSystem.render(time, deltaTime);
-
-                    // Render glow
-                    gl2.viewport(0, 0, glowCanvas.width, glowCanvas.height);
-                    gl2.clearColor(0, 0, 0, 0);
-                    gl2.clear(gl2.COLOR_BUFFER_BIT);
-
-                    gl2.useProgram(program);
-                    gl2.uniform1f(uniforms.time, time);
-                    gl2.uniform2f(uniforms.resolution, glowCanvas.width, glowCanvas.height);
-                    gl2.uniform3f(uniforms.color, config.color[0], config.color[1], config.color[2]);
-                    gl2.uniform1f(uniforms.active, isActive ? 1.0 : 0.0);
-
-                    gl2.drawArrays(gl2.TRIANGLE_STRIP, 0, 4);
-
-                    requestAnimationFrame(animate);
-                };
-
-                requestAnimationFrame(animate);
+        let frame = 0;
+        webgpuManager.addRenderable({
+            element: wrapper,
+            render: (passEncoder, time, deltaTime) => {
+                particleSystem.compute(time, deltaTime, frame);
+                particleSystem.render(passEncoder, time, deltaTime, frame);
+                frame++;
             }
-        }
+        });
+        
+        const glowShader = `#version 300 es
+            precision mediump float;
+            uniform float u_time;
+            uniform vec2 u_resolution;
+            uniform vec3 u_color;
+            uniform float u_active;
+            out vec4 fragColor;
+            
+            void main() {
+                vec2 uv = gl_FragCoord.xy / u_resolution;
+                vec2 center = vec2(0.5, 0.5);
+                float dist = distance(uv, center);
+                
+                float glow = 1.0 - smoothstep(0.0, 0.6, dist);
+                glow = pow(glow, 3.0);
+                glow *= u_active * 0.5;
+                glow *= 0.9 + 0.1 * sin(u_time * 3.0);
+                
+                fragColor = vec4(u_color * glow, glow * 0.3);
+            }
+        `;
+
+        const vertexShader = `#version 300 es
+            in vec4 a_position;
+            void main() {
+                gl_Position = a_position;
+            }
+        `;
+
+        const program = webgl2Manager.createProgram(vertexShader, glowShader);
+        if (!program) return;
+
+        const uniforms = {
+            time: webgl2Manager.gl.getUniformLocation(program, 'u_time'),
+            resolution: webgl2Manager.gl.getUniformLocation(program, 'u_resolution'),
+            color: webgl2Manager.gl.getUniformLocation(program, 'u_color'),
+            active: webgl2Manager.gl.getUniformLocation(program, 'u_active')
+        };
+
+        let isActive = false;
+        let mouseX = 0;
+        let mouseY = 0;
+
+        button.addEventListener('mouseenter', () => { isActive = true; });
+        button.addEventListener('mouseleave', () => { isActive = false; });
+        button.addEventListener('click', () => {
+            button.style.transform = 'scale(0.95)';
+            setTimeout(() => { button.style.transform = 'scale(1)'; }, 100);
+        });
+
+        wrapper.addEventListener('mousemove', (e) => {
+            const rect = wrapper.getBoundingClientRect();
+            mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            particleSystem.updateUniforms(0, 0, mouseX, mouseY);
+        });
+
+        webgl2Manager.addRenderable({
+            element: wrapper,
+            program: program,
+            uniformsCallback: (gl, time) => {
+                const rect = wrapper.getBoundingClientRect();
+                gl.uniform1f(uniforms.time, time);
+                gl.uniform2f(uniforms.resolution, rect.width, rect.height);
+                gl.uniform3f(uniforms.color, config.color[0], config.color[1], config.color[2]);
+                gl.uniform1f(uniforms.active, isActive ? 1.0 : 0.0);
+            }
+        });
     })();
 }
 
@@ -1295,14 +1170,47 @@ function initQuantumFluxButtons() {
  * Initialize Magnetic Field Buttons
  * Compute shader field line simulation
  */
-function initMagneticFieldButtons() {
+function initMagneticFieldButtons(manager) {
     const container = document.getElementById('magnetic-field-buttons');
-    if (!container) return;
+    if (!container || !manager) return;
 
     const configs = [
         { label: 'N', polarity: 1, color: '#f44' },
         { label: 'S', polarity: -1, color: '#44f' }
     ];
+    
+    const vertexShader = `#version 300 es
+        in vec4 a_position;
+        void main() {
+            gl_Position = a_position;
+        }
+    `;
+
+    const fragmentShader = `#version 300 es
+        precision mediump float;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+        uniform float u_polarity;
+        out vec4 fragColor;
+        
+        void main() {
+            vec2 uv = gl_FragCoord.xy / u_resolution;
+            vec2 center = vec2(0.5, 0.5);
+            vec2 toCenter = uv - center;
+            float dist = length(toCenter);
+            float angle = atan(toCenter.y, toCenter.x);
+            
+            // Field lines
+            float fieldLine = sin(angle * 6.0 + u_time) * 0.5 + 0.5;
+            fieldLine *= smoothstep(0.5, 0.2, dist) * smoothstep(0.05, 0.2, dist);
+            
+            vec3 color = u_polarity > 0.0 ? vec3(1.0, 0.3, 0.3) : vec3(0.3, 0.3, 1.0);
+            fragColor = vec4(color * fieldLine, fieldLine * 0.5);
+        }
+    `;
+
+    const program = manager.createProgram(vertexShader, fragmentShader);
+    if (!program) return;
 
     configs.forEach((config) => {
         const wrapper = document.createElement('div');
@@ -1335,73 +1243,22 @@ function initMagneticFieldButtons() {
         wrapper.appendChild(button);
         container.appendChild(wrapper);
 
-        const layeredCanvas = new UIComponents.LayeredCanvas(wrapper, { width: 100, height: 100 });
-        const webglLayer = layeredCanvas.addLayer('webgl', 'webgl', 0);
-        webglLayer.canvas.style.pointerEvents = 'none';
+        const uniforms = {
+            time: manager.gl.getUniformLocation(program, 'u_time'),
+            resolution: manager.gl.getUniformLocation(program, 'u_resolution'),
+            polarity: manager.gl.getUniformLocation(program, 'u_polarity')
+        };
 
-        if (!webglLayer.context) {
-            return;
-        }
-        
-        const gl = webglLayer.context;
-
-        const fragmentShader = `
-            precision mediump float;
-            uniform float u_time;
-            uniform vec2 u_resolution;
-            uniform float u_polarity;
-            
-            void main() {
-                vec2 uv = gl_FragCoord.xy / u_resolution;
-                vec2 center = vec2(0.5, 0.5);
-                vec2 toCenter = uv - center;
-                float dist = length(toCenter);
-                float angle = atan(toCenter.y, toCenter.x);
-                
-                // Field lines
-                float fieldLine = sin(angle * 6.0 + u_time) * 0.5 + 0.5;
-                fieldLine *= smoothstep(0.5, 0.2, dist) * smoothstep(0.05, 0.2, dist);
-                
-                vec3 color = u_polarity > 0.0 ? vec3(1.0, 0.3, 0.3) : vec3(0.3, 0.3, 1.0);
-                gl_FragColor = vec4(color * fieldLine, fieldLine * 0.5);
-            }
-        `;
-
-        const program = UIComponents.ShaderUtils.createProgram(
-            gl,
-            UIComponents.ShaderUtils.vertexShader2D,
-            fragmentShader
-        );
-
-        if (program) {
-            setupQuadWebGL1(gl, program);
-
-            gl.enable(gl.BLEND);
-            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-            const uniforms = {
-                time: gl.getUniformLocation(program, 'u_time'),
-                resolution: gl.getUniformLocation(program, 'u_resolution'),
-                polarity: gl.getUniformLocation(program, 'u_polarity')
-            };
-
-            layeredCanvas.setRenderFunction('webgl', (layer, timestamp) => {
-                const time = timestamp * 0.001;
-
-                gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
-                gl.clearColor(0, 0, 0, 0);
-                gl.clear(gl.COLOR_BUFFER_BIT);
-
-                gl.useProgram(program);
+        manager.addRenderable({
+            element: wrapper,
+            program: program,
+            uniformsCallback: (gl, time) => {
+                const rect = wrapper.getBoundingClientRect();
                 gl.uniform1f(uniforms.time, time);
-                gl.uniform2f(uniforms.resolution, layer.canvas.width, layer.canvas.height);
+                gl.uniform2f(uniforms.resolution, rect.width, rect.height);
                 gl.uniform1f(uniforms.polarity, config.polarity);
-
-                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-            });
-
-            layeredCanvas.startAnimation();
-        }
+            }
+        });
     });
 }
 
@@ -1749,9 +1606,9 @@ function initCompositingShowcase() {
  * Liquid Metal / Mercury Buttons
  * Morphing metallic surfaces with reflective ripples
  */
-function initLiquidMetalButtons() {
+function initLiquidMetalButtons(manager) {
     const container = document.getElementById('liquid-metal-buttons');
-    if (!container) return;
+    if (!container || !manager) return;
 
     const wrapper = document.createElement('div');
     wrapper.style.cssText = `
@@ -1759,177 +1616,146 @@ function initLiquidMetalButtons() {
         height: 200px;
         position: relative;
         margin: 1rem auto;
+        border-radius: 12px;
+        cursor: pointer;
     `;
 
     container.appendChild(wrapper);
 
-    const layeredCanvas = new UIComponents.LayeredCanvas(wrapper, { width: 300, height: 200 });
-    const webglLayer = layeredCanvas.addLayer('webgl', 'webgl2', 0);
-    webglLayer.canvas.style.borderRadius = '12px';
-    webglLayer.canvas.style.cursor = 'pointer';
-
-    if (!webglLayer.context) {
-        container.innerHTML = '<p style="color: #ff6666;">WebGL2 required</p>';
-        return;
-    }
-
-    const gl = webglLayer.context;
-
     const vs = `#version 300 es
-    in vec4 a_position;
-    out vec2 v_uv;
-    void main() {
-        v_uv = a_position.xy * 0.5 + 0.5;
-        gl_Position = a_position;
-    }
+        in vec4 a_position;
+        out vec2 v_uv;
+        void main() {
+            v_uv = a_position.xy * 0.5 + 0.5;
+            gl_Position = a_position;
+        }
     `;
 
     const fs = `#version 300 es
-    precision highp float;
-    in vec2 v_uv;
-    uniform float u_time;
-    uniform vec2 u_resolution;
-    uniform vec2 u_mouse;
-    uniform float u_click;
-    out vec4 fragColor;
+        precision highp float;
+        in vec2 v_uv;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+        uniform vec2 u_mouse;
+        uniform float u_click;
+        out vec4 fragColor;
 
-    // Environment reflection
-    vec3 getEnv(vec3 dir) {
-        float y = dir.y * 0.5 + 0.5;
-        vec3 sky = mix(vec3(0.15, 0.2, 0.3), vec3(0.8, 0.9, 1.0), pow(y, 0.4));
-        vec3 ground = mix(vec3(0.1, 0.08, 0.05), vec3(0.3, 0.25, 0.2), 1.0 - y);
-        return mix(ground, sky, smoothstep(-0.1, 0.1, dir.y));
-    }
+        vec3 getEnv(vec3 dir) {
+            float y = dir.y * 0.5 + 0.5;
+            vec3 sky = mix(vec3(0.15, 0.2, 0.3), vec3(0.8, 0.9, 1.0), pow(y, 0.4));
+            vec3 ground = mix(vec3(0.1, 0.08, 0.05), vec3(0.3, 0.25, 0.2), 1.0 - y);
+            return mix(ground, sky, smoothstep(-0.1, 0.1, dir.y));
+        }
 
-    // Metaball function
-    float metaball(vec2 p, vec2 center, float r) {
-        float d = length(p - center);
-        return r * r / (d * d + 0.001);
-    }
+        float metaball(vec2 p, vec2 center, float r) {
+            float d = length(p - center);
+            return r * r / (d * d + 0.001);
+        }
 
-    void main() {
-        vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
-        vec2 mouse = (u_mouse - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
-        
-        // Multiple metaballs
-        float blob = 0.0;
-        float t = u_time;
-        
-        // Central blob
-        blob += metaball(uv, vec2(0.0, 0.0), 0.15);
-        
-        // Orbiting blobs
-        for (float i = 0.0; i < 5.0; i++) {
-            float angle = t * 0.5 + i * 1.256;
-            float r = 0.2 + 0.1 * sin(t + i);
-            vec2 pos = vec2(cos(angle), sin(angle)) * r;
-            blob += metaball(uv, pos, 0.08 + 0.02 * sin(t * 2.0 + i));
+        void main() {
+            vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+            vec2 mouse = (u_mouse - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+            
+            float blob = 0.0;
+            float t = u_time;
+            
+            blob += metaball(uv, vec2(0.0, 0.0), 0.15);
+            
+            for (float i = 0.0; i < 5.0; i++) {
+                float angle = t * 0.5 + i * 1.256;
+                float r = 0.2 + 0.1 * sin(t + i);
+                vec2 pos = vec2(cos(angle), sin(angle)) * r;
+                blob += metaball(uv, pos, 0.08 + 0.02 * sin(t * 2.0 + i));
+            }
+            
+            blob += metaball(uv, mouse, 0.12) * (1.0 + u_click * 0.5);
+            
+            if (u_click > 0.0) {
+                float ripple = sin(length(uv - mouse) * 30.0 - u_time * 10.0);
+                blob += ripple * 0.1 * u_click;
+            }
+            
+            float surface = smoothstep(0.8, 0.9, blob);
+            
+            if (surface < 0.1) {
+                fragColor = vec4(0.05, 0.05, 0.08, 1.0);
+                return;
+            }
+            
+            vec2 e = vec2(0.01, 0.0);
+            float bx = blob;
+            float bx1 = 0.0, by1 = 0.0;
+            
+            vec2 uvx = uv + e.xy;
+            vec2 uvy = uv + e.yx;
+            
+            bx1 += metaball(uvx, vec2(0.0, 0.0), 0.15);
+            by1 += metaball(uvy, vec2(0.0, 0.0), 0.15);
+            for (float i = 0.0; i < 5.0; i++) {
+                float angle = t * 0.5 + i * 1.256;
+                float r = 0.2 + 0.1 * sin(t + i);
+                vec2 pos = vec2(cos(angle), sin(angle)) * r;
+                float rad = 0.08 + 0.02 * sin(t * 2.0 + i);
+                bx1 += metaball(uvx, pos, rad);
+                by1 += metaball(uvy, pos, rad);
+            }
+            bx1 += metaball(uvx, mouse, 0.12);
+            by1 += metaball(uvy, mouse, 0.12);
+            
+            vec3 normal = normalize(vec3(bx - bx1, bx - by1, 0.1));
+            
+            vec3 viewDir = normalize(vec3(uv, -1.0));
+            vec3 reflectDir = reflect(viewDir, normal);
+            vec3 reflection = getEnv(reflectDir);
+            
+            float fresnel = pow(1.0 - max(dot(-viewDir, normal), 0.0), 3.0);
+            
+            vec3 chrome = vec3(0.8, 0.85, 0.9);
+            vec3 color = mix(chrome * 0.3, reflection, 0.7 + fresnel * 0.3);
+            
+            vec3 lightDir = normalize(vec3(0.5, 0.8, 0.5));
+            float spec = pow(max(dot(reflectDir, lightDir), 0.0), 60.0);
+            color += vec3(1.0) * spec;
+            
+            color += vec3(0.3, 0.5, 0.7) * fresnel * 0.5;
+            
+            fragColor = vec4(color * surface, 1.0);
         }
-        
-        // Mouse interaction
-        blob += metaball(uv, mouse, 0.12) * (1.0 + u_click * 0.5);
-        
-        // Click ripple
-        if (u_click > 0.0) {
-            float ripple = sin(length(uv - mouse) * 30.0 - u_time * 10.0);
-            blob += ripple * 0.1 * u_click;
-        }
-        
-        // Threshold for surface
-        float surface = smoothstep(0.8, 0.9, blob);
-        
-        if (surface < 0.1) {
-            fragColor = vec4(0.05, 0.05, 0.08, 1.0);
-            return;
-        }
-        
-        // Calculate normal
-        vec2 e = vec2(0.01, 0.0);
-        float bx = blob;
-        float bx1 = 0.0, by1 = 0.0;
-        
-        vec2 uvx = uv + e.xy;
-        vec2 uvy = uv + e.yx;
-        
-        // Recalculate for gradient
-        bx1 += metaball(uvx, vec2(0.0, 0.0), 0.15);
-        by1 += metaball(uvy, vec2(0.0, 0.0), 0.15);
-        for (float i = 0.0; i < 5.0; i++) {
-            float angle = t * 0.5 + i * 1.256;
-            float r = 0.2 + 0.1 * sin(t + i);
-            vec2 pos = vec2(cos(angle), sin(angle)) * r;
-            float rad = 0.08 + 0.02 * sin(t * 2.0 + i);
-            bx1 += metaball(uvx, pos, rad);
-            by1 += metaball(uvy, pos, rad);
-        }
-        bx1 += metaball(uvx, mouse, 0.12);
-        by1 += metaball(uvy, mouse, 0.12);
-        
-        vec3 normal = normalize(vec3(bx - bx1, bx - by1, 0.1));
-        
-        // Reflection
-        vec3 viewDir = normalize(vec3(uv, -1.0));
-        vec3 reflectDir = reflect(viewDir, normal);
-        vec3 reflection = getEnv(reflectDir);
-        
-        // Fresnel
-        float fresnel = pow(1.0 - max(dot(-viewDir, normal), 0.0), 3.0);
-        
-        // Chrome color
-        vec3 chrome = vec3(0.8, 0.85, 0.9);
-        vec3 color = mix(chrome * 0.3, reflection, 0.7 + fresnel * 0.3);
-        
-        // Specular highlights
-        vec3 lightDir = normalize(vec3(0.5, 0.8, 0.5));
-        float spec = pow(max(dot(reflectDir, lightDir), 0.0), 60.0);
-        color += vec3(1.0) * spec;
-        
-        // Edge glow
-        color += vec3(0.3, 0.5, 0.7) * fresnel * 0.5;
-        
-        fragColor = vec4(color * surface, 1.0);
-    }
     `;
 
-    const program = createProgram(gl, vs, fs);
+    const program = manager.createProgram(vs, fs);
     if (!program) return;
 
-    setupQuad(gl, program);
+    const uTime = manager.gl.getUniformLocation(program, 'u_time');
+    const uRes = manager.gl.getUniformLocation(program, 'u_resolution');
+    const uMouse = manager.gl.getUniformLocation(program, 'u_mouse');
+    const uClick = manager.gl.getUniformLocation(program, 'u_click');
 
-    const uTime = gl.getUniformLocation(program, 'u_time');
-    const uRes = gl.getUniformLocation(program, 'u_resolution');
-    const uMouse = gl.getUniformLocation(program, 'u_mouse');
-    const uClick = gl.getUniformLocation(program, 'u_click');
+    let mouseX = 0, mouseY = 0;
+    let clickTime = -1000;
 
-    let mouseX = webglLayer.canvas.width / 2, mouseY = webglLayer.canvas.height / 2;
-    let clickTime = 0;
-
-    webglLayer.canvas.addEventListener('mousemove', e => {
-        const rect = webglLayer.canvas.getBoundingClientRect();
+    wrapper.addEventListener('mousemove', e => {
+        const rect = wrapper.getBoundingClientRect();
         mouseX = e.clientX - rect.left;
         mouseY = rect.height - (e.clientY - rect.top);
     });
 
-    webglLayer.canvas.addEventListener('click', () => {
+    wrapper.addEventListener('click', () => {
         clickTime = performance.now();
     });
 
-    layeredCanvas.setRenderFunction('webgl', (layer, timestamp) => {
-        const click = Math.max(0, 1 - (timestamp - clickTime) / 500);
-
-        gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
-        gl.clearColor(0.05, 0.05, 0.08, 1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
-        gl.useProgram(program);
-        gl.uniform1f(uTime, timestamp * 0.001);
-        gl.uniform2f(uRes, layer.canvas.width, layer.canvas.height);
-        gl.uniform2f(uMouse, mouseX, mouseY);
-        gl.uniform1f(uClick, click);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    manager.addRenderable({
+        element: wrapper,
+        program: program,
+        uniformsCallback: (gl, time) => {
+            const rect = wrapper.getBoundingClientRect();
+            const click = Math.max(0, 1 - (performance.now() - clickTime) / 500);
+            gl.uniform1f(uTime, time);
+            gl.uniform2f(uRes, rect.width, rect.height);
+            gl.uniform2f(uMouse, mouseX, mouseY);
+            gl.uniform1f(uClick, click);
+        }
     });
-
-    layeredCanvas.startAnimation();
 }
 
 /**
@@ -2085,9 +1911,9 @@ function initKineticTypographyButtons() {
  * EMP Buttons
  * Shockwave rings with glitch interference effects
  */
-function initEMPButtons() {
+function initEMPButtons(manager) {
     const container = document.getElementById('emp-buttons');
-    if (!container) return;
+    if (!container || !manager) return;
 
     const wrapper = document.createElement('div');
     wrapper.style.cssText = `
@@ -2095,6 +1921,9 @@ function initEMPButtons() {
         height: 200px;
         position: relative;
         margin: 1rem auto;
+        border-radius: 12px;
+        cursor: pointer;
+        overflow: hidden;
     `;
 
     // Create SVG scanline overlay
@@ -2106,8 +1935,7 @@ function initEMPButtons() {
         width: 100%;
         height: 100%;
         pointer-events: none;
-        border-radius: 12px;
-        overflow: hidden;
+        z-index: 1;
     `;
     svg.innerHTML = `
         <defs>
@@ -2120,16 +1948,7 @@ function initEMPButtons() {
 
     wrapper.appendChild(svg);
     container.appendChild(wrapper);
-
-    const layeredCanvas = new UIComponents.LayeredCanvas(wrapper, { width: 300, height: 200 });
-    const webglLayer = layeredCanvas.addLayer('webgl', 'webgl2', 0);
-    webglLayer.canvas.style.borderRadius = '12px';
-    webglLayer.canvas.style.cursor = 'pointer';
-
-    if (!webglLayer.context) return;
-
-    const gl = webglLayer.context;
-
+    
     const vs = `#version 300 es
     in vec4 a_position;
     out vec2 v_uv;
@@ -2215,20 +2034,18 @@ function initEMPButtons() {
     }
     `;
 
-    const program = createProgram(gl, vs, fs);
+    const program = manager.createProgram(vs, fs);
     if (!program) return;
 
-    setupQuad(gl, program);
-
-    const uTime = gl.getUniformLocation(program, 'u_time');
-    const uRes = gl.getUniformLocation(program, 'u_resolution');
-    const uEmps = gl.getUniformLocation(program, 'u_emps');
+    const uTime = manager.gl.getUniformLocation(program, 'u_time');
+    const uRes = manager.gl.getUniformLocation(program, 'u_resolution');
+    const uEmps = manager.gl.getUniformLocation(program, 'u_emps');
 
     const emps = new Float32Array(15).fill(-100);
     let empIndex = 0;
 
-    webglLayer.canvas.addEventListener('click', e => {
-        const rect = webglLayer.canvas.getBoundingClientRect();
+    wrapper.addEventListener('click', e => {
+        const rect = wrapper.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = rect.height - (e.clientY - rect.top);
 
@@ -2243,19 +2060,27 @@ function initEMPButtons() {
         setTimeout(() => wrapper.style.transform = 'none', 100);
     });
 
-    layeredCanvas.setRenderFunction('webgl', (layer, timestamp) => {
-        const t = timestamp * 0.001;
-
-        gl.viewport(0, 0, layer.canvas.width, layer.canvas.height);
-        gl.clearColor(0.02, 0.03, 0.05, 1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
-        gl.useProgram(program);
-        gl.uniform1f(uTime, t);
-        gl.uniform2f(uRes, layer.canvas.width, layer.canvas.height);
-        gl.uniform3fv(uEmps, emps);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    manager.addRenderable({
+        element: wrapper,
+        program: program,
+        uniformsCallback: (gl, time) => {
+            const rect = wrapper.getBoundingClientRect();
+            gl.uniform1f(uTime, time);
+            gl.uniform2f(uRes, rect.width, rect.height);
+            gl.uniform3fv(uEmps, emps);
+        },
+        // This shader should clear the background
+        customDraw: (gl, time) => {
+            const rect = wrapper.getBoundingClientRect();
+            const canvasRect = manager.canvas.getBoundingClientRect();
+            gl.viewport(rect.left - canvasRect.left, canvasRect.height - rect.bottom, rect.width, rect.height);
+            gl.clearColor(0.02, 0.03, 0.05, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            
+            gl.uniform1f(uTime, time);
+            gl.uniform2f(uRes, rect.width, rect.height);
+            gl.uniform3fv(uEmps, emps);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
     });
-    
-    layeredCanvas.startAnimation();
 }

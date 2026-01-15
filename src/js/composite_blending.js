@@ -289,6 +289,11 @@
 
             const module = device.createShaderModule({
                 code: `
+                    struct Uniforms {
+                        time: f32,
+                        res: vec2f,
+                    };
+
                     struct VertexOutput {
                         @builtin(position) position : vec4f,
                         @location(0) uv : vec2f,
@@ -303,12 +308,11 @@
                         return out;
                     }
 
-                    @group(0) @binding(0) var<uniform> time : f32;
-                    @group(0) @binding(1) var<uniform> res : vec2f;
+                    @group(0) @binding(0) var<uniform> u : Uniforms;
 
                     @fragment
                     fn fs_main(@location(0) uv : vec2f) -> @location(0) vec4f {
-                        var aspect = res.x / res.y;
+                        var aspect = u.res.x / u.res.y;
                         var cUV = uv - 0.5;
                         cUV.x *= aspect;
 
@@ -323,7 +327,7 @@
                         col += vec3f(0.2) * rail;
 
                         let rowWidth = 1.8;
-                        let blipPos = (fract(time * 0.5) - 0.5) * rowWidth;
+                        let blipPos = (fract(u.time * 0.5) - 0.5) * rowWidth;
 
                         let dx = cUV.x - blipPos;
                         let dist = length(vec2f(dx, cUV.y));
@@ -339,8 +343,13 @@
                 `
             });
 
-            const U_SIZE = 256 + 16;
-            const uBuf = device.createBuffer({ size: U_SIZE, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+            // WGSL uniform struct layout:
+            // time: f32 -> offset 0, size 4, align 4
+            // (padding of 4 bytes)
+            // res: vec2f -> offset 8, size 8, align 8
+            // Total size: 16 bytes.
+            const uBuf = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+            const uniformData = new Float32Array(4); // 4 * 4 bytes = 16 bytes
 
             const pipeline = device.createRenderPipeline({
                 layout: 'auto',
@@ -352,8 +361,7 @@
             const bindGroup = device.createBindGroup({
                 layout: pipeline.getBindGroupLayout(0),
                 entries: [
-                    { binding: 0, resource: { buffer: uBuf, offset: 0, size: 4 } },
-                    { binding: 1, resource: { buffer: uBuf, offset: 256, size: 8 } }
+                    { binding: 0, resource: { buffer: uBuf } },
                 ],
             });
 
@@ -372,8 +380,12 @@
 
             return {
                 render: (t) => {
-                    device.queue.writeBuffer(uBuf, 0, new Float32Array([t]));
-                    device.queue.writeBuffer(uBuf, 256, new Float32Array([canvas.width, canvas.height]));
+                    // Update uniform data
+                    uniformData[0] = t; // time
+                    uniformData[2] = canvas.width; // res.x
+                    uniformData[3] = canvas.height; // res.y
+                    device.queue.writeBuffer(uBuf, 0, uniformData);
+                    
                     const enc = device.createCommandEncoder();
                     const pass = enc.beginRenderPass({
                         colorAttachments: [{

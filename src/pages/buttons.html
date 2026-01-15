@@ -7,9 +7,22 @@
     <title>Buttons - UI Components</title>
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/buttons.css">
+    <style>
+        #webgl2-manager-canvas, #webgpu-manager-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
+    </style>
 </head>
 
 <body>
+    <canvas id="webgl2-manager-canvas"></canvas>
+    <canvas id="webgpu-manager-canvas"></canvas>
     <div class="container">
         <div class="page-header">
             <a href="../index.html" class="back-link">← Back</a>
@@ -466,6 +479,9 @@
     </div>
 
     <script type="module" src="../js/main.js"></script>
+    <script type="module" src="../js/rendering-manager.js"></script>
+    <script type="module" src="../js/webgpu-manager.js"></script>
+    <script type="module" src="../js/webgpu-particle-system.js"></script>
     <script type="module" src="../js/buttons.js"></script>
     <script type="module" src="../js/magnetic-particles.js"></script>
     <script type="module" src="../js/aurora-background.js"></script>
