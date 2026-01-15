@@ -15,6 +15,7 @@ export class NeonCityExperiment {
         this.speed = 0.5;
         this.rainDensity = 0.7;
         this.mouse = { x: 0, y: 0 };
+        this.colorMode = 0.0; // 0: Matrix, 1: RGB
 
         // WebGL2 State (City)
         this.glCanvas = null;
@@ -60,6 +61,14 @@ export class NeonCityExperiment {
             rainInput.addEventListener('input', (e) => {
                 this.rainDensity = parseInt(e.target.value) / 100;
                 this.updateRainParams();
+            });
+        }
+        const colorModeBtn = document.getElementById('color-mode-btn');
+        if (colorModeBtn) {
+            colorModeBtn.addEventListener('click', () => {
+                this.colorMode = this.colorMode === 0.0 ? 1.0 : 0.0;
+                colorModeBtn.textContent = this.colorMode === 0.0 ? 'Matrix' : 'Neon RGB';
+                colorModeBtn.style.background = this.colorMode === 0.0 ? '#00f' : '#f0f';
             });
         }
 
@@ -386,6 +395,10 @@ export class NeonCityExperiment {
                 density: f32,
                 mouseX: f32,
                 mouseY: f32,
+                wind: f32,
+                colorMode: f32,
+                pad1: f32,
+                pad2: f32,
             }
             @group(0) @binding(1) var<uniform> uniforms : Uniforms;
 
@@ -404,6 +417,9 @@ export class NeonCityExperiment {
                     p.pos = p.pos + dir * (0.3 - dist) * 0.1;
                 }
 
+                // Wind Force
+                p.pos.x = p.pos.x + uniforms.wind * uniforms.dt;
+
                 // Fall down
                 p.pos.y = p.pos.y - p.speed * uniforms.dt;
 
@@ -412,6 +428,9 @@ export class NeonCityExperiment {
                     p.pos.y = 1.2 + fract(p.speed * 123.45) * 0.5;
                     p.pos.x = (fract(p.pos.x * 67.89 + uniforms.dt) - 0.5) * 2.0;
                 }
+                // Wrap X (Wind effect)
+                if (p.pos.x > 1.2) { p.pos.x -= 2.4; }
+                if (p.pos.x < -1.2) { p.pos.x += 2.4; }
 
                 particles[i] = p;
             }
@@ -426,9 +445,22 @@ export class NeonCityExperiment {
             }
             @group(0) @binding(0) var<storage, read> particles : array<Particle>;
 
+            struct Uniforms {
+                dt: f32,
+                density: f32,
+                mouseX: f32,
+                mouseY: f32,
+                wind: f32,
+                colorMode: f32,
+                pad1: f32,
+                pad2: f32,
+            }
+            @group(0) @binding(1) var<uniform> uniforms : Uniforms;
+
             struct VertexOutput {
                 @builtin(position) pos : vec4f,
                 @location(0) speed : f32,
+                @location(1) colorMode : f32,
             }
 
             @vertex
@@ -439,24 +471,40 @@ export class NeonCityExperiment {
                 // Vertex 0: Top, Vertex 1: Bottom
                 let yOffset = f32(vIdx) * p.len * 0.1;
 
+                // Tilt based on wind
+                let xOffset = yOffset * -uniforms.wind * 2.0;
+
                 var out: VertexOutput;
-                out.pos = vec4f(p.pos.x, p.pos.y + yOffset, 0.0, 1.0);
+                out.pos = vec4f(p.pos.x + xOffset, p.pos.y + yOffset, 0.0, 1.0);
                 out.speed = p.speed;
+                out.colorMode = uniforms.colorMode;
                 return out;
             }
 
             @fragment
-            fn fs_main(@location(0) speed : f32) -> @location(0) vec4f {
+            fn fs_main(@location(0) speed : f32, @location(1) colorMode : f32) -> @location(0) vec4f {
                 let alpha = clamp(speed * 0.5, 0.2, 0.8);
-                return vec4f(0.0, 1.0, 0.5, alpha);
+
+                var color = vec3f(0.0, 1.0, 0.5); // Default Matrix Green
+
+                if (colorMode > 0.5) {
+                    // RGB Mode (Cyberpunk)
+                    // Color based on speed and random factor (simulated via speed)
+                    if (speed > 1.2) {
+                         color = vec3f(1.0, 0.0, 0.8); // Pink
+                    } else if (speed > 0.8) {
+                         color = vec3f(0.0, 0.8, 1.0); // Cyan
+                    } else {
+                         color = vec3f(0.5, 0.0, 1.0); // Purple
+                    }
+                }
+
+                return vec4f(color, alpha);
             }
         `;
 
         // Init buffers
-        const pSize = 4 * 4; // 4 floats (pos:vec2, speed:f32, len:f32) aligned to 16 bytes?
-        // vec2f is 8 bytes, f32 is 4 bytes. Struct padding might be needed.
-        // WGSL struct alignment: vec2f (0), speed (8), len (12). Size 16. Correct.
-
+        const pSize = 4 * 4;
         const initData = new Float32Array(this.numRainDrops * 4);
         for(let i=0; i<this.numRainDrops; i++) {
             initData[i*4+0] = (Math.random() - 0.5) * 2.0; // x
@@ -473,8 +521,9 @@ export class NeonCityExperiment {
         new Float32Array(this.rainBuffer.getMappedRange()).set(initData);
         this.rainBuffer.unmap();
 
+        // Uniforms: dt(4), density(4), mouseX(4), mouseY(4), wind(4), colorMode(4), pad1(4), pad2(4) -> 32 bytes
         this.uniformBuffer = this.device.createBuffer({
-            size: 16, // dt(4), density(4), mouseX(4), mouseY(4)
+            size: 32,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
 
@@ -488,7 +537,8 @@ export class NeonCityExperiment {
 
         const renderBGLayout = this.device.createBindGroupLayout({
             entries: [
-                { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } }
+                { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+                { binding: 1, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } }
             ]
         });
 
@@ -503,7 +553,8 @@ export class NeonCityExperiment {
         this.renderBindGroup = this.device.createBindGroup({
             layout: renderBGLayout,
             entries: [
-                { binding: 0, resource: { buffer: this.rainBuffer } }
+                { binding: 0, resource: { buffer: this.rainBuffer } },
+                { binding: 1, resource: { buffer: this.uniformBuffer } }
             ]
         });
 
@@ -622,12 +673,20 @@ export class NeonCityExperiment {
 
         // 2. WebGPU Render
         if (this.device && this.rainPipeline) {
+            // Calculate wind based on mouse X (center = 0)
+            // mouse.x is [-1, 1]
+            const wind = this.mouse.x * 0.5;
+
             // Update Uniforms
             const uData = new Float32Array([
                 dt * (1.0 + this.speed * 5.0),
                 this.rainDensity,
                 this.mouse.x,
-                this.mouse.y
+                this.mouse.y,
+                wind,
+                this.colorMode,
+                0.0, // pad1
+                0.0  // pad2
             ]);
             this.device.queue.writeBuffer(this.uniformBuffer, 0, uData);
 
