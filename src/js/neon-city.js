@@ -112,7 +112,23 @@ export class NeonCityExperiment {
         this.isActive = true;
         this.animate();
 
-        window.addEventListener('resize', this.handleResize);
+        // Use ResizeObserver for responsive layout
+        this.resizeObserver = new ResizeObserver(() => this.resize());
+        this.resizeObserver.observe(this.container);
+    }
+
+    destroy() {
+        this.isActive = false;
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+        }
+
+        // Cleanup DOM
+        if (this.glCanvas) this.glCanvas.remove();
+        if (this.gpuCanvas) this.gpuCanvas.remove();
     }
 
     // ========================================================================
@@ -207,10 +223,16 @@ export class NeonCityExperiment {
         uniform float u_time;
         uniform float u_scrollSpeed;
         uniform float u_hoveredInstance;
+        uniform float u_pulseTime;
 
         out vec3 v_color;
         out float v_dist;
         out vec3 v_worldPos;
+
+        // Pseudo-random function
+        float random(vec2 st) {
+            return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+        }
 
         void main() {
             vec3 pos = a_position;
@@ -234,6 +256,23 @@ export class NeonCityExperiment {
 
             // Apply World Position
             vec3 worldPos = vec3(pos.x + ix, pos.y, pos.z + zPos);
+
+            // Glitch Effect on Pulse
+            if (u_pulseTime > 0.0) {
+                float distFromCenter = length(worldPos.xz);
+                float pulseRadius = u_pulseTime * 100.0;
+                float pulseWidth = 20.0;
+                float distDiff = abs(distFromCenter - pulseRadius);
+
+                if (distDiff < pulseWidth) {
+                    float glitchIntensity = smoothstep(pulseWidth, 0.0, distDiff);
+                    // Jitter
+                    float jitter = (random(vec2(worldPos.y, u_time)) - 0.5) * 2.0;
+                    worldPos.x += jitter * glitchIntensity * 2.0;
+                    // Vertical displacement
+                    worldPos.y += sin(worldPos.x * 0.5 + u_time * 20.0) * glitchIntensity * 5.0;
+                }
+            }
 
             gl_Position = u_projection * u_view * vec4(worldPos, 1.0);
 
