@@ -45,6 +45,7 @@ export default defineConfig({
         chrono_excavation: resolve(__dirname, 'src/pages/chrono-excavation.html'),
         quantum_tensor: resolve(__dirname, 'src/pages/quantum-tensor.html'),
         temporal_fissure: resolve(__dirname, 'src/pages/temporal-fissure.html'),
+        spectral_loom: resolve(__dirname, 'src/pages/spectral-loom.html'),
       },
     },
   },
