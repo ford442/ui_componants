@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Lace - Hybrid Experiment</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #020205;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            pointer-events: auto;
+        }
+        .back-link {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .back-link:hover {
+            color: #fff;
+        }
+        h1 { margin: 0 0 5px 0; font-size: 1.5rem; font-weight: 300; letter-spacing: 1px; }
+        p { margin: 0; font-size: 0.85rem; color: #aaa; }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+        <h1>Neural Lace</h1>
+        <p>WebGL2 Lattice + WebGPU Neural Impulses. <br>Click to trigger Pulse.</p>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script type="module">
+        import { NeuralLaceExperiment } from '../js/neural-lace.js';
+
+        const container = document.getElementById('canvas-container');
+        window.addEventListener('load', () => {
+            const experiment = new NeuralLaceExperiment(container, { numParticles: 50000 });
+
+            window.addEventListener('beforeunload', () => {
+                if (experiment.destroy) experiment.destroy();
+            });
+        });
+    </script>
+</body>
+</html>
