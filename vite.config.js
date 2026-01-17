@@ -46,6 +46,7 @@ export default defineConfig({
         quantum_tensor: resolve(__dirname, 'src/pages/quantum-tensor.html'),
         temporal_fissure: resolve(__dirname, 'src/pages/temporal-fissure.html'),
         neural_lace: resolve(__dirname, 'src/pages/neural-lace.html'),
+        spectral_loom: resolve(__dirname, 'src/pages/spectral-loom.html'),
       },
     },
   },

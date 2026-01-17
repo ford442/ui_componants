@@ -34,6 +34,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Gravitational Nebula container NOT found.")
 
+            # Check for Spectral Loom container
+            if page.locator("#spectral-loom-container").count() > 0:
+                print("SUCCESS: Spectral Loom container found.")
+            else:
+                print("FAILURE: Spectral Loom container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
