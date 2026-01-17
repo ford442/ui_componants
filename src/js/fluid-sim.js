@@ -15,6 +15,7 @@ class FluidSimulationExperiment {
 
         this.isActive = false;
         this.animationId = null;
+        this.mouse = { x: 0, y: 0, active: 0 };
 
         // WebGL2
         this.glCanvas = null;
@@ -64,6 +65,16 @@ class FluidSimulationExperiment {
         this.animate();
 
         window.addEventListener('resize', () => this.resize());
+
+        // Interaction
+        this.container.addEventListener('mousemove', (e) => {
+            const rect = this.container.getBoundingClientRect();
+            this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        });
+
+        this.container.addEventListener('mouseenter', () => { this.mouse.active = 1; });
+        this.container.addEventListener('mouseleave', () => { this.mouse.active = 0; });
     }
 
     // ========================================================================
@@ -186,7 +197,7 @@ class FluidSimulationExperiment {
         // For simplicity, we'll just update in place for this basic demo.
 
         this.uniformBuffer = this.device.createBuffer({
-            size: 80, // MVP (64) + Time/DT (16)
+            size: 144, // MVP(64) + DT/Time(8) + RayOrigin(16) + RayDir(16) + Mouse(4) + pads
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
 
@@ -203,6 +214,11 @@ class FluidSimulationExperiment {
                 mvp : mat4x4f,
                 dt : f32,
                 time : f32,
+                rayOrigin : vec3f,
+                pad1: f32,
+                rayDir : vec3f,
+                pad2: f32,
+                mouseActive: f32,
             }
 
             @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
@@ -214,6 +230,20 @@ class FluidSimulationExperiment {
                 if (i >= arrayLength(&particles)) { return; }
 
                 var p = particles[i];
+
+                // Interaction Force
+                if (uniforms.mouseActive > 0.5) {
+                    let toP = p.pos - uniforms.rayOrigin;
+                    let projection = dot(toP, uniforms.rayDir);
+                    let closestPoint = uniforms.rayOrigin + uniforms.rayDir * projection;
+                    let dist = distance(p.pos, closestPoint);
+
+                    if (dist < 0.4) {
+                        let dir = normalize(p.pos - closestPoint);
+                        let force = (0.4 - dist) * 10.0;
+                        p.vel += dir * force * uniforms.dt;
+                    }
+                }
 
                 // Gravity
                 p.vel.y -= 9.8 * uniforms.dt;
@@ -429,11 +459,45 @@ class FluidSimulationExperiment {
 
         // --- Render WebGPU ---
         if (this.device && this.context) {
+            // Calculate Ray
+            const tanHalfFov = Math.tan(30 * Math.PI / 180);
+            const dx = this.mouse.x * aspect * tanHalfFov;
+            const dy = this.mouse.y * tanHalfFov;
+
+            // Ray Dir = dx * right + dy * up - forward (where forward is -zAxis)
+            // right = xAxis, up = yAxis
+            let rayDir = [
+                xAxis[0] * dx + yAxis[0] * dy - zAxis[0],
+                xAxis[1] * dx + yAxis[1] * dy - zAxis[1],
+                xAxis[2] * dx + yAxis[2] * dy - zAxis[2]
+            ];
+
+            // Normalize
+            const rLen = Math.sqrt(rayDir[0]*rayDir[0] + rayDir[1]*rayDir[1] + rayDir[2]*rayDir[2]);
+            if (rLen > 0) {
+                rayDir = [rayDir[0]/rLen, rayDir[1]/rLen, rayDir[2]/rLen];
+            }
+
             // Update Uniforms
-            const uniformData = new Float32Array(20);
+            // Size 144 bytes = 36 floats
+            const uniformData = new Float32Array(36);
             uniformData.set(mvp, 0);
             uniformData[16] = 0.016; // dt
             uniformData[17] = time;
+
+            // Ray Origin (cx, cy, cz) - Starts at byte 80 (float index 20) for 16-byte alignment
+            uniformData[20] = cx;
+            uniformData[21] = cy;
+            uniformData[22] = cz;
+            // pad1 at 23
+
+            // Ray Dir - Starts at byte 96 (float index 24)
+            uniformData[24] = rayDir[0];
+            uniformData[25] = rayDir[1];
+            uniformData[26] = rayDir[2];
+            // pad2 at 27
+
+            uniformData[28] = this.mouse.active;
 
             this.device.queue.writeBuffer(this.uniformBuffer, 0, uniformData);
 
