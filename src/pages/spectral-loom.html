@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spectral Loom Experiment</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+        .back-link {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-family: sans-serif;
+            padding: 8px 16px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <a href="experiments.html" class="back-link">← Back to Experiments</a>
+
+    <div id="canvas-container"></div>
+
+    <div class="controls">
+        <h3>Spectral Loom</h3>
+        <p>WebGL2 Warp Threads + WebGPU Weft Particles</p>
+    </div>
+
+    <script type="module">
+        import { SpectralLoomExperiment } from '../js/spectral-loom.js';
+
+        const container = document.getElementById('canvas-container');
+        const experiment = new SpectralLoomExperiment(container, {
+            threadCount: 200
+        });
+    </script>
+</body>
+</html>
