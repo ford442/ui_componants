@@ -24,7 +24,9 @@ export class NeonCityExperiment {
         this.glVao = null;
         this.instanceCount = 2000;
         this.buildingDataArray = null; // CPU copy for raycasting
+        this.buildingStateArray = null; // 0=Normal, 1=Hacked
         this.buildingBuffer = null; // Buffer for building properties (pos, size)
+        this.stateBuffer = null; // Buffer for hacking state
         this.hoveredInstance = -1;
         this.pulseStartTime = -100.0; // Initialize far in past
 
@@ -91,6 +93,20 @@ export class NeonCityExperiment {
         });
 
         this.container.addEventListener('click', () => {
+            if (this.hoveredInstance !== -1 && this.buildingStateArray) {
+                // Hack the building
+                this.buildingStateArray[this.hoveredInstance] = 1.0;
+                if (this.gl && this.stateBuffer) {
+                    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.stateBuffer);
+                    // Update just this float
+                    this.gl.bufferSubData(
+                        this.gl.ARRAY_BUFFER,
+                        this.hoveredInstance * 4, // 4 bytes per float
+                        new Float32Array([1.0])
+                    );
+                }
+                console.log(`Hacked building: ${this.hoveredInstance}`);
+            }
             this.triggerPulse();
         });
 
@@ -155,7 +171,9 @@ export class NeonCityExperiment {
         // We pack this into attributes.
         // Let's keep it simple: Position X, Z, Scale Y (height), Random Seed
         const instanceData = new Float32Array(this.instanceCount * 4);
+        const stateData = new Float32Array(this.instanceCount); // 0 or 1
         this.buildingDataArray = instanceData; // Store reference for Raycasting
+        this.buildingStateArray = stateData;
         const range = 200;
 
         for (let i = 0; i < this.instanceCount; i++) {
@@ -168,6 +186,8 @@ export class NeonCityExperiment {
             instanceData[i * 4 + 1] = z;
             instanceData[i * 4 + 2] = h;
             instanceData[i * 4 + 3] = seed;
+
+            stateData[i] = 0.0;
         }
 
         // Cube Vertices (Unit Cube)
@@ -217,6 +237,7 @@ export class NeonCityExperiment {
         const vs = `#version 300 es
         layout(location=0) in vec3 a_position;
         layout(location=1) in vec4 a_instanceData; // x, z, height, seed
+        layout(location=2) in float a_state;       // 0=Normal, 1=Hacked
 
         uniform mat4 u_projection;
         uniform mat4 u_view;
@@ -228,6 +249,7 @@ export class NeonCityExperiment {
         out vec3 v_color;
         out float v_dist;
         out vec3 v_worldPos;
+        out float v_state;
 
         // Pseudo-random function
         float random(vec2 st) {
@@ -274,6 +296,12 @@ export class NeonCityExperiment {
                 }
             }
 
+            // Persistent Glitch if Hacked
+            if (a_state > 0.5) {
+                float glitch = sin(worldPos.y * 10.0 + u_time * 20.0);
+                worldPos.x += glitch * 0.2;
+            }
+
             gl_Position = u_projection * u_view * vec4(worldPos, 1.0);
 
             // Color based on height and randomness
@@ -300,6 +328,7 @@ export class NeonCityExperiment {
             v_color = buildingColor;
             v_dist = length(worldPos.xz);
             v_worldPos = worldPos;
+            v_state = a_state;
         }
         `;
 
@@ -309,6 +338,7 @@ export class NeonCityExperiment {
         in vec3 v_color;
         in float v_dist;
         in vec3 v_worldPos;
+        in float v_state;
 
         uniform float u_pulseTime; // Time since pulse start
 
@@ -330,6 +360,16 @@ export class NeonCityExperiment {
 
             vec3 pulseColor = vec3(0.0, 1.0, 1.0); // Cyan Pulse
             color += pulseColor * pulse;
+
+            // Hacked Effect (Matrix Green)
+            if (v_state > 0.5) {
+                vec3 matrixColor = vec3(0.0, 1.0, 0.2);
+                // Scanline effect
+                float lines = step(0.8, fract(v_worldPos.y * 5.0));
+                matrixColor *= lines + 0.2;
+
+                color = mix(color, matrixColor, 0.8);
+            }
 
             // Fog
             float fogFactor = smoothstep(10.0, 120.0, v_dist); // Extended fog slightly
@@ -354,13 +394,21 @@ export class NeonCityExperiment {
         this.gl.enableVertexAttribArray(0);
         this.gl.vertexAttribPointer(0, 3, this.gl.FLOAT, false, 0, 0);
 
-        // Instance Buffer
+        // Instance Buffer (Data)
         const instBuffer = this.gl.createBuffer();
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, instBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, instanceData, this.gl.STATIC_DRAW);
         this.gl.enableVertexAttribArray(1);
         this.gl.vertexAttribPointer(1, 4, this.gl.FLOAT, false, 0, 0);
         this.gl.vertexAttribDivisor(1, 1); // Important: Per instance
+
+        // State Buffer (Hacked Status)
+        this.stateBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.stateBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, stateData, this.gl.DYNAMIC_DRAW);
+        this.gl.enableVertexAttribArray(2);
+        this.gl.vertexAttribPointer(2, 1, this.gl.FLOAT, false, 0, 0);
+        this.gl.vertexAttribDivisor(2, 1); // Per instance
 
         // Index Buffer
         const idxBuffer = this.gl.createBuffer();
