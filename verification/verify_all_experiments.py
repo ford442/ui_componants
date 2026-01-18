@@ -40,6 +40,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Spectral Loom container NOT found.")
 
+            # Check for Energy Vortex container
+            if page.locator("#energy-vortex-container").count() > 0:
+                print("SUCCESS: Energy Vortex container found.")
+            else:
+                print("FAILURE: Energy Vortex container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:

@@ -47,6 +47,7 @@ export default defineConfig({
         temporal_fissure: resolve(__dirname, 'src/pages/temporal-fissure.html'),
         neural_lace: resolve(__dirname, 'src/pages/neural-lace.html'),
         spectral_loom: resolve(__dirname, 'src/pages/spectral-loom.html'),
+        energy_vortex: resolve(__dirname, 'src/pages/energy-vortex.html'),
       },
     },
   },
