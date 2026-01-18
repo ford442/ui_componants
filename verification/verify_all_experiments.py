@@ -40,6 +40,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Spectral Loom container NOT found.")
 
+            # Check for Chaos Attractor container
+            if page.locator("#chaos-attractor-container").count() > 0:
+                print("SUCCESS: Chaos Attractor container found.")
+            else:
+                print("FAILURE: Chaos Attractor container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
