@@ -48,6 +48,7 @@ export default defineConfig({
         neural_lace: resolve(__dirname, 'src/pages/neural-lace.html'),
         spectral_loom: resolve(__dirname, 'src/pages/spectral-loom.html'),
         chaos_attractor: resolve(__dirname, 'src/pages/chaos-attractor.html'),
+        energy_vortex: resolve(__dirname, 'src/pages/energy-vortex.html'),
       },
     },
   },
