@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaos Attractor - UI Experiments</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        #chaos-attractor-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+            pointer-events: auto;
+        }
+        .controls h2 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.2rem;
+            color: #ffaa55;
+        }
+        .controls p {
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-bottom: 1rem;
+        }
+        .control-group {
+            margin-bottom: 0.8rem;
+        }
+        .control-group label {
+            display: block;
+            font-size: 0.8rem;
+            margin-bottom: 0.3rem;
+        }
+        .back-link {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+        .back-link:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .webgpu-error {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(90deg, rgba(200, 50, 50, 0.8), rgba(100, 20, 20, 0.9));
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: monospace;
+            z-index: 100;
+            pointer-events: none;
+            border: 1px solid rgba(255,100,100,0.5);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <a href="experiments.html" class="back-link">← Back to Dashboard</a>
+
+    <div class="controls">
+        <h2>Chaos Attractor</h2>
+        <p>Lorenz System (WebGPU Compute)</p>
+        <div class="control-group">
+            <label>Drag to Rotate View</label>
+        </div>
+        <div class="control-group">
+            <label>Scroll to Zoom</label>
+        </div>
+        <div id="stats" style="font-size: 0.8rem; color: #888;"></div>
+    </div>
+
+    <div id="chaos-attractor-container"></div>
+
+    <script type="module">
+        import { ChaosAttractor } from '../js/chaos-attractor.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('chaos-attractor-container');
+            const attractor = new ChaosAttractor(container, { particleCount: 1000000 });
+
+            // Clean up on page unload (though regular navigation handles this via destroy())
+            window.addEventListener('beforeunload', () => {
+                attractor.destroy();
+            });
+        });
+    </script>
+</body>
+</html>
