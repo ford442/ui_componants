@@ -49,6 +49,7 @@ export default defineConfig({
         spectral_loom: resolve(__dirname, 'src/pages/spectral-loom.html'),
         chaos_attractor: resolve(__dirname, 'src/pages/chaos-attractor.html'),
         energy_vortex: resolve(__dirname, 'src/pages/energy-vortex.html'),
+        subatomic_collider: resolve(__dirname, 'src/pages/subatomic-collider.html'),
       },
     },
   },
