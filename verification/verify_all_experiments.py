@@ -51,6 +51,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Energy Vortex container NOT found.")
 
+            # Check for Subatomic Collider container
+            if page.locator("#subatomic-collider-container").count() > 0:
+                print("SUCCESS: Subatomic Collider container found.")
+            else:
+                print("FAILURE: Subatomic Collider container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:

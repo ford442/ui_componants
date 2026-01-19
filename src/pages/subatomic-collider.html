@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subatomic Collider - WebGL2 + WebGPU</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        .canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        .controls-overlay {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .controls-overlay h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #ff8844, #ffcc00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .controls-overlay p {
+            color: #ffccaa;
+            margin-bottom: 1.5rem;
+        }
+        .back-link {
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container" class="canvas-container"></div>
+
+    <div class="controls-overlay">
+        <h1>Subatomic Collider</h1>
+        <p>WebGL2 (Detector Tunnel) + WebGPU (Particle Physics)</p>
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+    </div>
+
+    <!-- Global scripts -->
+    <script type="module" src="../js/main.js"></script>
+
+    <!-- Experiment script -->
+    <script type="module" src="../js/subatomic-collider.js"></script>
+
+    <script type="module">
+        import { SubatomicColliderExperiment } from '../js/subatomic-collider.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('canvas-container');
+            // Use window.SubatomicColliderExperiment if imported globally, or the module export
+            const ExperimentClass = window.SubatomicColliderExperiment || SubatomicColliderExperiment;
+
+            const experiment = new ExperimentClass(container, {
+                numParticles: 100000
+            });
+
+            // Cleanup on page leave
+            window.addEventListener('beforeunload', () => {
+                experiment.destroy();
+            });
+        });
+    </script>
+</body>
+</html>
