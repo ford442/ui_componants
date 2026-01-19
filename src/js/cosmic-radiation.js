@@ -25,10 +25,12 @@ export class CosmicRadiation {
 
     this.isPlaying = true;
     this.time = 0;
+    this.mouse = { x: 0, y: 0 };
 
     // Bind methods
     this.resize = this.resize.bind(this);
     this.render = this.render.bind(this);
+    this.handleMouseMove = this.handleMouseMove.bind(this);
 
     this.init();
   }
@@ -38,8 +40,21 @@ export class CosmicRadiation {
     await this.initWebGPU();
 
     window.addEventListener('resize', this.resize);
+    this.container.addEventListener('mousemove', this.handleMouseMove);
+    this.container.addEventListener('touchmove', this.handleMouseMove);
+
     this.resize();
     requestAnimationFrame(this.render);
+  }
+
+  handleMouseMove(e) {
+    const rect = this.container.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+    // Normalize to -1 to 1
+    this.mouse.x = (x / rect.width) * 2 - 1;
+    this.mouse.y = -((y / rect.height) * 2 - 1); // Flip Y for WebGL/WebGPU coords
   }
 
   initWebGL() {
@@ -58,19 +73,28 @@ export class CosmicRadiation {
     in vec3 a_position;
     uniform float u_time;
     uniform vec2 u_resolution;
+    uniform vec2 u_mouse;
+
     void main() {
-      // Simple rotation
-      float c = cos(u_time * 0.5);
-      float s = sin(u_time * 0.5);
+      // Simple rotation + Mouse influence
+      float timeSpeed = u_time * 0.5;
+      float rotX_val = timeSpeed + u_mouse.y * 2.0;
+      float rotY_val = timeSpeed + u_mouse.x * 2.0;
+
+      float cY = cos(rotY_val);
+      float sY = sin(rotY_val);
       mat3 rotY = mat3(
-        c, 0, s,
+        cY, 0, sY,
         0, 1, 0,
-        -s, 0, c
+        -sY, 0, cY
       );
+
+      float cX = cos(rotX_val);
+      float sX = sin(rotX_val);
       mat3 rotX = mat3(
         1, 0, 0,
-        0, c, -s,
-        0, s, c
+        0, cX, -sX,
+        0, sX, cX
       );
 
       vec3 pos = rotY * rotX * a_position;
@@ -95,6 +119,7 @@ export class CosmicRadiation {
     this.positionLoc = gl.getAttribLocation(this.program, 'a_position');
     this.timeLoc = gl.getUniformLocation(this.program, 'u_time');
     this.resLoc = gl.getUniformLocation(this.program, 'u_resolution');
+    this.mouseLoc = gl.getUniformLocation(this.program, 'u_mouse');
 
     // Create Sphere Data
     const positions = [];
@@ -197,7 +222,7 @@ export class CosmicRadiation {
 
     // Simulation Parameters Uniform
     this.simParamsBuffer = this.device.createBuffer({
-        size: 16, // time(f32), padding(3*f32) to align to 16 bytes
+        size: 16, // time(f32), padding(f32), mouseX(f32), mouseY(f32)
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
@@ -212,6 +237,7 @@ export class CosmicRadiation {
 
       struct SimParams {
         time : f32,
+        mouse : vec2f,
       }
       @group(0) @binding(1) var<uniform> params : SimParams;
 
@@ -231,7 +257,16 @@ export class CosmicRadiation {
         // Swirling force
         let tangent = vec2f(-dir.y, dir.x);
 
-        let force = dir * (0.0001 / (dist + 0.1)) + tangent * 0.0005;
+        // Base force
+        var force = dir * (0.0001 / (dist + 0.1)) + tangent * 0.0005;
+
+        // Mouse interaction (Repel)
+        let mouseDiff = params.mouse - p.pos;
+        let mouseDist = length(mouseDiff);
+        if (mouseDist < 0.4) {
+            let repelDir = normalize(mouseDiff);
+            force -= repelDir * (0.002 / (mouseDist + 0.1));
+        }
 
         p.vel += force;
         p.pos += p.vel;
@@ -350,6 +385,7 @@ export class CosmicRadiation {
         gl.useProgram(this.program);
         gl.uniform1f(this.timeLoc, this.time);
         gl.uniform2f(this.resLoc, this.canvasGL.width, this.canvasGL.height);
+        gl.uniform2f(this.mouseLoc, this.mouse.x, this.mouse.y);
 
         gl.bindVertexArray(this.vao);
         gl.drawArrays(gl.LINE_STRIP, 0, this.vertexCount);
@@ -358,8 +394,12 @@ export class CosmicRadiation {
     // --- WebGPU Render ---
     if (this.device && this.contextGPU) {
         // Update uniforms
-        const simParams = new Float32Array([this.time]); // only need 1 float, padded automatically by writeBuffer? No, need to be careful.
-        // Buffer is size 16. We write 4 bytes.
+        const simParams = new Float32Array([
+            this.time,
+            0.0, // padding for WGSL alignment (vec2f must be 8-byte aligned)
+            this.mouse.x,
+            this.mouse.y
+        ]);
         this.device.queue.writeBuffer(this.simParamsBuffer, 0, simParams);
 
         const commandEncoder = this.device.createCommandEncoder();
