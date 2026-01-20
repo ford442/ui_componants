@@ -38,7 +38,7 @@ class PatternTests {
             horizontal: null
         };
 
-        this.capStyle = 0; // 0: Default, 1: Clear, 2: Frosted
+        this.capStyle = 0; // 0: Default, 1: Clear, 2: Frosted, 3: Full Clear, 4: Full Frosted
 
         this.init();
     }
@@ -48,8 +48,8 @@ class PatternTests {
         const btn = document.getElementById('btn-cap-style');
         if (btn) {
             btn.addEventListener('click', () => {
-                this.capStyle = (this.capStyle + 1) % 3;
-                const labels = ['Default', 'Clear', 'Frosted'];
+                this.capStyle = (this.capStyle + 1) % 5;
+                const labels = ['Default', 'Clear', 'Frosted', 'Full Clear', 'Full Frosted'];
                 btn.textContent = `Cap Style: ${labels[this.capStyle]}`;
             });
         }
@@ -530,6 +530,59 @@ class PatternTests {
                 return vec4<f32>(col, alpha);
             }
 
+            fn drawFullCap(
+                uv: vec2<f32>,
+                dimFactor: f32,
+                isFrosted: bool,
+                colData: vec3<f32>,
+                colNote: vec3<f32>,
+                colEff: vec3<f32>
+            ) -> vec4<f32> {
+                let center = vec2<f32>(0.5, 0.5);
+                // Cap Shape: Large rounded box filling most of the segment (UV space)
+                let capSize = vec2<f32>(0.47, 0.47);
+                let dCap = sdRoundedBox(uv - center, capSize, 0.06);
+
+                let aa = fwidth(dCap) * 0.5;
+                let mask = 1.0 - smoothstep(-aa, aa, dCap);
+                if (mask < 0.01) { return vec4<f32>(0.0); }
+
+                // Light Positions (In UV space)
+                let pData = vec2<f32>(0.5, 0.2);
+                let pNote = vec2<f32>(0.5, 0.5);
+                let pEff  = vec2<f32>(0.5, 0.8);
+
+                // Distances & Glow
+                let distData = length(uv - pData);
+                let distNote = length(uv - pNote);
+                let distEff  = length(uv - pEff);
+
+                let falloff = select(8.0, 3.5, isFrosted);
+                let glowData = exp(-distData * falloff);
+                let glowNote = exp(-distNote * falloff);
+                let glowEff  = exp(-distEff * falloff);
+
+                var internalLight = vec3<f32>(0.0);
+                internalLight += colData * glowData;
+                internalLight += colNote * glowNote;
+                internalLight += colEff  * glowEff;
+
+                // Base Material
+                let baseMat = select(vec3<f32>(0.05), vec3<f32>(0.2), isFrosted);
+                var finalCol = baseMat * dimFactor;
+
+                // Transmitted Light
+                let transmission = select(0.8, 0.5, isFrosted);
+                finalCol += internalLight * transmission;
+
+                // Specular / Surface
+                let rim = smoothstep(0.35, 0.6, length(uv - center));
+                let specStrength = select(0.8, 0.3, isFrosted);
+                finalCol += vec3<f32>(0.5) * rim * specStrength * dimFactor;
+
+                return vec4<f32>(finalCol, mask);
+            }
+
             // --- MAIN FRAGMENT SHADER ---
 
             @fragment
@@ -605,9 +658,7 @@ class PatternTests {
                 let ch = channels[in.channel];
                 let isMuted = (ch.isMuted == 1u);
 
-                // COMPONENT 1: DATA LIGHT
-                let topUV = btnUV - vec2(0.5, 0.16);
-                let topSize = vec2(0.20, 0.20);
+                // --- Common Light Calculation ---
                 let isDataPresent = hasExpression && !isMuted;
                 let topColorBase = vec3(0.0, 0.9, 1.0);
                 let topColor = topColorBase * select(0.0, 1.5 + bloom, isDataPresent);
@@ -621,20 +672,20 @@ class PatternTests {
                 var noteColor = vec3(0.2);
                 var lightAmount = 0.0;
 
+                var noteColorVal = vec3<f32>(0.2);
+                var noteIntensity = 0.0;
                 if (hasNote) {
                   let pitchHue = pitchClassFromPacked(in.packedA);
                   let baseColor = neonPalette(pitchHue);
                   let instBand = inst & 15u;
                   let instBright = 0.8 + (select(0.0, f32(instBand) / 15.0, instBand > 0u)) * 0.2;
-                  noteColor = baseColor * instBright;
+                  let colorBase = baseColor * instBright;
 
                   let linger = exp(-ch.noteAge * 1.5);
-
-                  // BLIP LOGIC: Instant strike when playhead hits
                   let onPlayhead = (in.row == uniforms.playheadRow);
                   let strike = select(0.0, 4.0 * exp(-uniforms.tickOffset * 10.0), onPlayhead);
-
                   let flash = f32(ch.trigger) * 1.0;
+
                   var d = f32(in.row) + uniforms.tickOffset - f32(uniforms.playheadRow);
                   let totalSteps = 64.0;
                   if (d > totalSteps * 0.5) { d = d - totalSteps; }
@@ -644,26 +695,41 @@ class PatternTests {
                   let trail = exp(-10.0 * max(0.0, -d));
                   let activeVal = clamp(pow(energy, 1.5) + trail, 0.0, 1.0);
 
-                  lightAmount = (activeVal * 0.8 + flash + strike + (linger * 2.0)) * clamp(ch.volume, 0.0, 1.2);
-                  if (isMuted) { lightAmount *= 0.2; }
+                  noteIntensity = (activeVal * 0.8 + flash + strike + (linger * 2.0)) * clamp(ch.volume, 0.0, 1.2);
+                  if (isMuted) { noteIntensity *= 0.2; }
+                  noteColorVal = colorBase;
                 }
-                let displayColor = noteColor * max(lightAmount, 0.1) * (1.0 + bloom * 6.0);
-                let isLit = (lightAmount > 0.05);
-                let mainPad = drawChromeIndicator(mainUV, mainSize, displayColor, isLit, aa, dimFactor, uniforms.capStyle);
-                finalColor = mix(finalColor, mainPad.rgb, mainPad.a);
+                let noteDisplayColor = noteColorVal * max(noteIntensity, 0.1) * (1.0 + bloom * 6.0);
+                let isNoteLit = (noteIntensity > 0.05);
 
-                // COMPONENT 3: EFFECT LIGHT
-                let botUV = btnUV - vec2(0.5, 0.85);
-                let botSize = vec2(0.25, 0.12);
-                var effColor = vec3(0.0);
+                var effColorVal = vec3<f32>(0.0);
                 var isEffOn = false;
                 if (effCode > 0u) {
-                  effColor = effectColorFromCode(effCode, vec3(0.9, 0.8, 0.2));
+                  effColorVal = effectColorFromCode(effCode, vec3<f32>(0.9, 0.8, 0.2));
                   let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
-                  if (!isMuted) { effColor *= strength * (1.0 + bloom * 2.5); isEffOn = true; }
+                  if (!isMuted) { effColorVal *= strength * (1.0 + bloom * 2.5); isEffOn = true; }
                 }
-                let botLed = drawChromeIndicator(botUV, botSize, effColor, isEffOn, aa, dimFactor, uniforms.capStyle);
-                finalColor = mix(finalColor, botLed.rgb, botLed.a);
+
+                if (uniforms.capStyle >= 3u) {
+                    let cap = drawFullCap(btnUV, dimFactor, (uniforms.capStyle == 4u), dataColorVal, noteDisplayColor, effColorVal);
+                    finalColor = mix(finalColor, cap.rgb, cap.a);
+                } else {
+                    let topUV = btnUV - vec2(0.5, 0.16);
+                    let topSize = vec2(0.20, 0.20);
+                    let topLed = drawChromeIndicator(topUV, topSize, dataColorVal, isDataPresent, aa, dimFactor, uniforms.capStyle);
+                    finalColor = mix(finalColor, topLed.rgb, topLed.a);
+                    if (isDataPresent) { finalColor += dataColorVal * topLed.a * 0.3; }
+
+                    let mainUV = btnUV - vec2(0.5, 0.5);
+                    let mainSize = vec2(0.55, 0.45);
+                    let mainPad = drawChromeIndicator(mainUV, mainSize, noteDisplayColor, isNoteLit, aa, dimFactor, uniforms.capStyle);
+                    finalColor = mix(finalColor, mainPad.rgb, mainPad.a);
+
+                    let botUV = btnUV - vec2(0.5, 0.85);
+                    let botSize = vec2(0.25, 0.12);
+                    let botLed = drawChromeIndicator(botUV, botSize, effColorVal, isEffOn, aa, dimFactor, uniforms.capStyle);
+                    finalColor = mix(finalColor, botLed.rgb, botLed.a);
+                }
               }
 
               if (housingMask < 0.5) { return vec4(fs.borderColor, 0.0); }
@@ -818,6 +884,59 @@ class PatternTests {
                 return c;
             }
 
+            fn drawFullCap(
+                uv: vec2<f32>,
+                dimFactor: f32,
+                isFrosted: bool,
+                colData: vec3<f32>,
+                colNote: vec3<f32>,
+                colEff: vec3<f32>
+            ) -> vec4<f32> {
+                let center = vec2<f32>(0.5, 0.5);
+                // Cap Shape: Large rounded box filling most of the segment (UV space)
+                let capSize = vec2<f32>(0.47, 0.47);
+                let dCap = sdRoundedBox(uv - center, capSize, 0.06);
+
+                let aa = fwidth(dCap) * 0.5;
+                let mask = 1.0 - smoothstep(-aa, aa, dCap);
+                if (mask < 0.01) { return vec4<f32>(0.0); }
+
+                // Light Positions (In UV space)
+                let pData = vec2<f32>(0.5, 0.2);
+                let pNote = vec2<f32>(0.5, 0.5);
+                let pEff  = vec2<f32>(0.5, 0.8);
+
+                // Distances & Glow
+                let distData = length(uv - pData);
+                let distNote = length(uv - pNote);
+                let distEff  = length(uv - pEff);
+
+                let falloff = select(8.0, 3.5, isFrosted);
+                let glowData = exp(-distData * falloff);
+                let glowNote = exp(-distNote * falloff);
+                let glowEff  = exp(-distEff * falloff);
+
+                var internalLight = vec3<f32>(0.0);
+                internalLight += colData * glowData;
+                internalLight += colNote * glowNote;
+                internalLight += colEff  * glowEff;
+
+                // Base Material
+                let baseMat = select(vec3<f32>(0.05), vec3<f32>(0.2), isFrosted);
+                var finalCol = baseMat * dimFactor;
+
+                // Transmitted Light
+                let transmission = select(0.8, 0.5, isFrosted);
+                finalCol += internalLight * transmission;
+
+                // Specular / Surface
+                let rim = smoothstep(0.35, 0.6, length(uv - center));
+                let specStrength = select(0.8, 0.3, isFrosted);
+                finalCol += vec3<f32>(0.5) * rim * specStrength * dimFactor;
+
+                return vec4<f32>(finalCol, mask);
+            }
+
             @fragment
             fn fs(in: VertexOut) -> @location(0) vec4<f32> {
               let fs = getFragmentConstants();
@@ -875,48 +994,89 @@ class PatternTests {
               let ch = channels[in.channel];
 
               if (inButton > 0.5) {
-                  let x = btnUV.x;
-                  let y = btnUV.y;
-                  let indicatorXMask = smoothstep(0.4, 0.41, x) - smoothstep(0.6, 0.61, x);
-                  let topLightMask   = (smoothstep(0.05, 0.06, y) - smoothstep(0.15, 0.16, y)) * indicatorXMask;
-                  let mainButtonYMask  = smoothstep(0.23, 0.24, y) - smoothstep(0.80, 0.81, y);
-                  let mainButtonXMask = smoothstep(0.13, 0.14, x) - smoothstep(0.86, 0.87, x);
-                  let mainButtonMask = mainButtonYMask * mainButtonXMask;
-                  let bottomLightMask = (smoothstep(0.90, 0.91, y) - smoothstep(0.95, 0.96, y)) * indicatorXMask;
-
                   if (ch.isMuted == 1u) {
                       finalColor *= 0.3;
                   }
 
+                  // --- Prepare Color Values for Full Cap Mode ---
+                  var colData = vec3<f32>(0.0);
                   if (step(0.1, exp(-ch.noteAge * 2.0)) > 0.5) {
-                      let topGlow = vec3<f32>(0.0, 0.9, 1.0);
-                      finalColor += topGlow * topLightMask * 1.5;
+                       colData = vec3<f32>(0.0, 0.9, 1.0) * 1.5;
                   }
 
+                  var colNote = vec3<f32>(0.0);
                   if (hasNote) {
                       let pitchHue = pitchClassFromPacked(in.packedA);
                       let base_note_color = neonPalette(pitchHue);
                       let instBand = inst & 15u;
                       let instBrightness = 0.8 + (select(0.0, f32(instBand) / 15.0, instBand > 0u)) * 0.2;
-                      var noteColor = base_note_color * instBrightness;
+                      let noteColor = base_note_color * instBrightness;
                       let flash = f32(ch.trigger) * 0.8;
                       let activeLevel = exp(-ch.noteAge * 3.0);
                       let lightAmount = (activeLevel * 0.8 + flash) * clamp(ch.volume, 0.0, 1.2);
-                      finalColor += noteColor * mainButtonMask * lightAmount * 2.0;
-                      let subsurface = noteColor * housingMask * lightAmount * 0.15;
-                      finalColor += subsurface;
+                      colNote = noteColor * lightAmount * 2.0;
+                  } else {
+                      let rowDist = abs(i32(in.row) - i32(uniforms.playheadRow));
+                      if (rowDist == 0) {
+                          colNote = vec3<f32>(0.15, 0.2, 0.25) * 0.5; // Dimmer on cursor
+                      }
                   }
 
+                  var colEff = vec3<f32>(0.0);
                   if (hasEffect) {
                       let effectColor = effectColorFromCode(effCode, vec3<f32>(0.9, 0.8, 0.2));
                       let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
-                      finalColor += effectColor * bottomLightMask * strength * 2.5;
-                      finalColor += effectColor * housingMask * strength * 0.05;
+                      colEff = effectColor * strength * 2.5;
                   }
 
-                  let rowDist = abs(i32(in.row) - i32(uniforms.playheadRow));
-                  if (rowDist == 0 && !hasNote) {
-                      finalColor += vec3<f32>(0.15, 0.2, 0.25) * mainButtonMask;
+                  if (uniforms.capStyle >= 3u) {
+                       // Full Cap Mode
+                       let isPlaying = (uniforms.isPlaying == 1u);
+                       let dimFactor = select(1.0, 0.35, isPlaying);
+                       let cap = drawFullCap(btnUV, dimFactor, (uniforms.capStyle == 4u), colData, colNote, colEff);
+                       finalColor = mix(finalColor, cap.rgb, cap.a);
+                  } else {
+                      // Standard Flat Mode
+                      let x = btnUV.x;
+                      let y = btnUV.y;
+                      let indicatorXMask = smoothstep(0.4, 0.41, x) - smoothstep(0.6, 0.61, x);
+                      let topLightMask   = (smoothstep(0.05, 0.06, y) - smoothstep(0.15, 0.16, y)) * indicatorXMask;
+                      let mainButtonYMask  = smoothstep(0.23, 0.24, y) - smoothstep(0.80, 0.81, y);
+                      let mainButtonXMask = smoothstep(0.13, 0.14, x) - smoothstep(0.86, 0.87, x);
+                      let mainButtonMask = mainButtonYMask * mainButtonXMask;
+                      let bottomLightMask = (smoothstep(0.90, 0.91, y) - smoothstep(0.95, 0.96, y)) * indicatorXMask;
+
+                      if (step(0.1, exp(-ch.noteAge * 2.0)) > 0.5) {
+                          let topGlow = vec3<f32>(0.0, 0.9, 1.0);
+                          finalColor += topGlow * topLightMask * 1.5;
+                      }
+
+                      if (hasNote) {
+                          let pitchHue = pitchClassFromPacked(in.packedA);
+                          let base_note_color = neonPalette(pitchHue);
+                          let instBand = inst & 15u;
+                          let instBrightness = 0.8 + (select(0.0, f32(instBand) / 15.0, instBand > 0u)) * 0.2;
+                          let noteColor = base_note_color * instBrightness;
+                          let flash = f32(ch.trigger) * 0.8;
+                          let activeLevel = exp(-ch.noteAge * 3.0);
+                          let lightAmount = (activeLevel * 0.8 + flash) * clamp(ch.volume, 0.0, 1.2);
+
+                          finalColor += noteColor * mainButtonMask * lightAmount * 2.0;
+                          let subsurface = noteColor * housingMask * lightAmount * 0.15;
+                          finalColor += subsurface;
+                      }
+
+                      if (hasEffect) {
+                          let effectColor = effectColorFromCode(effCode, vec3<f32>(0.9, 0.8, 0.2));
+                          let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
+                          finalColor += effectColor * bottomLightMask * strength * 2.5;
+                          finalColor += effectColor * housingMask * strength * 0.05;
+                      }
+
+                      let rowDist = abs(i32(in.row) - i32(uniforms.playheadRow));
+                      if (rowDist == 0 && !hasNote) {
+                          finalColor += vec3<f32>(0.15, 0.2, 0.25) * mainButtonMask;
+                      }
                   }
               }
 
