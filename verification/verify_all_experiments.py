@@ -62,6 +62,11 @@ def verify_all_experiments():
                 print("SUCCESS: Dark Energy Prism container found.")
             else:
                 print("FAILURE: Dark Energy Prism container NOT found.")
+            # Check for Dyson Swarm container
+            if page.locator("#dyson-swarm-container").count() > 0:
+                print("SUCCESS: Dyson Swarm container found.")
+            else:
+                print("FAILURE: Dyson Swarm container NOT found.")
 
             print("Verification finished.")
 
