@@ -660,8 +660,17 @@ class PatternTests {
 
                 // --- Common Light Calculation ---
                 let isDataPresent = hasExpression && !isMuted;
-                let topColorBase = vec3<f32>(0.0, 0.9, 1.0);
-                let dataColorVal = topColorBase * select(0.0, 1.5 + bloom, isDataPresent);
+                let topColorBase = vec3(0.0, 0.9, 1.0);
+                let topColor = topColorBase * select(0.0, 1.5 + bloom, isDataPresent);
+                let topLed = drawChromeIndicator(topUV, topSize, topColor, isDataPresent, aa, dimFactor, uniforms.capStyle);
+                finalColor = mix(finalColor, topLed.rgb, topLed.a);
+                if (isDataPresent) { finalColor += topColor * topLed.a * 0.3; }
+
+                // COMPONENT 2: MAIN NOTE LIGHT
+                let mainUV = btnUV - vec2(0.5, 0.5);
+                let mainSize = vec2(0.55, 0.45);
+                var noteColor = vec3(0.2);
+                var lightAmount = 0.0;
 
                 var noteColorVal = vec3<f32>(0.2);
                 var noteIntensity = 0.0;
