@@ -57,6 +57,11 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Subatomic Collider container NOT found.")
 
+            # Check for Dark Energy Prism container
+            if page.locator("#dark-energy-prism-container").count() > 0:
+                print("SUCCESS: Dark Energy Prism container found.")
+            else:
+                print("FAILURE: Dark Energy Prism container NOT found.")
             # Check for Dyson Swarm container
             if page.locator("#dyson-swarm-container").count() > 0:
                 print("SUCCESS: Dyson Swarm container found.")
