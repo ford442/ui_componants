@@ -57,6 +57,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Subatomic Collider container NOT found.")
 
+            # Check for Dyson Swarm container
+            if page.locator("#dyson-swarm-container").count() > 0:
+                print("SUCCESS: Dyson Swarm container found.")
+            else:
+                print("FAILURE: Dyson Swarm container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
