@@ -38,10 +38,22 @@ class PatternTests {
             horizontal: null
         };
 
+        this.capStyle = 0; // 0: Default, 1: Clear, 2: Frosted
+
         this.init();
     }
 
     async init() {
+        // UI Bindings
+        const btn = document.getElementById('btn-cap-style');
+        if (btn) {
+            btn.addEventListener('click', () => {
+                this.capStyle = (this.capStyle + 1) % 3;
+                const labels = ['Default', 'Clear', 'Frosted'];
+                btn.textContent = `Cap Style: ${labels[this.capStyle]}`;
+            });
+        }
+
         if (!navigator.gpu) {
             document.getElementById('webgpu-error').style.display = 'block';
             return;
@@ -288,6 +300,7 @@ class PatternTests {
               bloomIntensity: f32,
               bloomThreshold: f32,
               invertChannels: u32,    // 0 = Outer Low, 1 = Inner Low
+              capStyle: u32,
             };
 
             @group(0) @binding(0) var<storage, read> cells: array<u32>;
@@ -457,7 +470,8 @@ class PatternTests {
                 color: vec3<f32>,
                 isOn: bool,
                 aa: f32,
-                dimFactor: f32
+                dimFactor: f32,
+                style: u32
             ) -> vec4<f32> {
                 let uv01 = (uv / size) + vec2<f32>(0.5);
                 let lensR = 0.7;
@@ -482,13 +496,30 @@ class PatternTests {
                         let lightDir = normalize(vec3<f32>(-0.5, 0.5, 1.0));
                         let diffuse = max(0.0, dot(normal, lightDir));
                         let reflectDir = reflect(-lightDir, normal);
-                        let specular = pow(max(0.0, dot(reflectDir, vec3<f32>(0.0, 0.0, 1.0))), 10.0);
 
                         let baseColor = color * (select(dimFactor, 1.0, isOn));
-                        col = baseColor * (0.5 + 0.8 * diffuse);
-                        col += vec3<f32>(1.0) * specular * 0.5 * dimFactor;
-                        let rimGlow = exp(-pow(lensNormR, 2.0) * 6.0);
-                        col += baseColor * rimGlow * 0.25;
+
+                        if (style == 1u) { // Clear Cap
+                             col = baseColor * (0.5 + 0.8 * diffuse);
+                             let specular = pow(max(0.0, dot(reflectDir, vec3<f32>(0.0, 0.0, 1.0))), 20.0);
+                             col += vec3<f32>(1.0) * specular * 0.9 * dimFactor;
+                             let rimGlow = exp(-pow(lensNormR, 4.0) * 4.0);
+                             col += vec3<f32>(0.7) * rimGlow * 0.4 * dimFactor;
+                        } else if (style == 2u) { // Frosted Cap
+                             var surfColor = baseColor;
+                             if (!isOn) { surfColor = mix(baseColor, vec3<f32>(0.8, 0.85, 0.9), 0.3); }
+                             col = surfColor * (0.6 + 0.4 * diffuse);
+                             let specular = pow(max(0.0, dot(reflectDir, vec3<f32>(0.0, 0.0, 1.0))), 4.0);
+                             col += vec3<f32>(1.0) * specular * 0.3 * dimFactor;
+                             let sss = smoothstep(0.0, 1.0, lensNormR) * 0.5;
+                             col += baseColor * sss * select(0.2, 1.0, isOn);
+                        } else { // Default
+                             col = baseColor * (0.5 + 0.8 * diffuse);
+                             let specular = pow(max(0.0, dot(reflectDir, vec3<f32>(0.0, 0.0, 1.0))), 10.0);
+                             col += vec3<f32>(1.0) * specular * 0.5 * dimFactor;
+                             let rimGlow = exp(-pow(lensNormR, 2.0) * 6.0);
+                             col += baseColor * rimGlow * 0.25;
+                        }
                         alpha = 1.0;
                     }
                 } else {
@@ -529,7 +560,7 @@ class PatternTests {
                 }
 
                 let isLit = isPlaying || onPlayhead;
-                let indLed = drawChromeIndicator(p, indSize, indColor, isLit, aa, dimFactor);
+                let indLed = drawChromeIndicator(p, indSize, indColor, isLit, aa, dimFactor, uniforms.capStyle);
                 var col = indLed.rgb;
                 var alpha = indLed.a;
 
@@ -580,7 +611,7 @@ class PatternTests {
                 let isDataPresent = hasExpression && !isMuted;
                 let topColorBase = vec3(0.0, 0.9, 1.0);
                 let topColor = topColorBase * select(0.0, 1.5 + bloom, isDataPresent);
-                let topLed = drawChromeIndicator(topUV, topSize, topColor, isDataPresent, aa, dimFactor);
+                let topLed = drawChromeIndicator(topUV, topSize, topColor, isDataPresent, aa, dimFactor, uniforms.capStyle);
                 finalColor = mix(finalColor, topLed.rgb, topLed.a);
                 if (isDataPresent) { finalColor += topColor * topLed.a * 0.3; }
 
@@ -618,7 +649,7 @@ class PatternTests {
                 }
                 let displayColor = noteColor * max(lightAmount, 0.1) * (1.0 + bloom * 6.0);
                 let isLit = (lightAmount > 0.05);
-                let mainPad = drawChromeIndicator(mainUV, mainSize, displayColor, isLit, aa, dimFactor);
+                let mainPad = drawChromeIndicator(mainUV, mainSize, displayColor, isLit, aa, dimFactor, uniforms.capStyle);
                 finalColor = mix(finalColor, mainPad.rgb, mainPad.a);
 
                 // COMPONENT 3: EFFECT LIGHT
@@ -631,7 +662,7 @@ class PatternTests {
                   let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
                   if (!isMuted) { effColor *= strength * (1.0 + bloom * 2.5); isEffOn = true; }
                 }
-                let botLed = drawChromeIndicator(botUV, botSize, effColor, isEffOn, aa, dimFactor);
+                let botLed = drawChromeIndicator(botUV, botSize, effColor, isEffOn, aa, dimFactor, uniforms.capStyle);
                 finalColor = mix(finalColor, botLed.rgb, botLed.a);
               }
 
@@ -1078,6 +1109,7 @@ class PatternTests {
              f32[16] = 0.5 + Math.sin(time) * 0.2; // bloom dynamic
              f32[17] = 0.8; // bloom threshold
              u32[18] = 0; // invertChannels
+             u32[19] = this.capStyle;
 
              this.device.queue.writeBuffer(buffer, 0, data);
         };
