@@ -14,6 +14,7 @@ export class BioluminescentAbyss {
 
         // Interaction State
         this.mouse = { x: 0, y: 0 };
+        this.lastPulseTime = -100.0; // Time since start when pulse occurred
 
         // WebGL2 State
         this.glCanvas = null;
@@ -35,6 +36,7 @@ export class BioluminescentAbyss {
         this.handleResize = this.resize.bind(this);
         this.handleMouseMove = this.onMouseMove.bind(this);
         this.handleTouchMove = this.onTouchMove.bind(this);
+        this.handleInteraction = this.onInteraction.bind(this);
 
         this.init();
     }
@@ -68,6 +70,8 @@ export class BioluminescentAbyss {
         window.addEventListener('resize', this.handleResize);
         this.container.addEventListener('mousemove', this.handleMouseMove);
         this.container.addEventListener('touchmove', this.handleTouchMove, { passive: false });
+        this.container.addEventListener('mousedown', this.handleInteraction);
+        this.container.addEventListener('touchstart', this.handleInteraction, { passive: true });
     }
 
     onMouseMove(e) {
@@ -87,6 +91,12 @@ export class BioluminescentAbyss {
             this.mouse.x = x * 2.0 - 1.0;
             this.mouse.y = -(y * 2.0 - 1.0);
         }
+    }
+
+    onInteraction() {
+        // Trigger Sonar Pulse
+        const time = (Date.now() - this.startTime) * 0.001;
+        this.lastPulseTime = time;
     }
 
     // ========================================================================
@@ -132,6 +142,7 @@ export class BioluminescentAbyss {
             uniform float u_time;
             uniform vec2 u_resolution;
             uniform vec2 u_mouse;
+            uniform float u_pulseTimer; // Time since last pulse
             out vec4 outColor;
 
             // 3D Noise for terrain
@@ -216,6 +227,20 @@ export class BioluminescentAbyss {
 
                     vec3 objColor = vec3(0.1, 0.2, 0.2);
                     col = objColor * (diff + amb) + vec3(0.2, 0.8, 1.0) * caustics;
+
+                    // Pulse Effect
+                    if (u_pulseTimer >= 0.0) {
+                         float distToCam = length(p - ro);
+                         float waveSpeed = 30.0;
+                         float waveDist = u_pulseTimer * waveSpeed;
+                         float waveWidth = 5.0;
+                         // Ring
+                         float pulse = smoothstep(waveWidth, 0.0, abs(distToCam - waveDist));
+                         // Fade out over long distance
+                         pulse *= smoothstep(100.0, 20.0, waveDist) * 0.5 + 0.5;
+
+                         col += vec3(0.0, 0.9, 1.0) * pulse * 0.6;
+                    }
 
                     // Fog
                     float fog = 1.0 - exp(-t * 0.05);
@@ -306,6 +331,10 @@ export class BioluminescentAbyss {
                 time: f32,
                 mouseX: f32,
                 mouseY: f32,
+                pulseTimer: f32,
+                pad1: f32,
+                pad2: f32,
+                pad3: f32,
             }
 
             @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
@@ -345,6 +374,24 @@ export class BioluminescentAbyss {
                 p.vel.x += (noiseForce.x + centerAttract.x + mouseForce.x) * uniforms.dt;
                 p.vel.y += (noiseForce.y + centerAttract.y + mouseForce.y) * uniforms.dt;
                 p.vel.z += (noiseForce.z + centerAttract.z) * uniforms.dt;
+
+                // Pulse Interaction
+                if (uniforms.pulseTimer >= 0.0) {
+                    let waveSpeed = 30.0;
+                    let wavePos = uniforms.pulseTimer * waveSpeed;
+                    let distToCam = length(p.pos.xyz); // Particle pos in camera space approx
+
+                    if (abs(distToCam - wavePos) < 5.0) {
+                        // Push outward from center
+                        let pushDir = normalize(p.pos.xyz);
+                        p.vel.x += pushDir.x * 50.0 * uniforms.dt;
+                        p.vel.y += pushDir.y * 50.0 * uniforms.dt;
+                        p.vel.z += pushDir.z * 50.0 * uniforms.dt;
+
+                        // Flash
+                        p.pos.w += 20.0 * uniforms.dt;
+                    }
+                }
 
                 // Dampen
                 p.vel.x *= 0.98;
@@ -475,7 +522,7 @@ export class BioluminescentAbyss {
         this.device.queue.writeBuffer(this.particleBuffer, 0, data);
 
         this.uniformBuffer = this.device.createBuffer({
-            size: 16, // dt (f32), time (f32), mouseX (f32), mouseY (f32)
+            size: 32, // Modified size for additional uniforms
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -581,6 +628,7 @@ export class BioluminescentAbyss {
 
         const time = (Date.now() - this.startTime) * 0.001;
         const dt = 0.016; // Fixed step for now
+        const pulseTimer = time - this.lastPulseTime;
 
         // Render WebGL
         if (this.gl && this.glProgram) {
@@ -588,14 +636,18 @@ export class BioluminescentAbyss {
             this.gl.uniform1f(this.gl.getUniformLocation(this.glProgram, 'u_time'), time);
             this.gl.uniform2f(this.gl.getUniformLocation(this.glProgram, 'u_resolution'), this.glCanvas.width, this.glCanvas.height);
             this.gl.uniform2f(this.gl.getUniformLocation(this.glProgram, 'u_mouse'), this.mouse.x, this.mouse.y);
+            this.gl.uniform1f(this.gl.getUniformLocation(this.glProgram, 'u_pulseTimer'), pulseTimer);
             this.gl.clear(this.gl.COLOR_BUFFER_BIT);
             this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
         }
 
         // Render WebGPU
         if (this.device && this.renderPipeline) {
-            // Update Uniforms: dt, time, mouseX, mouseY
-            this.device.queue.writeBuffer(this.uniformBuffer, 0, new Float32Array([dt, time, this.mouse.x, this.mouse.y]));
+            // Update Uniforms: dt, time, mouseX, mouseY, pulseTimer, pad...
+            this.device.queue.writeBuffer(this.uniformBuffer, 0, new Float32Array([
+                dt, time, this.mouse.x, this.mouse.y,
+                pulseTimer, 0, 0, 0
+            ]));
 
             const encoder = this.device.createCommandEncoder();
 
@@ -636,6 +688,8 @@ export class BioluminescentAbyss {
         if (this.container) {
             this.container.removeEventListener('mousemove', this.handleMouseMove);
             this.container.removeEventListener('touchmove', this.handleTouchMove);
+            this.container.removeEventListener('mousedown', this.handleInteraction);
+            this.container.removeEventListener('touchstart', this.handleInteraction);
         }
 
         // WebGL Cleanup
