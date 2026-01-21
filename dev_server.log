@@ -1,11 +1,83 @@
 
 > ui-components-library@1.0.0 dev
-> vite
+> vite --port 5173
 
 [33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
 
-  VITE v5.4.21  ready in 372 ms
+  VITE v5.4.21  ready in 461 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
-1:33:46 AM [vite] page reload js/acoustic-levitation.js
+Error:   Failed to scan for dependencies from entries:
+  /app/src/index.html
+/app/src/pages/buttons.html
+/app/src/pages/composite_blending.html
+/app/src/pages/indicators.html
+/app/src/pages/knobs.html
+/app/src/pages/surfaces.html
+/app/src/pages/switches.html
+/app/src/pages/experiments.html
+/app/src/pages/fireworks.html
+/app/src/pages/tetris.html
+/app/src/pages/portal_vortex.html
+/app/src/pages/neon_city.html
+/app/src/pages/hologram.html
+/app/src/pages/pattern_tests.html
+/app/src/pages/gravitational-nebula.html
+/app/src/pages/crystal-cavern.html
+/app/src/pages/cyber-rain.html
+/app/src/pages/biomechanical-growth.html
+/app/src/pages/quantum-data-stream.html
+/app/src/pages/cyber-crystal.html
+/app/src/pages/bioluminescent-abyss.html
+/app/src/pages/plasma-confinement.html
+/app/src/pages/cosmic-string.html
+/app/src/pages/acoustic-levitation.html
+/app/src/pages/hybrid-magnetic-field.html
+/app/src/pages/stellar-forge.html
+/app/src/pages/neural-data-core.html
+/app/src/pages/tetris-experiments.html
+/app/src/pages/seismic-wave.html
+/app/src/pages/cosmic-radiation.html
+/app/src/pages/void-rift.html
+/app/src/pages/photon-containment.html
+/app/src/pages/signage_lab.html
+/app/src/pages/bio-digital-synthesis.html
+/app/src/pages/fiber-optics.html
+/app/src/pages/chrono-excavation.html
+/app/src/pages/quantum-tensor.html
+/app/src/pages/temporal-fissure.html
+/app/src/pages/neural-lace.html
+/app/src/pages/spectral-loom.html
+/app/src/pages/chaos-attractor.html
+/app/src/pages/energy-vortex.html
+/app/src/pages/subatomic-collider.html
+/app/src/pages/dark-energy-prism.html
+/app/src/pages/dyson-swarm.html
+/app/src/pages/neuro-morphic-crystal.html
+
+  [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mThe symbol "SubatomicColliderExperiment" has already been declared[0m
+
+    script:/app/src/pages/experiments.html?id=0:26:17:
+[37m      26 │         import { [32mSubatomicColliderExperiment[37m } from '../js/subatom...
+         ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The symbol "SubatomicColliderExperiment" was originally declared here:
+
+    script:/app/src/pages/experiments.html?id=0:3:17:
+[37m      3 │         import { [32mSubatomicColliderExperiment[37m } from '../js/subatomi...
+        ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+    at failureErrorWithLog (/app/node_modules/esbuild/lib/main.js:1472:15)
+    at /app/node_modules/esbuild/lib/main.js:945:25
+    at runOnEndCallbacks (/app/node_modules/esbuild/lib/main.js:1315:45)
+    at buildResponseToResult (/app/node_modules/esbuild/lib/main.js:943:7)
+    at /app/node_modules/esbuild/lib/main.js:955:9
+    at new Promise (<anonymous>)
+    at requestCallbacks.on-end (/app/node_modules/esbuild/lib/main.js:954:54)
+    at handleRequest (/app/node_modules/esbuild/lib/main.js:647:17)
+    at handleIncomingPacket (/app/node_modules/esbuild/lib/main.js:672:7)
+    at Socket.readFromStdout (/app/node_modules/esbuild/lib/main.js:600:7)
+5:35:00 AM [vite] page reload pages/experiments.html
+5:35:37 AM [vite] page reload js/neuro-morphic-crystal.js

@@ -68,6 +68,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Dyson Swarm container NOT found.")
 
+            # Check for Neuro-Morphic Crystal container
+            if page.locator("#neuro-morphic-crystal-container").count() > 0:
+                print("SUCCESS: Neuro-Morphic Crystal container found.")
+            else:
+                print("FAILURE: Neuro-Morphic Crystal container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
