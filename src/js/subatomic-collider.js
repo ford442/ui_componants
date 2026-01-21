@@ -1,6 +1,6 @@
 /**
  * Subatomic Collider Experiment
- * A hybrid WebGL2 + WebGPU visualization of a high-energy particle detector.
+ * Combines WebGL2 (Wireframe Detector Geometry) and WebGPU (Particle Collision Physics).
  */
 
 export class SubatomicColliderExperiment {
@@ -20,8 +20,7 @@ export class SubatomicColliderExperiment {
         this.gl = null;
         this.glProgram = null;
         this.glVao = null;
-        this.torusIndexCount = 0;
-        this.numRings = 20;
+        this.numIndices = 0;
 
         // WebGPU State
         this.gpuCanvas = null;
@@ -34,10 +33,6 @@ export class SubatomicColliderExperiment {
         this.particleBuffer = null;
         this.numParticles = options.numParticles || 100000;
 
-        // Bind handlers
-        this.handleResize = this.resize.bind(this);
-        this.handleMouseMove = this.onMouseMove.bind(this);
-
         this.init();
     }
 
@@ -46,16 +41,16 @@ export class SubatomicColliderExperiment {
         this.container.style.overflow = 'hidden';
         this.container.style.background = '#020205';
 
-        // 1. Initialize WebGL2 (Detector Structure)
+        // 1. Initialize WebGL2 (The Detector Structure)
         this.initWebGL2();
 
-        // 2. Initialize WebGPU (Particle Physics)
+        // 2. Initialize WebGPU (The Particle Collision)
         let gpuSuccess = false;
         if (typeof navigator !== 'undefined' && navigator.gpu) {
             try {
                 gpuSuccess = await this.initWebGPU();
             } catch (e) {
-                console.warn("SubatomicCollider: WebGPU initialization error:", e);
+                console.warn("SubatomicCollider: WebGPU init failed", e);
             }
         }
 
@@ -63,31 +58,24 @@ export class SubatomicColliderExperiment {
             this.addWebGPUNotSupportedMessage();
         }
 
-        this.resize();
         this.isActive = true;
-        this.animate();
+        this.resize();
 
         window.addEventListener('resize', this.handleResize);
         this.container.addEventListener('mousemove', this.handleMouseMove);
-
-        // Handle touch for mobile
-        this.container.addEventListener('touchmove', (e) => {
-            if (e.touches && e.touches[0]) {
-                const rect = this.container.getBoundingClientRect();
-                this.mouse.x = (e.touches[0].clientX - rect.left) / rect.width * 2 - 1;
-                this.mouse.y = -((e.touches[0].clientY - rect.top) / rect.height * 2 - 1);
-            }
-        }, { passive: true });
+        this.animate();
     }
 
     onMouseMove(e) {
         const rect = this.container.getBoundingClientRect();
-        this.mouse.x = (e.clientX - rect.left) / rect.width * 2 - 1;
-        this.mouse.y = -((e.clientY - rect.top) / rect.height * 2 - 1);
+        const x = (e.clientX - rect.left) / rect.width * 2 - 1;
+        const y = -((e.clientY - rect.top) / rect.height * 2 - 1);
+        this.mouse.x = x;
+        this.mouse.y = y;
     }
 
     // ========================================================================
-    // WebGL2 IMPLEMENTATION (Detector Rings)
+    // WebGL2 IMPLEMENTATION (Wireframe Detector)
     // ========================================================================
 
     initWebGL2() {
@@ -105,142 +93,158 @@ export class SubatomicColliderExperiment {
         this.gl = this.glCanvas.getContext('webgl2');
         if (!this.gl) return;
 
-        // Create Torus Geometry
-        const { vertices, indices } = this.createTorus(4.0, 0.2, 32, 16);
-        this.torusIndexCount = indices.length;
+        // Generate Detector Geometry (Octagonal Prism Tunnel)
+        const vertices = [];
+        const indices = [];
 
-        const vao = this.gl.createVertexArray();
-        this.gl.bindVertexArray(vao);
+        const rings = 12;
+        const segments = 8;
+        const radius = 2.5;
+        const length = 12.0;
 
-        const posBuffer = this.gl.createBuffer();
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, posBuffer);
+        for (let i = 0; i <= rings; i++) {
+            const z = -length / 2 + (i / rings) * length;
+            for (let j = 0; j < segments; j++) {
+                const angle = (j / segments) * Math.PI * 2;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                vertices.push(x, y, z);
+            }
+        }
+
+        // Generate lines
+        // Ring connections
+        for (let i = 0; i <= rings; i++) {
+            for (let j = 0; j < segments; j++) {
+                const current = i * segments + j;
+                const next = i * segments + ((j + 1) % segments);
+                indices.push(current, next);
+            }
+        }
+        // Longitudinal connections
+        for (let i = 0; i < rings; i++) {
+            for (let j = 0; j < segments; j++) {
+                const current = i * segments + j;
+                const next = (i + 1) * segments + j;
+                indices.push(current, next);
+            }
+        }
+
+        this.numIndices = indices.length;
+
+        const vBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(vertices), this.gl.STATIC_DRAW);
 
-        const idxBuffer = this.gl.createBuffer();
-        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, idxBuffer);
+        const iBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, iBuffer);
         this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), this.gl.STATIC_DRAW);
 
-        // Shader
         const vsSource = `#version 300 es
             in vec3 a_position;
-
             uniform float u_time;
             uniform vec2 u_resolution;
-            uniform float u_zOffset; // Offset for this ring instance
 
             out float v_depth;
-            out vec3 v_normal;
-
-            mat4 rotateZ(float angle) {
-                float s = sin(angle);
-                float c = cos(angle);
-                return mat4(c,-s,0,0, s,c,0,0, 0,0,1,0, 0,0,0,1);
-            }
 
             void main() {
-                vec3 pos = a_position;
+                vec3 p = a_position;
 
-                // Position ring
-                pos.z += u_zOffset;
+                // Rotate entire detector slowly
+                float t = u_time * 0.2;
+                float c = cos(t);
+                float s = sin(t);
+                float x = p.x * c - p.y * s;
+                float y = p.x * s + p.y * c;
+                p.x = x;
+                p.y = y;
 
-                // Rotate ring slightly based on time and ID
-                float angle = u_time * 0.5 + u_zOffset * 0.1;
-                pos = (rotateZ(angle) * vec4(pos, 1.0)).xyz;
+                // Camera Projection
+                vec3 camPos = vec3(0.0, 0.0, -8.0);
+                vec3 viewPos = p - camPos;
 
-                // Simple perspective
-                float zDist = 15.0 - pos.z;
                 float fov = 1.0;
+                float scale = 1.0 / tan(fov * 0.5);
                 float aspect = u_resolution.x / u_resolution.y;
 
-                gl_Position = vec4(pos.x / aspect, pos.y, pos.z, zDist * 0.5);
+                float px = viewPos.x * scale / aspect;
+                float py = viewPos.y * scale;
+                float pz = viewPos.z;
 
-                v_depth = pos.z;
-                v_normal = normalize(a_position); // Approximate normal for torus
+                gl_Position = vec4(px, py, pz * 0.01, pz); // Perspective divide
+                v_depth = pz;
             }
         `;
 
         const fsSource = `#version 300 es
             precision highp float;
             in float v_depth;
-            in vec3 v_normal;
-            uniform float u_time;
             out vec4 outColor;
 
             void main() {
-                // Fade distant rings
-                float alpha = smoothstep(-20.0, 5.0, v_depth);
-
-                // Lighting
-                vec3 lightDir = normalize(vec3(0.5, 0.5, 1.0));
-                float diff = max(dot(v_normal, lightDir), 0.0);
-
-                // Base metal color
-                vec3 color = vec3(0.2, 0.2, 0.25) + vec3(0.1) * diff;
-
-                // Glowing sensors
-                float strip = step(0.9, sin(atan(v_normal.y, v_normal.x) * 10.0 + u_time * 5.0));
-                vec3 glow = vec3(1.0, 0.6, 0.2) * strip;
-
-                outColor = vec4(color + glow, alpha);
+                // Fade based on depth
+                float alpha = 1.0 - smoothstep(5.0, 20.0, v_depth);
+                outColor = vec4(0.2, 0.3, 0.4, alpha * 0.4);
             }
         `;
 
-        this.glProgram = this.createGLProgram(vsSource, fsSource);
-        if (this.glProgram) {
-            const loc = this.gl.getAttribLocation(this.glProgram, 'a_position');
-            this.gl.enableVertexAttribArray(loc);
-            this.gl.vertexAttribPointer(loc, 3, this.gl.FLOAT, false, 0, 0);
+        const vShader = this.gl.createShader(this.gl.VERTEX_SHADER);
+        this.gl.shaderSource(vShader, vsSource);
+        this.gl.compileShader(vShader);
+
+        if (!this.gl.getShaderParameter(vShader, this.gl.COMPILE_STATUS)) {
+            console.error(this.gl.getShaderInfoLog(vShader));
+            return null;
         }
+
+        const fShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
+        this.gl.shaderSource(fShader, fsSource);
+        this.gl.compileShader(fShader);
+
+        if (!this.gl.getShaderParameter(fShader, this.gl.COMPILE_STATUS)) {
+            console.error(this.gl.getShaderInfoLog(fShader));
+            return null;
+        }
+
+        const prog = this.gl.createProgram();
+        this.gl.attachShader(prog, vShader);
+        this.gl.attachShader(prog, fShader);
+        this.gl.linkProgram(prog);
+        this.glProgram = prog;
+
+        if (!this.glProgram) return;
+
+        const posLoc = this.gl.getAttribLocation(this.glProgram, 'a_position');
+        this.gl.enableVertexAttribArray(posLoc);
+        this.gl.vertexAttribPointer(posLoc, 3, this.gl.FLOAT, false, 0, 0);
+
         this.glVao = vao;
     }
 
-    createTorus(radius, tube, radialSegments, tubularSegments) {
-        const vertices = [];
-        const indices = [];
-
-        for (let j = 0; j <= radialSegments; j++) {
-            for (let i = 0; i <= tubularSegments; i++) {
-                const u = (i / tubularSegments) * Math.PI * 2;
-                const v = (j / radialSegments) * Math.PI * 2;
-
-                const x = (radius + tube * Math.cos(v)) * Math.cos(u);
-                const y = (radius + tube * Math.cos(v)) * Math.sin(u);
-                const z = tube * Math.sin(v);
-
-                vertices.push(x, y, z);
-            }
-        }
-
-        for (let j = 1; j <= radialSegments; j++) {
-            for (let i = 1; i <= tubularSegments; i++) {
-                const a = (tubularSegments + 1) * j + i;
-                const b = (tubularSegments + 1) * (j - 1) + i;
-                const c = (tubularSegments + 1) * (j - 1) + i - 1;
-                const d = (tubularSegments + 1) * j + i - 1;
-
-                indices.push(a, b, d);
-                indices.push(b, c, d);
-            }
-        }
-        return { vertices, indices };
-    }
-
     createGLProgram(vs, fs) {
-        const p = this.gl.createProgram();
-        const v = this.gl.createShader(this.gl.VERTEX_SHADER);
-        const f = this.gl.createShader(this.gl.FRAGMENT_SHADER);
-        this.gl.shaderSource(v, vs);
-        this.gl.shaderSource(f, fs);
-        this.gl.compileShader(v);
-        this.gl.compileShader(f);
-        this.gl.attachShader(p, v);
-        this.gl.attachShader(p, f);
-        this.gl.linkProgram(p);
-        if (!this.gl.getProgramParameter(p, this.gl.LINK_STATUS)) {
-            console.error(this.gl.getProgramInfoLog(p));
+        const vShader = this.gl.createShader(this.gl.VERTEX_SHADER);
+        this.gl.shaderSource(vShader, vs);
+        this.gl.compileShader(vShader);
+
+        if (!this.gl.getShaderParameter(vShader, this.gl.COMPILE_STATUS)) {
+            console.error(this.gl.getShaderInfoLog(vShader));
             return null;
         }
-        return p;
+
+        const fShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
+        this.gl.shaderSource(fShader, fs);
+        this.gl.compileShader(fShader);
+
+        if (!this.gl.getShaderParameter(fShader, this.gl.COMPILE_STATUS)) {
+            console.error(this.gl.getShaderInfoLog(fShader));
+            return null;
+        }
+
+        const prog = this.gl.createProgram();
+        this.gl.attachShader(prog, vShader);
+        this.gl.attachShader(prog, fShader);
+        this.gl.linkProgram(prog);
+        return prog;
     }
 
     // ========================================================================
@@ -265,188 +269,214 @@ export class SubatomicColliderExperiment {
 
         this.device = await adapter.requestDevice();
         this.context = this.gpuCanvas.getContext('webgpu');
-
         const format = navigator.gpu.getPreferredCanvasFormat();
-        this.context.configure({ device: this.device, format, alphaMode: 'premultiplied' });
 
-        // Use vec4f for strict 16-byte alignment of struct members
-        // Particle struct size = 32 bytes (16 + 16)
-        const computeCode = `
+        this.context.configure({
+            device: this.device,
+            format: format,
+            alphaMode: 'premultiplied'
+        });
+
+        // Compute Shader: Lorentz Force Simulation
+        const computeShader = `
             struct Particle {
-                pos: vec4f, // xyz, w = pad
-                vel: vec4f, // xyz, w = life
+                pos : vec4f, // x, y, z, life
+                vel : vec4f, // vx, vy, vz, charge
             }
 
-            struct Params {
-                dt: f32,
-                time: f32,
-                mouseX: f32,
-                mouseY: f32,
+            struct Uniforms {
+                dt : f32,
+                time : f32,
+                mouseX : f32,
+                mouseY : f32,
             }
 
-            @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
-            @group(0) @binding(1) var<uniform> params: Params;
+            @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
+            @group(0) @binding(1) var<uniform> uniforms : Uniforms;
 
-            fn rand(co: vec2f) -> f32 {
-                return fract(sin(dot(co, vec2f(12.9898, 78.233))) * 43758.5453);
+            // Random number generator
+            fn hash(n: f32) -> f32 {
+                return fract(sin(n) * 43758.5453123);
             }
 
             @compute @workgroup_size(64)
-            fn main(@builtin(global_invocation_id) id: vec3u) {
-                let i = id.x;
-                if (i >= arrayLength(&particles)) { return; }
+            fn main(@builtin(global_invocation_id) GlobalInvocationID : vec3u) {
+                let index = GlobalInvocationID.x;
+                if (index >= arrayLength(&particles)) { return; }
 
-                var p = particles[i];
-                var life = p.vel.w;
+                var p = particles[index];
 
-                if (life <= 0.0) {
-                    // Respawn burst from center
-                    let theta = rand(vec2f(params.time, f32(i))) * 6.28;
-                    let phi = rand(vec2f(f32(i), params.time)) * 3.14;
-                    let speed = 20.0 + rand(vec2f(p.pos.x, p.pos.y)) * 30.0;
+                // Update Life
+                p.pos.w -= uniforms.dt * 0.5; // decay
 
-                    p.pos = vec4f(0.0, 0.0, 0.0, 0.0);
-                    p.vel = vec4f(
-                        sin(phi) * cos(theta) * speed,
-                        sin(phi) * sin(theta) * speed,
-                        cos(phi) * speed,
-                        1.0 + rand(vec2f(f32(i), f32(i))) * 0.5 // New life
-                    );
-                } else {
-                    // Lorentz force F = q(v x B)
-                    // Magnetic field B controlled by mouse
-                    let B = vec3f(params.mouseX * 5.0, params.mouseY * 5.0, 2.0);
-                    let vel3 = p.vel.xyz;
-                    let force = cross(vel3, B);
+                // Respawn
+                if (p.pos.w <= 0.0) {
+                    let seed = uniforms.time + f32(index) * 0.001;
 
-                    vel3 += force * params.dt * 2.0;
+                    // Spawn at center with high velocity outwards
+                    p.pos.x = (hash(seed) - 0.5) * 0.2;
+                    p.pos.y = (hash(seed + 1.0) - 0.5) * 0.2;
+                    p.pos.z = (hash(seed + 2.0) - 0.5) * 0.2;
+                    p.pos.w = 1.0 + hash(seed + 3.0); // Random lifespan
 
-                    p.pos = vec4f(p.pos.xyz + vel3 * params.dt, p.pos.w);
-                    p.vel = vec4f(vel3, life - params.dt * 0.5);
+                    // Random direction spherical
+                    let theta = hash(seed + 4.0) * 6.28;
+                    let phi = acos(2.0 * hash(seed + 5.0) - 1.0);
+                    let speed = 5.0 + hash(seed + 6.0) * 10.0; // High speed
+
+                    p.vel.x = sin(phi) * cos(theta) * speed;
+                    p.vel.y = sin(phi) * sin(theta) * speed;
+                    p.vel.z = cos(phi) * speed;
+
+                    // Random Charge (-1, 0, 1)
+                    let r = hash(seed + 7.0);
+                    if (r < 0.33) { p.vel.w = -1.0; } // Electron
+                    else if (r < 0.66) { p.vel.w = 1.0; } // Positron
+                    else { p.vel.w = 0.0; } // Neutral
                 }
-                particles[i] = p;
+
+                // Physics Step
+
+                // Magnetic Field B (Along Z axis)
+                // Strength affected by mouse
+                let B_mag = 2.0 + uniforms.mouseX * 5.0;
+                let B = vec3f(0.0, 0.0, B_mag);
+
+                // Lorentz Force: F = q(v x B)
+                // Assuming mass = 1
+                let charge = p.vel.w;
+
+                if (abs(charge) > 0.1) {
+                    let v = p.vel.xyz;
+                    let F = cross(v, B) * charge;
+
+                    // Apply force
+                    p.vel.x += F.x * uniforms.dt;
+                    p.vel.y += F.y * uniforms.dt;
+                    p.vel.z += F.z * uniforms.dt;
+                }
+
+                // Position Update
+                p.pos.x += p.vel.x * uniforms.dt;
+                p.pos.y += p.vel.y * uniforms.dt;
+                p.pos.z += p.vel.z * uniforms.dt;
+
+                particles[index] = p;
             }
         `;
 
-        const renderCode = `
-            struct VertexOut {
-                @builtin(position) pos: vec4f,
-                @location(0) color: vec4f,
+        // Render Shader: Point Sprites / Lines
+        const renderShader = `
+            struct VertexOutput {
+                @builtin(position) position : vec4f,
+                @location(0) color : vec4f,
+                @location(1) life : f32,
             }
 
-            struct Params {
-                dt: f32,
-                time: f32,
-                mouseX: f32,
-                mouseY: f32,
-                aspect: f32, // Struct alignment note: 5 floats -> 20 bytes. Padded to 32 in JS.
+            struct Uniforms {
+                dt : f32,
+                time : f32,
+                mouseX : f32,
+                mouseY : f32,
+                aspect : f32,
             }
-
-            @group(0) @binding(1) var<uniform> params: Params;
+            @group(0) @binding(1) var<uniform> uniforms : Uniforms;
 
             @vertex
-            fn vs_main(
-                @location(0) pos: vec3f,
-                @location(1) vel: vec3f,
-                @location(2) life: f32
-            ) -> VertexOut {
-                var out: VertexOut;
+            fn vs_main(@location(0) pos : vec4f, @location(1) vel : vec4f) -> VertexOutput {
+                var output : VertexOutput;
 
-                // Simple perspective
-                let zDist = 15.0 - pos.z;
-                let scale = 1.0 / max(0.1, zDist); // Avoid div by zero
+                // Camera Transform (Match WebGL2)
+                // camPos = (0,0,-8)
+                let p = pos.xyz;
+                let viewPos = p - vec3f(0.0, 0.0, -8.0);
 
-                out.pos = vec4f(pos.x * scale / params.aspect, pos.y * scale, 0.0, 1.0);
+                let fov = 1.0;
+                let scale = 1.0 / tan(fov * 0.5);
 
-                // Color based on velocity
-                let speed = length(vel);
-                let heat = smoothstep(20.0, 50.0, speed);
-                out.color = mix(
-                    vec4f(0.0, 0.5, 1.0, 1.0), // Blue (slow)
-                    vec4f(1.0, 0.8, 0.5, 1.0), // Orange/White (fast)
-                    heat
+                output.position = vec4f(
+                    viewPos.x * scale / uniforms.aspect,
+                    viewPos.y * scale,
+                    viewPos.z * 0.01,
+                    viewPos.z
                 );
-                out.color.a *= life;
 
-                // Clip if behind
-                if (zDist < 1.0) { out.pos = vec4f(2.0, 2.0, 2.0, 1.0); }
+                let charge = vel.w;
+                var col = vec3f(1.0, 1.0, 1.0);
 
-                return out;
+                if (charge < -0.5) { col = vec3f(0.2, 0.5, 1.0); } // Blue Electron
+                else if (charge > 0.5) { col = vec3f(1.0, 0.2, 0.2); } // Red Positron
+                else { col = vec3f(1.0, 1.0, 0.5); } // Yellow Neutral
+
+                output.color = vec4f(col, 1.0);
+                output.life = pos.w;
+
+                return output;
             }
 
             @fragment
-            fn fs_main(@location(0) color: vec4f) -> @location(0) vec4f {
-                return color;
+            fn fs_main(@location(0) color : vec4f, @location(1) life : f32) -> @location(0) vec4f {
+                // Fade out based on life
+                let alpha = smoothstep(0.0, 0.2, life);
+                return vec4f(color.rgb, alpha);
             }
         `;
 
-        // Buffer Setup
-        // JS Data: [x, y, z, pad, vx, vy, vz, life] = 8 floats = 32 bytes
-        const pSize = 32;
-        const initialData = new Float32Array(this.numParticles * 8);
-        for(let i=0; i<this.numParticles; i++) {
-            // Init with zeroes/defaults
-            initialData[i*8 + 7] = 0.0; // life starts at 0 to trigger respawn
-        }
-
+        const particleData = new Float32Array(this.numParticles * 8);
         this.particleBuffer = this.device.createBuffer({
-            size: this.numParticles * pSize,
+            size: particleData.byteLength,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
         });
-        this.device.queue.writeBuffer(this.particleBuffer, 0, initialData);
 
-        // 5 floats needed (dt, time, mx, my, aspect) -> 20 bytes.
-        // Round up to 32 bytes for alignment safety
         this.simParamBuffer = this.device.createBuffer({
-            size: 32,
+            size: 32, // 5 floats * 4 = 20 -> aligned to 32? (16 + 16)
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
-        const bindLayout = this.device.createBindGroupLayout({
+        const bindGroupLayout = this.device.createBindGroupLayout({
             entries: [
                 { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
                 { binding: 1, visibility: GPUShaderStage.COMPUTE | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
-            ]
+            ],
         });
 
         this.computeBindGroup = this.device.createBindGroup({
-            layout: bindLayout,
+            layout: bindGroupLayout,
             entries: [
                 { binding: 0, resource: { buffer: this.particleBuffer } },
                 { binding: 1, resource: { buffer: this.simParamBuffer } },
-            ]
+            ],
         });
 
-        const cMod = this.device.createShaderModule({ code: computeCode });
+        const computeModule = this.device.createShaderModule({ code: computeShader });
         this.computePipeline = this.device.createComputePipeline({
-            layout: this.device.createPipelineLayout({ bindGroupLayouts: [bindLayout] }),
-            compute: { module: cMod, entryPoint: 'main' },
+            layout: this.device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
+            compute: { module: computeModule, entryPoint: 'main' },
         });
 
-        const rMod = this.device.createShaderModule({ code: renderCode });
+        const renderModule = this.device.createShaderModule({ code: renderShader });
         this.renderPipeline = this.device.createRenderPipeline({
-            layout: this.device.createPipelineLayout({ bindGroupLayouts: [bindLayout] }),
+            layout: this.device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
             vertex: {
-                module: rMod,
+                module: renderModule,
                 entryPoint: 'vs_main',
                 buffers: [{
-                    arrayStride: pSize,
+                    arrayStride: 32,
                     stepMode: 'vertex',
                     attributes: [
-                        { shaderLocation: 0, offset: 0, format: 'float32x3' },  // pos (x,y,z)
-                        { shaderLocation: 1, offset: 16, format: 'float32x3' }, // vel (vx,vy,vz) - skip pad (4 bytes)
-                        { shaderLocation: 2, offset: 28, format: 'float32' },   // life (in vel.w) - offset 16+12=28
+                        { shaderLocation: 0, offset: 0, format: 'float32x4' }, // pos + life
+                        { shaderLocation: 1, offset: 16, format: 'float32x4' }, // vel + charge
                     ]
                 }]
             },
             fragment: {
-                module: rMod,
+                module: renderModule,
                 entryPoint: 'fs_main',
                 targets: [{
-                    format,
+                    format: format,
                     blend: {
                         color: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
-                        alpha: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' }
+                        alpha: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
                     }
                 }]
             },
@@ -458,25 +488,37 @@ export class SubatomicColliderExperiment {
 
     addWebGPUNotSupportedMessage() {
         const msg = document.createElement('div');
-        msg.style.cssText = `position: absolute; bottom: 20px; right: 20px; color: red; font-family: monospace;`;
-        msg.innerText = 'WebGPU Not Available';
+        msg.style.cssText = `
+            position: absolute; bottom: 10px; right: 10px;
+            color: #ff5555; font-family: sans-serif; font-size: 12px;
+            background: rgba(0,0,0,0.8); padding: 5px 10px; border-radius: 4px;
+        `;
+        msg.innerText = "WebGPU Not Available";
         this.container.appendChild(msg);
     }
 
     resize() {
-        const w = this.container.clientWidth;
-        const h = this.container.clientHeight;
-        if (w === 0 || h === 0) return;
-        this.canvasSize = { width: w, height: h };
+        const dpr = window.devicePixelRatio || 1;
+        const width = this.container.clientWidth;
+        const height = this.container.clientHeight;
+
+        if (width === 0 || height === 0) return;
+
+        this.canvasSize.width = width;
+        this.canvasSize.height = height;
+
+        const dw = Math.floor(width * dpr);
+        const dh = Math.floor(height * dpr);
 
         if (this.glCanvas) {
-            this.glCanvas.width = w;
-            this.glCanvas.height = h;
-            this.gl.viewport(0, 0, w, h);
+            this.glCanvas.width = dw;
+            this.glCanvas.height = dh;
+            this.gl.viewport(0, 0, dw, dh);
         }
+
         if (this.gpuCanvas) {
-            this.gpuCanvas.width = w;
-            this.gpuCanvas.height = h;
+            this.gpuCanvas.width = dw;
+            this.gpuCanvas.height = dh;
         }
     }
 
@@ -484,70 +526,53 @@ export class SubatomicColliderExperiment {
         if (!this.isActive) return;
 
         const time = (Date.now() - this.startTime) * 0.001;
-        const aspect = this.canvasSize.width / this.canvasSize.height;
 
-        // Render WebGL2 (Tunnel)
+        // WebGL2 Render
         if (this.gl && this.glProgram) {
-            this.gl.clearColor(0, 0, 0, 0);
-            this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
             this.gl.useProgram(this.glProgram);
-
             this.gl.uniform1f(this.gl.getUniformLocation(this.glProgram, 'u_time'), time);
-            this.gl.uniform2f(this.gl.getUniformLocation(this.glProgram, 'u_resolution'), this.canvasSize.width, this.canvasSize.height);
+            this.gl.uniform2f(this.gl.getUniformLocation(this.glProgram, 'u_resolution'), this.glCanvas.width, this.glCanvas.height);
 
-            const zLoc = this.gl.getUniformLocation(this.glProgram, 'u_zOffset');
+            this.gl.clearColor(0, 0, 0, 0);
+            this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
             this.gl.bindVertexArray(this.glVao);
-
-            // Draw multiple rings
-            for (let i = 0; i < this.numRings; i++) {
-                // Modulo math for infinite tunnel
-                let z = (i * 2.0 - time * 5.0) % (this.numRings * 2.0);
-                if (z > 0) z -= this.numRings * 2.0;
-
-                this.gl.uniform1f(zLoc, z);
-                this.gl.drawElements(this.gl.TRIANGLES, this.torusIndexCount, this.gl.UNSIGNED_SHORT, 0);
-            }
+            this.gl.drawElements(this.gl.LINES, this.numIndices, this.gl.UNSIGNED_SHORT, 0);
         }
 
-        // Render WebGPU (Particles)
+        // WebGPU Render
         if (this.device && this.renderPipeline) {
-            // Update Uniforms
-            const params = new Float32Array([
-                0.016, // dt
-                time,
-                this.mouse.x,
-                this.mouse.y,
-                aspect,
-                0, 0, 0 // Padding to 32 bytes
+            const aspect = this.canvasSize.width / this.canvasSize.height;
+            // Align: dt(4), time(4), mx(4), my(4), aspect(4), pad(4), pad(4), pad(4)
+            const uniforms = new Float32Array([
+                0.016, time, this.mouse.x, this.mouse.y, aspect, 0, 0, 0
             ]);
-            this.device.queue.writeBuffer(this.simParamBuffer, 0, params);
+            this.device.queue.writeBuffer(this.simParamBuffer, 0, uniforms);
 
-            const cmd = this.device.createCommandEncoder();
+            const commandEncoder = this.device.createCommandEncoder();
 
-            // Compute Pass
-            const cp = cmd.beginComputePass();
-            cp.setPipeline(this.computePipeline);
-            cp.setBindGroup(0, this.computeBindGroup);
-            cp.dispatchWorkgroups(Math.ceil(this.numParticles / 64));
-            cp.end();
+            const computePass = commandEncoder.beginComputePass();
+            computePass.setPipeline(this.computePipeline);
+            computePass.setBindGroup(0, this.computeBindGroup);
+            computePass.dispatchWorkgroups(Math.ceil(this.numParticles / 64));
+            computePass.end();
 
-            // Render Pass
-            const rp = cmd.beginRenderPass({
+            const textureView = this.context.getCurrentTexture().createView();
+            const renderPass = commandEncoder.beginRenderPass({
                 colorAttachments: [{
-                    view: this.context.getCurrentTexture().createView(),
+                    view: textureView,
                     clearValue: { r: 0, g: 0, b: 0, a: 0 },
                     loadOp: 'clear',
-                    storeOp: 'store'
+                    storeOp: 'store',
                 }]
             });
-            rp.setPipeline(this.renderPipeline);
-            rp.setBindGroup(0, this.computeBindGroup);
-            rp.setVertexBuffer(0, this.particleBuffer);
-            rp.draw(this.numParticles);
-            rp.end();
+            renderPass.setPipeline(this.renderPipeline);
+            renderPass.setBindGroup(0, this.computeBindGroup);
+            renderPass.setVertexBuffer(0, this.particleBuffer);
+            renderPass.draw(this.numParticles);
+            renderPass.end();
 
-            this.device.queue.submit([cmd.finish()]);
+            this.device.queue.submit([commandEncoder.finish()]);
         }
 
         this.animationId = requestAnimationFrame(() => this.animate());
@@ -556,10 +581,12 @@ export class SubatomicColliderExperiment {
     destroy() {
         this.isActive = false;
         if (this.animationId) cancelAnimationFrame(this.animationId);
-        window.removeEventListener('resize', this.handleResize);
-        this.container.removeEventListener('mousemove', this.handleMouseMove);
+        if (this.container) this.container.removeEventListener('mousemove', this.handleMouseMove);
 
-        if (this.gl) this.gl.getExtension('WEBGL_lose_context')?.loseContext();
+        if (this.gl) {
+            const ext = this.gl.getExtension('WEBGL_lose_context');
+            if (ext) ext.loseContext();
+        }
         if (this.device) this.device.destroy();
         this.container.innerHTML = '';
     }
