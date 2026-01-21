@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synaptic Fire - Visual Experiments</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        #canvas-container { width: 100vw; height: 100vh; }
+        .back-link { position: absolute; top: 20px; left: 20px; z-index: 100; color: rgba(255, 255, 255, 0.7); text-decoration: none; font-family: monospace; }
+        .info-overlay {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            z-index: 10;
+            pointer-events: none;
+            color: rgba(255, 255, 255, 0.8);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 400px;
+        }
+        .info-overlay h1 { margin: 0 0 10px 0; font-size: 24px; font-weight: 300; letter-spacing: 2px; text-transform: uppercase; color: #66ccff; }
+        .info-overlay p { margin: 0; font-size: 14px; line-height: 1.5; color: #ccc; }
+        .layer-tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        .layer-tag.webgl2 { background: rgba(100, 255, 100, 0.2); color: #aaffaa; border: 1px solid #55aa55; }
+        .layer-tag.webgpu { background: rgba(50, 200, 255, 0.2); color: #88ccff; border: 1px solid #3366cc; }
+    </style>
+</head>
+<body>
+    <a href="experiments.html" class="back-link">← Back to Experiments</a>
+
+    <div id="canvas-container"></div>
+
+    <div class="info-overlay">
+        <h1>Synaptic Fire</h1>
+        <div>
+            <span class="layer-tag webgl2">WebGL2 Membrane</span>
+            <span class="layer-tag webgpu">WebGPU Neurotransmitters</span>
+        </div>
+        <p>A microscopic simulation of synaptic transmission.
+           WebGL2 raymarches the organic pre-synaptic and post-synaptic terminals using SDFs.
+           WebGPU simulates thousands of neurotransmitter particles diffusing across the synaptic cleft.</p>
+        <p style="margin-top: 10px; font-size: 12px; color: #888;">Interaction: Click to trigger Action Potential (Burst). Move mouse to influence electric field.</p>
+    </div>
+
+    <script type="module">
+        import { SynapticFireExperiment } from '../js/synaptic-fire.js';
+
+        const container = document.getElementById('canvas-container');
+        const experiment = new SynapticFireExperiment(container, {
+            numParticles: 50000
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (experiment) experiment.destroy();
+        });
+    </script>
+</body>
+</html>

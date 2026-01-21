@@ -4,7 +4,7 @@
 
 [33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
 
-  VITE v5.4.21  ready in 461 ms
+  VITE v5.4.21  ready in 396 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
@@ -55,6 +55,7 @@ Error:   Failed to scan for dependencies from entries:
 /app/src/pages/dark-energy-prism.html
 /app/src/pages/dyson-swarm.html
 /app/src/pages/neuro-morphic-crystal.html
+/app/src/pages/synaptic-fire.html
 
   [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mThe symbol "SubatomicColliderExperiment" has already been declared[0m
 
@@ -81,3 +82,4 @@ Error:   Failed to scan for dependencies from entries:
     at Socket.readFromStdout (/app/node_modules/esbuild/lib/main.js:600:7)
 5:35:00 AM [vite] page reload pages/experiments.html
 5:35:37 AM [vite] page reload js/neuro-morphic-crystal.js
+5:21:12 AM [vite] page reload pages/experiments.html

@@ -53,6 +53,7 @@ export default defineConfig({
         dark_energy_prism: resolve(__dirname, 'src/pages/dark-energy-prism.html'),
         dyson_swarm: resolve(__dirname, 'src/pages/dyson-swarm.html'),
         neuro_morphic_crystal: resolve(__dirname, 'src/pages/neuro-morphic-crystal.html'),
+        synaptic_fire: resolve(__dirname, 'src/pages/synaptic-fire.html'),
       },
     },
   },
