@@ -16,6 +16,7 @@ class AcousticLevitation {
         this.canvasSize = { width: 0, height: 0 };
         this.frequency = 4.0; // Wave frequency
         this.phase = 0.0;     // Phase shift
+        this.isClicking = false; // Interaction state
 
         // WebGL2 State
         this.glCanvas = null;
@@ -79,6 +80,7 @@ class AcousticLevitation {
         window.addEventListener('resize', this.handleResize);
         window.addEventListener('mousemove', this.handleMouseMove);
         this.container.addEventListener('mousedown', this.handleMouseDown);
+        window.addEventListener('mouseup', () => { this.isClicking = false; });
     }
 
     onMouseMove(e) {
@@ -93,8 +95,9 @@ class AcousticLevitation {
     }
 
     onMouseDown(e) {
-        // Shift phase on click
+        // Shift phase on click, enable disruption
         this.phase += Math.PI / 2;
+        this.isClicking = true;
     }
 
     // ========================================================================
@@ -289,7 +292,7 @@ class AcousticLevitation {
                 phase : f32,
                 mouseX : f32,
                 mouseY : f32,
-                pad1 : f32,
+                isClicking : f32,
                 pad2 : f32,
             }
             @group(0) @binding(1) var<uniform> params : SimParams;
@@ -305,9 +308,6 @@ class AcousticLevitation {
 
                 // Standing wave pressure field
                 // Force directs particles towards nodes where sin(ky + phi) is minimal/zero pressure
-                // Pressure P(y) ~ cos(k*y)
-                // Force F = -grad(P^2) ~ sin(2*k*y)
-
                 let k = params.frequency;
                 let y = p.pos.y;
                 let forceY = -sin(2.0 * k * y + params.phase) * 5.0; // Vertical Acoustic Force
@@ -316,9 +316,15 @@ class AcousticLevitation {
                 let r = length(p.pos.xz);
                 let forceRadial = -p.pos.xz * 1.0;
 
-                // Mouse interaction (repel)
-                let mousePos = vec2f(params.mouseX * 2.0, params.mouseY * 2.0); // Rough mapping
-                // For simplicity in this 3D view, let's map mouse X to rotation or some disturbance
+                // Interaction: Radial Repulsion on Click (Sonic Boom)
+                if (params.isClicking > 0.5) {
+                     // Simple spherical repulsion from origin (or mouse mapped to 3D)
+                     // Here we pulse from center for dramatic effect
+                     let dir = normalize(p.pos.xyz);
+                     let dist = length(p.pos.xyz);
+                     let push = 50.0 / (dist * dist + 0.1);
+                     p.vel += vec4f(dir * push * params.dt, 0.0);
+                }
 
                 // Apply forces
                 p.vel.y += forceY * params.dt;
@@ -339,6 +345,9 @@ class AcousticLevitation {
                     p.pos.z = 0.0;
                 }
 
+                // Store energy in w for visual size/glow
+                p.pos.w = length(p.vel.xyz);
+
                 particles[index] = p;
             }
         `;
@@ -347,39 +356,69 @@ class AcousticLevitation {
             struct VertexOutput {
                 @builtin(position) position : vec4f,
                 @location(0) color : vec4f,
+                @location(1) uv : vec2f,
             }
 
             struct Uniforms {
                 viewProjection : mat4x4f,
+                cameraRight : vec4f,
+                cameraUp : vec4f,
             }
             @group(0) @binding(0) var<uniform> uniforms : Uniforms;
 
             @vertex
             fn vs_main(
+                @builtin(vertex_index) vertexIndex : u32,
                 @location(0) particlePos : vec4f,
                 @location(1) particleVel : vec4f
             ) -> VertexOutput {
                 var output : VertexOutput;
-                output.position = uniforms.viewProjection * vec4f(particlePos.xyz, 1.0);
 
-                // Color based on velocity/pressure
+                // Billboard Quad Vertices
+                // 0--1
+                // | /|
+                // |/ |
+                // 2--3
+                var pos = array<vec2f, 6>(
+                    vec2f(-1.0, -1.0),
+                    vec2f( 1.0, -1.0),
+                    vec2f(-1.0,  1.0),
+                    vec2f(-1.0,  1.0),
+                    vec2f( 1.0, -1.0),
+                    vec2f( 1.0,  1.0)
+                );
+
+                let uvOffset = pos[vertexIndex];
+                let baseSize = 0.015;
+                let energy = particlePos.w;
+                let size = baseSize + energy * 0.02;
+
+                // Billboard calculation: Center + Right * x + Up * y
+                let worldPos = particlePos.xyz +
+                               uniforms.cameraRight.xyz * uvOffset.x * size +
+                               uniforms.cameraUp.xyz * uvOffset.y * size;
+
+                output.position = uniforms.viewProjection * vec4f(worldPos, 1.0);
+                output.uv = uvOffset;
+
+                // Color
                 let speed = length(particleVel.xyz);
-                let val = abs(particlePos.y); // visualize nodes vs antinodes
-
-                let c1 = vec3f(0.2, 0.5, 1.0);
-                let c2 = vec3f(1.0, 1.0, 1.0);
-                let col = mix(c1, c2, speed * 2.0);
+                let c1 = vec3f(0.2, 0.6, 1.0);
+                let c2 = vec3f(1.0, 0.8, 0.5); // Gold/White for high energy
+                let col = mix(c1, c2, min(speed * 3.0, 1.0));
 
                 output.color = vec4f(col, 1.0);
-
-                // Point size attenuation approximation
-                // WebGPU points are fixed size usually unless using quads, but let's rely on primitive point size if available or just fixed
                 return output;
             }
 
             @fragment
-            fn fs_main(@location(0) color : vec4f) -> @location(0) vec4f {
-                return color;
+            fn fs_main(@location(0) color : vec4f, @location(1) uv : vec2f) -> @location(0) vec4f {
+                let r = length(uv);
+                if (r > 1.0) { discard; }
+
+                // Soft Glow
+                let alpha = smoothstep(1.0, 0.2, r);
+                return vec4f(color.rgb, alpha);
             }
         `;
 
@@ -411,7 +450,7 @@ class AcousticLevitation {
         });
 
         this.viewProjBuffer = this.device.createBuffer({
-            size: 64, // mat4x4
+            size: 64 + 16 + 16, // mat4 + vec4 (right) + vec4 (up)
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -459,7 +498,7 @@ class AcousticLevitation {
                 entryPoint: 'vs_main',
                 buffers: [{
                     arrayStride: particleUnitSize,
-                    stepMode: 'vertex',
+                    stepMode: 'instance', // CHANGED: Instance step mode
                     attributes: [
                         { shaderLocation: 0, offset: 0, format: 'float32x4' }, // pos
                         { shaderLocation: 1, offset: 16, format: 'float32x4' }, // vel
@@ -477,7 +516,7 @@ class AcousticLevitation {
                     }
                 }],
             },
-            primitive: { topology: 'point-list' },
+            primitive: { topology: 'triangle-list' }, // CHANGED: Quads
         });
 
         return true;
@@ -575,10 +614,36 @@ class AcousticLevitation {
                 this.phase,
                 this.mouse.x,
                 this.mouse.y,
-                0, 0
+                this.isClicking ? 1.0 : 0.0,
+                0 // pad2
             ]);
             this.device.queue.writeBuffer(this.simParamBuffer, 0, params);
-            this.device.queue.writeBuffer(this.viewProjBuffer, 0, viewProjectionMatrix);
+
+            // Update ViewProj + Camera Vectors
+            // Extract Camera Right and Up from View Matrix
+            // viewMatrix is World -> Camera.
+            // The rows of the rotation matrix (upper 3x3) are the Right, Up, Forward vectors.
+            // Row 0: Right (x, y, z)
+            // Row 1: Up (x, y, z)
+            // Stored in Float32Array as column-major!
+            // So:
+            // Col 0: Right.x, Up.x, Fwd.x
+            // Col 1: Right.y, Up.y, Fwd.y
+            // ...
+            // Wait, lookAt returns:
+            // [ Rx, Ry, Rz, 0,  Ux, Uy, Uz, 0,  -Fx, -Fy, -Fz, 0,  Tx, Ty, Tz, 1 ]
+            // where R = Right, U = Up, F = Forward (view direction)
+            // So Right is [m0, m4, m8], Up is [m1, m5, m9].
+
+            const right = [viewMatrix[0], viewMatrix[4], viewMatrix[8], 0];
+            const up = [viewMatrix[1], viewMatrix[5], viewMatrix[9], 0];
+
+            const uniformData = new Float32Array(16 + 4 + 4);
+            uniformData.set(viewProjectionMatrix, 0);
+            uniformData.set(right, 16);
+            uniformData.set(up, 20);
+
+            this.device.queue.writeBuffer(this.viewProjBuffer, 0, uniformData);
 
             const commandEncoder = this.device.createCommandEncoder();
 
@@ -602,7 +667,7 @@ class AcousticLevitation {
             renderPass.setPipeline(this.renderPipeline);
             renderPass.setBindGroup(0, this.renderBindGroup);
             renderPass.setVertexBuffer(0, this.particleBuffer);
-            renderPass.draw(this.numParticles);
+            renderPass.draw(6, this.numParticles, 0, 0); // 6 vertices per instance
             renderPass.end();
 
             this.device.queue.submit([commandEncoder.finish()]);
