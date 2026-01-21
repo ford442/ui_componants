@@ -52,6 +52,7 @@ export default defineConfig({
         subatomic_collider: resolve(__dirname, 'src/pages/subatomic-collider.html'),
         dark_energy_prism: resolve(__dirname, 'src/pages/dark-energy-prism.html'),
         dyson_swarm: resolve(__dirname, 'src/pages/dyson-swarm.html'),
+        synaptic_fire: resolve(__dirname, 'src/pages/synaptic-fire.html'),
       },
     },
   },
