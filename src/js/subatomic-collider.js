@@ -33,9 +33,6 @@ export class SubatomicColliderExperiment {
         this.particleBuffer = null;
         this.numParticles = options.numParticles || 100000;
 
-        this.handleResize = this.resize.bind(this);
-        this.handleMouseMove = this.onMouseMove.bind(this);
-
         this.init();
     }
 
@@ -90,7 +87,6 @@ export class SubatomicColliderExperiment {
             width: 100%;
             height: 100%;
             z-index: 1;
-            pointer-events: none;
         `;
         this.container.appendChild(this.glCanvas);
 
@@ -135,9 +131,6 @@ export class SubatomicColliderExperiment {
         }
 
         this.numIndices = indices.length;
-
-        const vao = this.gl.createVertexArray();
-        this.gl.bindVertexArray(vao);
 
         const vBuffer = this.gl.createBuffer();
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vBuffer);
@@ -195,7 +188,30 @@ export class SubatomicColliderExperiment {
             }
         `;
 
-        this.glProgram = this.createGLProgram(vsSource, fsSource);
+        const vShader = this.gl.createShader(this.gl.VERTEX_SHADER);
+        this.gl.shaderSource(vShader, vsSource);
+        this.gl.compileShader(vShader);
+
+        if (!this.gl.getShaderParameter(vShader, this.gl.COMPILE_STATUS)) {
+            console.error(this.gl.getShaderInfoLog(vShader));
+            return null;
+        }
+
+        const fShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
+        this.gl.shaderSource(fShader, fsSource);
+        this.gl.compileShader(fShader);
+
+        if (!this.gl.getShaderParameter(fShader, this.gl.COMPILE_STATUS)) {
+            console.error(this.gl.getShaderInfoLog(fShader));
+            return null;
+        }
+
+        const prog = this.gl.createProgram();
+        this.gl.attachShader(prog, vShader);
+        this.gl.attachShader(prog, fShader);
+        this.gl.linkProgram(prog);
+        this.glProgram = prog;
+
         if (!this.glProgram) return;
 
         const posLoc = this.gl.getAttribLocation(this.glProgram, 'a_position');
@@ -406,7 +422,6 @@ export class SubatomicColliderExperiment {
             }
         `;
 
-        // Buffer Setup
         const particleData = new Float32Array(this.numParticles * 8);
         this.particleBuffer = this.device.createBuffer({
             size: particleData.byteLength,
@@ -566,7 +581,6 @@ export class SubatomicColliderExperiment {
     destroy() {
         this.isActive = false;
         if (this.animationId) cancelAnimationFrame(this.animationId);
-        window.removeEventListener('resize', this.handleResize);
         if (this.container) this.container.removeEventListener('mousemove', this.handleMouseMove);
 
         if (this.gl) {

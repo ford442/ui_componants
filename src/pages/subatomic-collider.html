@@ -3,54 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Subatomic Collider</title>
+    <title>Subatomic Collider - WebGL2 + WebGPU</title>
     <link rel="stylesheet" href="../css/main.css">
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
-        #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-        .controls {
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        .canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        .controls-overlay {
             position: absolute;
-            top: 20px;
-            left: 20px;
+            top: 2rem;
+            left: 2rem;
             z-index: 10;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 8px;
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(5px);
+            pointer-events: none;
         }
-        .back-btn {
-            display: inline-block;
-            margin-bottom: 10px;
-            color: #aaa;
-            text-decoration: none;
-            font-size: 14px;
+        .controls-overlay h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #ff8844, #ffcc00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        .back-btn:hover { color: white; }
-        h1 { margin: 0 0 5px 0; font-size: 18px; color: #fff; }
-        p { margin: 0; font-size: 12px; color: #888; max-width: 250px; line-height: 1.4; }
+        .controls-overlay p {
+            color: #ffccaa;
+            margin-bottom: 1.5rem;
+        }
+        .back-link {
+            pointer-events: auto;
+        }
     </style>
 </head>
 <body>
-    <div class="controls">
-        <a href="experiments.html" class="back-btn">← Back to Experiments</a>
-        <h1>Subatomic Collider</h1>
-        <p>A hybrid WebGL2 / WebGPU experiment.</p>
-        <p>WebGL2 renders the wireframe detector segments. WebGPU simulates 100,000 particles reacting to Lorentz forces in a high-energy collision event.</p>
-        <p>Move mouse to influence the magnetic field.</p>
-    </div>
-    <div id="canvas-container"></div>
+    <div id="canvas-container" class="canvas-container"></div>
 
+    <div class="controls-overlay">
+        <h1>Subatomic Collider</h1>
+        <p>WebGL2 (Detector Tunnel) + WebGPU (Particle Physics)</p>
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+    </div>
+
+    <!-- Global scripts -->
     <script type="module" src="../js/main.js"></script>
+
+    <!-- Experiment script -->
     <script type="module" src="../js/subatomic-collider.js"></script>
+
     <script type="module">
         import { SubatomicColliderExperiment } from '../js/subatomic-collider.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             const container = document.getElementById('canvas-container');
-            new SubatomicColliderExperiment(container, {
+            // Use window.SubatomicColliderExperiment if imported globally, or the module export
+            const ExperimentClass = window.SubatomicColliderExperiment || SubatomicColliderExperiment;
+
+            const experiment = new ExperimentClass(container, {
                 numParticles: 100000
+            });
+
+            // Cleanup on page leave
+            window.addEventListener('beforeunload', () => {
+                experiment.destroy();
             });
         });
     </script>
