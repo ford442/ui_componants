@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neutrino Storm Experiment</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            width: 100vw;
+            height: 100vh;
+        }
+        #experiment-container {
+            width: 100%;
+            height: 100%;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #fff;
+            font-family: sans-serif;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="experiment-container"></div>
+    <div class="controls">
+        <h3>Neutrino Storm</h3>
+        <p>Move mouse to tilt detector and direct flux.</p>
+        <p>WebGL2: Wireframe Detector Tank</p>
+        <p>WebGPU: Cherenkov Radiation Bursts</p>
+    </div>
+
+    <script type="module">
+        import { NeutrinoStormExperiment } from '../js/neutrino-storm.js';
+
+        const container = document.getElementById('experiment-container');
+        const experiment = new NeutrinoStormExperiment(container, {
+            numParticles: 100000
+        });
+
+        // Cleanup on unload
+        window.addEventListener('beforeunload', () => {
+            experiment.destroy();
+        });
+    </script>
+</body>
+</html>
