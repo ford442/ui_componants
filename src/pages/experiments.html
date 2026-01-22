@@ -109,6 +109,27 @@
             </div>
         </section>
 
+        <!-- Hyperspace Tunnel Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Hyperspace Tunnel</h2>
+                    <p class="description">Warp Grid (WebGL2) + Star Streaks (WebGPU)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Warp</span>
+                        <span class="layer-tag webgpu" style="background: rgba(255, 0, 255, 0.2); border-color: #ff00ff; color: #ffccff;">WebGPU Stars</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="hyperspace-tunnel-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #000;"></div>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="hyperspace-tunnel.html" style="color: #aaa; text-decoration: none; font-size: 0.9rem; border-bottom: 1px solid #555;">View Full Page Experiment</a>
+                </div>
+            </div>
+        </section>
+
         <!-- Energy Vortex Experiment -->
         <section class="experiment-section">
             <div class="component-card">
@@ -1233,6 +1254,7 @@
     <script type="module" src="../js/energy-vortex.js"></script>
     <script type="module" src="../js/subatomic-collider.js"></script>
     <script type="module" src="../js/dark-energy-prism.js"></script>
+    <script type="module" src="../js/hyperspace-tunnel.js"></script>
 
     <script type="module">
         import { EnergyVortexExperiment } from '../js/energy-vortex.js';
@@ -1261,6 +1283,7 @@
         import { DysonSwarmExperiment } from '../js/dyson-swarm.js';
         import { NeuroMorphicCrystal } from '../js/neuro-morphic-crystal.js';
         import { SynapticFireExperiment } from '../js/synaptic-fire.js';
+        import { HyperspaceTunnelExperiment } from '../js/hyperspace-tunnel.js';
 
         // Initialize experiments when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
@@ -1513,10 +1536,18 @@
             const neuroCrystalContainer = document.getElementById('neuro-morphic-crystal-container');
             if (neuroCrystalContainer) {
                 new NeuroMorphicCrystal(neuroCrystalContainer, { particleCount: 30000 });
+            }
+
             // Initialize Synaptic Fire
             const synapticFireContainer = document.getElementById('synaptic-fire-container');
             if (synapticFireContainer) {
                 new SynapticFireExperiment(synapticFireContainer, { numParticles: 40000 });
+            }
+
+            // Initialize Hyperspace Tunnel
+            const hyperspaceTunnelContainer = document.getElementById('hyperspace-tunnel-container');
+            if (hyperspaceTunnelContainer) {
+                new HyperspaceTunnelExperiment(hyperspaceTunnelContainer, { numParticles: 20000 });
             }
 
             // Create SVG Morphing Buttons
