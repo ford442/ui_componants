@@ -19,10 +19,15 @@ export class FiberOpticExperiment {
         this.adapter = null;
         this.device = null;
         this.gpuContext = null;
+        this.glProgram = null;
+        this.glVao = null;
 
         this.animationId = null;
         this.time = 0;
         this.isPlaying = true;
+
+        this.mouse = { x: 0, y: 0 };
+        this.handleMouseMove = this.onMouseMove.bind(this);
 
         // Camera
         this.camera = {
@@ -66,6 +71,9 @@ export class FiberOpticExperiment {
     async init() {
         this.resize();
 
+        // Add event listener for interaction
+        this.container.addEventListener('mousemove', this.handleMouseMove);
+
         // 1. Initialize WebGPU
         if (navigator.gpu) {
             this.adapter = await navigator.gpu.requestAdapter();
@@ -89,6 +97,14 @@ export class FiberOpticExperiment {
         // 3. Start Loop
         this.animate = this.animate.bind(this);
         requestAnimationFrame(this.animate);
+    }
+
+    onMouseMove(e) {
+        const rect = this.container.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width * 2 - 1;
+        const y = -((e.clientY - rect.top) / rect.height * 2 - 1);
+        this.mouse.x = x;
+        this.mouse.y = y;
     }
 
     resize() {
@@ -121,7 +137,7 @@ export class FiberOpticExperiment {
 
     updateViewMatrix() {
         // Simple orbiting camera
-        const t = this.time * 0.2;
+        const t = this.time * 0.0002; // Slower orbit
         const radius = 25;
         this.camera.eye[0] = Math.sin(t) * radius;
         this.camera.eye[2] = Math.cos(t) * radius;
@@ -178,7 +194,12 @@ export class FiberOpticExperiment {
         }
 
         // Create Buffers
-        this.fiberVAO = gl.createVertexArray();
+        const vao = gl.createVertexArray();
+        if (!vao) {
+            console.warn('FiberOptics: Failed to create VAO');
+            return;
+        }
+        this.fiberVAO = vao;
         gl.bindVertexArray(this.fiberVAO);
 
         const vBuffer = gl.createBuffer();
@@ -200,11 +221,29 @@ export class FiberOpticExperiment {
 
             uniform mat4 u_view;
             uniform mat4 u_projection;
+            uniform float u_time;
+            uniform vec2 u_mouse;
 
             out vec4 v_color;
 
             void main() {
-                gl_Position = u_projection * u_view * vec4(a_position, 1.0);
+                vec3 pos = a_position;
+
+                // Gentle underwater-like sway
+                float swayFreq = 1.0;
+                float swayAmp = 0.5;
+                float swayPhase = pos.z * 0.2; // Phase shift along the fiber
+                float sway = sin(u_time * swayFreq + swayPhase) * swayAmp;
+
+                // Mouse influence (simple directional push based on depth)
+                float mouseInfluenceX = u_mouse.x * 2.0;
+                float mouseInfluenceY = u_mouse.y * 2.0;
+
+                // Apply sway and mouse influence
+                pos.x += sway + mouseInfluenceX * (pos.z * 0.1);
+                pos.y += cos(u_time * 0.7 + swayPhase) * 0.3 + mouseInfluenceY * (pos.z * 0.1);
+
+                gl_Position = u_projection * u_view * vec4(pos, 1.0);
                 v_color = a_color;
             }
         `;
@@ -220,8 +259,12 @@ export class FiberOpticExperiment {
         `;
 
         this.glProgram = this.createGLProgram(gl, vsSource, fsSource);
+        if (!this.glProgram) return;
+
         this.uViewLoc = gl.getUniformLocation(this.glProgram, 'u_view');
         this.uProjLoc = gl.getUniformLocation(this.glProgram, 'u_projection');
+        this.uTimeLoc = gl.getUniformLocation(this.glProgram, 'u_time');
+        this.uMouseLoc = gl.getUniformLocation(this.glProgram, 'u_mouse');
 
         // GL State
         gl.enable(gl.BLEND);
@@ -241,9 +284,22 @@ export class FiberOpticExperiment {
             return s;
         };
         const p = gl.createProgram();
-        gl.attachShader(p, createShader(gl.VERTEX_SHADER, vs));
-        gl.attachShader(p, createShader(gl.FRAGMENT_SHADER, fs));
+
+        const vsShader = createShader(gl.VERTEX_SHADER, vs);
+        if (!vsShader) return null;
+
+        const fsShader = createShader(gl.FRAGMENT_SHADER, fs);
+        if (!fsShader) return null;
+
+        gl.attachShader(p, vsShader);
+        gl.attachShader(p, fsShader);
         gl.linkProgram(p);
+
+        if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+            console.error(gl.getProgramInfoLog(p));
+            return null;
+        }
+
         return p;
     }
 
@@ -299,8 +355,9 @@ export class FiberOpticExperiment {
         new Float32Array(this.particleBuffer.getMappedRange()).set(particleData);
         this.particleBuffer.unmap();
 
-        // Uniform Buffer (Time, MVP)
-        this.uniformBufferSize = 16 * 4 + 16 * 4 + 4 * 4; // View(16), Proj(16), Params(4: dt, time, fiberLength, pad)
+        // Uniform Buffer (Time, MVP, Mouse)
+        // View(16), Proj(16), dt, time, fiberLength, pad, mouse(2), pad(2) = 40 floats
+        this.uniformBufferSize = 40 * 4;
         this.uniformBuffer = device.createBuffer({
             size: this.uniformBufferSize,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
@@ -322,6 +379,8 @@ export class FiberOpticExperiment {
                 time: f32,
                 fiberLength: f32,
                 pad: f32,
+                mouse: vec2<f32>,
+                pad2: vec2<f32>,
             }
 
             @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
@@ -370,6 +429,8 @@ export class FiberOpticExperiment {
                 time: f32,
                 fiberLength: f32,
                 pad: f32,
+                mouse: vec2<f32>,
+                pad2: vec2<f32>,
             }
 
             struct FiberParams {
@@ -417,11 +478,24 @@ export class FiberOpticExperiment {
 
                 let z = p_t * uniforms.fiberLength * 0.5;
                 let theta = z * fiber.twist + fiber.angleOffset;
-                let worldPos = vec3<f32>(
+                var worldPos = vec3<f32>(
                     cos(theta) * fiber.r,
                     sin(theta) * fiber.r,
                     z
                 );
+
+                // Apply sway to match WebGL
+                let swayFreq = 1.0;
+                let swayAmp = 0.5;
+                let swayPhase = worldPos.z * 0.2;
+                let sway = sin(uniforms.time * swayFreq + swayPhase) * swayAmp;
+
+                // Mouse influence
+                let mouseInfluenceX = uniforms.mouse.x * 2.0;
+                let mouseInfluenceY = uniforms.mouse.y * 2.0;
+
+                worldPos.x += sway + mouseInfluenceX * (worldPos.z * 0.1);
+                worldPos.y += cos(uniforms.time * 0.7 + swayPhase) * 0.3 + mouseInfluenceY * (worldPos.z * 0.1);
 
                 // View Space Billboarding
                 let viewPos = uniforms.view * vec4<f32>(worldPos, 1.0);
@@ -495,7 +569,7 @@ export class FiberOpticExperiment {
 
         this.updateViewMatrix();
 
-        if (this.gl) {
+        if (this.gl && this.glProgram && this.fiberVAO) {
             this.renderWebGL();
         }
 
@@ -509,6 +583,7 @@ export class FiberOpticExperiment {
     destroy() {
         this.isPlaying = false;
         if (this.animationId) cancelAnimationFrame(this.animationId);
+        this.container.removeEventListener('mousemove', this.handleMouseMove);
 
         // Clean up resources if needed
         if (this.fiberBuffer) this.fiberBuffer.destroy();
@@ -525,6 +600,8 @@ export class FiberOpticExperiment {
         gl.useProgram(this.glProgram);
         gl.uniformMatrix4fv(this.uViewLoc, false, this.camera.viewMatrix);
         gl.uniformMatrix4fv(this.uProjLoc, false, this.camera.projectionMatrix);
+        gl.uniform1f(this.uTimeLoc, this.time * 0.001);
+        gl.uniform2f(this.uMouseLoc, this.mouse.x, this.mouse.y);
 
         gl.bindVertexArray(this.fiberVAO);
 
@@ -541,7 +618,12 @@ export class FiberOpticExperiment {
         const commandEncoder = device.createCommandEncoder();
 
         // Update Uniforms
-        const uniforms = new Float32Array([...this.camera.viewMatrix, ...this.camera.projectionMatrix, dt, this.time * 0.001, this.fiberLength, 0]);
+        const uniforms = new Float32Array([
+            ...this.camera.viewMatrix,
+            ...this.camera.projectionMatrix,
+            dt, this.time * 0.001, this.fiberLength, 0,
+            this.mouse.x, this.mouse.y, 0, 0
+        ]);
         device.queue.writeBuffer(this.uniformBuffer, 0, uniforms);
 
         // Compute Pass
