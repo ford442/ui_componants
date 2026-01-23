@@ -532,6 +532,7 @@ class PatternTests {
 
             fn drawFullCap(
                 uv: vec2<f32>,
+                aa: f32,
                 dimFactor: f32,
                 isFrosted: bool,
                 colData: vec3<f32>,
@@ -543,7 +544,6 @@ class PatternTests {
                 let capSize = vec2<f32>(0.47, 0.47);
                 let dCap = sdRoundedBox(uv - center, capSize, 0.06);
 
-                let aa = fwidth(dCap) * 0.5;
                 let mask = 1.0 - smoothstep(-aa, aa, dCap);
                 if (mask < 0.01) { return vec4<f32>(0.0); }
 
@@ -708,7 +708,7 @@ class PatternTests {
                 }
 
                 if (uniforms.capStyle >= 3u) {
-                    let cap = drawFullCap(btnUV, dimFactor, (uniforms.capStyle == 4u), dataColorVal, noteDisplayColor, effColorVal);
+                    let cap = drawFullCap(btnUV, aa, dimFactor, (uniforms.capStyle == 4u), dataColorVal, noteDisplayColor, effColorVal);
                     finalColor = mix(finalColor, cap.rgb, cap.a);
                 } else {
                     let topUV = btnUV - vec2(0.5, 0.16);
@@ -887,6 +887,7 @@ class PatternTests {
 
             fn drawFullCap(
                 uv: vec2<f32>,
+                aa: f32,
                 dimFactor: f32,
                 isFrosted: bool,
                 colData: vec3<f32>,
@@ -898,7 +899,6 @@ class PatternTests {
                 let capSize = vec2<f32>(0.47, 0.47);
                 let dCap = sdRoundedBox(uv - center, capSize, 0.06);
 
-                let aa = fwidth(dCap) * 0.5;
                 let mask = 1.0 - smoothstep(-aa, aa, dCap);
                 if (mask < 0.01) { return vec4<f32>(0.0); }
 
@@ -1034,7 +1034,7 @@ class PatternTests {
                        // Full Cap Mode
                        let isPlaying = (uniforms.isPlaying == 1u);
                        let dimFactor = select(1.0, 0.35, isPlaying);
-                       let cap = drawFullCap(btnUV, dimFactor, (uniforms.capStyle == 4u), colData, colNote, colEff);
+                       let cap = drawFullCap(btnUV, aa, dimFactor, (uniforms.capStyle == 4u), colData, colNote, colEff);
                        finalColor = mix(finalColor, cap.rgb, cap.a);
                   } else {
                       // Standard Flat Mode
