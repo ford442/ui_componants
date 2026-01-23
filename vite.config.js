@@ -55,6 +55,7 @@ export default defineConfig({
         neuro_morphic_crystal: resolve(__dirname, 'src/pages/neuro-morphic-crystal.html'),
         synaptic_fire: resolve(__dirname, 'src/pages/synaptic-fire.html'),
         hyperspace_tunnel: resolve(__dirname, 'src/pages/hyperspace-tunnel.html'),
+        neutrino_storm: resolve(__dirname, 'src/pages/neutrino-storm.html'),
       },
     },
   },
