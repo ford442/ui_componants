@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyperspace Tunnel - WebGL2 + WebGPU</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        .canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        .controls-overlay {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .controls-overlay h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #00ffff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        .controls-overlay p {
+            color: #ccffff;
+            margin-bottom: 1.5rem;
+        }
+        .back-link {
+            pointer-events: auto;
+            color: #00ffff;
+            text-decoration: none;
+            border-bottom: 1px solid #00aaaa;
+            padding-bottom: 2px;
+            transition: all 0.3s;
+        }
+        .back-link:hover {
+            color: #ff00ff;
+            border-color: #aa00aa;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container" class="canvas-container"></div>
+
+    <div class="controls-overlay">
+        <h1>Hyperspace Tunnel</h1>
+        <p>WebGL2 (Warp Grid) + WebGPU (Star Streaks)</p>
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+    </div>
+
+    <!-- Global scripts -->
+    <script type="module" src="../js/main.js"></script>
+
+    <!-- Experiment script -->
+    <script type="module" src="../js/hyperspace-tunnel.js"></script>
+
+    <script type="module">
+        import { HyperspaceTunnelExperiment } from '../js/hyperspace-tunnel.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('canvas-container');
+            const ExperimentClass = window.HyperspaceTunnelExperiment || HyperspaceTunnelExperiment;
+
+            const experiment = new ExperimentClass(container, {
+                numParticles: 20000
+            });
+
+            window.addEventListener('beforeunload', () => {
+                experiment.destroy();
+            });
+        });
+    </script>
+</body>
+</html>
