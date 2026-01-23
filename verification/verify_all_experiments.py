@@ -80,6 +80,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Hyperspace Tunnel container NOT found.")
 
+            # Check for Atmospheric Entry container
+            if page.locator("#atmospheric-entry-container").count() > 0:
+                print("SUCCESS: Atmospheric Entry container found.")
+            else:
+                print("FAILURE: Atmospheric Entry container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
