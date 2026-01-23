@@ -80,6 +80,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Hyperspace Tunnel container NOT found.")
 
+            # Check for Neutrino Storm container
+            if page.locator("#neutrino-storm-container").count() > 0:
+                print("SUCCESS: Neutrino Storm container found.")
+            else:
+                print("FAILURE: Neutrino Storm container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
