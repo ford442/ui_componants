@@ -540,14 +540,12 @@ class PatternTests {
                 isFrosted: bool,
                 colData: vec3<f32>,
                 colNote: vec3<f32>,
-                colEff: vec3<f32>
+                colEff: vec3<f32>,
+                dCap: f32,
+                aa: f32
             ) -> vec4<f32> {
                 let center = vec2<f32>(0.5, 0.5);
-                // Cap Shape: Large rounded box filling most of the segment (UV space)
-                let capSize = vec2<f32>(0.47, 0.47);
-                let dCap = sdRoundedBox(uv - center, capSize, 0.06);
-
-                let aa = fwidth(dCap) * 0.5;
+                // Cap Shape logic moved to fs, dCap passed in
                 let mask = 1.0 - smoothstep(-aa, aa, dCap);
                 if (mask < 0.01) { return vec4<f32>(0.0); }
 
@@ -593,12 +591,14 @@ class PatternTests {
                 isFrosted: bool,
                 colData: vec3<f32>,
                 colNote: vec3<f32>,
-                colEff: vec3<f32>
+                colEff: vec3<f32>,
+                dCap: f32,
+                dDx: f32,
+                dDy: f32,
+                aa: f32
             ) -> vec4<f32> {
                 let center = vec2<f32>(0.5, 0.5);
-                let capSize = vec2<f32>(0.46, 0.46);
-                let dCap = sdRoundedBox(uv - center, capSize, 0.04);
-                let aa = fwidth(dCap) * 0.5;
+                // dCap, aa passed in
                 let mask = 1.0 - smoothstep(-aa, aa, dCap);
 
                 // Bevel Calculation
@@ -610,13 +610,12 @@ class PatternTests {
                 // Normal Estimation
                 // Gradient of dCap points outwards. We want normal.
                 // Slope region: Normal tilts. Plateau: Normal is (0,0,1).
-                let dDx = dpdx(dCap);
-                let dDy = dpdy(dCap);
+                // dDx, dDy passed in
                 // If we are on the slope (h < 1.0), the normal has XY components proportional to gradient.
                 // We want the normal to point "up" and "in".
                 // Gradient points "out". So we use gradient as xy.
                 // N = normalize(vec3(dDx, dDy, steepness)).
-                let steepness = 0.5 * fwidth(dCap); // Scale factor
+                let steepness = aa; // Scale factor (approx)
                 var N = normalize(vec3<f32>(dDx, dDy, steepness));
                 if (h >= 0.95) { N = vec3<f32>(0.0, 0.0, 1.0); }
 
@@ -677,6 +676,23 @@ class PatternTests {
               let aa = fwidth(p.y) * 0.5;
               let bloom = uniforms.bloomIntensity;
 
+              // --- PRE-CALCULATE DERIVATIVES FOR CAPS (Uniform Flow) ---
+              let btnScale = 1.05;
+              let btnUV = (uv - 0.5) * btnScale + 0.5;
+              let center = vec2<f32>(0.5, 0.5);
+
+              // Full Cap Params
+              let capSizeFull = vec2<f32>(0.47, 0.47);
+              let dCapFull = sdRoundedBox(btnUV - center, capSizeFull, 0.06);
+              let aaFull = fwidth(dCapFull) * 0.5;
+
+              // Beveled Cap Params
+              let capSizeBevel = vec2<f32>(0.46, 0.46);
+              let dCapBevel = sdRoundedBox(btnUV - center, capSizeBevel, 0.04);
+              let dDxBevel = dpdx(dCapBevel);
+              let dDyBevel = dpdy(dCapBevel);
+              let aaBevel = fwidth(dCapBevel) * 0.5;
+
               // STUDIO DARKNESS: Dim everything significantly when playing
               let isPlaying = (uniforms.isPlaying == 1u);
               let dimFactor = select(1.0, 0.35, isPlaying);
@@ -721,8 +737,7 @@ class PatternTests {
               var finalColor = fs.bgColor * dimFactor;
               finalColor += vec3(0.04) * (0.5 - uv.y) * dimFactor;
 
-              let btnScale = 1.05;
-              let btnUV = (uv - 0.5) * btnScale + 0.5;
+              // btnScale/btnUV calculated at top
               var inButton = 0.0;
               if (btnUV.x > 0.0 && btnUV.x < 1.0 && btnUV.y > 0.0 && btnUV.y < 1.0) {
                 let texColor = textureSampleLevel(buttonsTexture, buttonsSampler, btnUV, 0.0).rgb;
@@ -792,10 +807,10 @@ class PatternTests {
                 }
 
                 if (uniforms.capStyle >= 5u) {
-                    let cap = drawBeveledCap(btnUV, dimFactor, (uniforms.capStyle == 6u), dataColorVal, noteDisplayColor, effColorVal);
+                    let cap = drawBeveledCap(btnUV, dimFactor, (uniforms.capStyle == 6u), dataColorVal, noteDisplayColor, effColorVal, dCapBevel, dDxBevel, dDyBevel, aaBevel);
                     finalColor = mix(finalColor, cap.rgb, cap.a);
                 } else if (uniforms.capStyle >= 3u) {
-                    let cap = drawFullCap(btnUV, dimFactor, (uniforms.capStyle == 4u), dataColorVal, noteDisplayColor, effColorVal);
+                    let cap = drawFullCap(btnUV, dimFactor, (uniforms.capStyle == 4u), dataColorVal, noteDisplayColor, effColorVal, dCapFull, aaFull);
                     finalColor = mix(finalColor, cap.rgb, cap.a);
                 } else {
                     let topUV = btnUV - vec2(0.5, 0.16);
@@ -978,14 +993,12 @@ class PatternTests {
                 isFrosted: bool,
                 colData: vec3<f32>,
                 colNote: vec3<f32>,
-                colEff: vec3<f32>
+                colEff: vec3<f32>,
+                dCap: f32,
+                aa: f32
             ) -> vec4<f32> {
                 let center = vec2<f32>(0.5, 0.5);
-                // Cap Shape: Large rounded box filling most of the segment (UV space)
-                let capSize = vec2<f32>(0.47, 0.47);
-                let dCap = sdRoundedBox(uv - center, capSize, 0.06);
-
-                let aa = fwidth(dCap) * 0.5;
+                // Cap Shape logic moved to fs, dCap passed in
                 let mask = 1.0 - smoothstep(-aa, aa, dCap);
                 if (mask < 0.01) { return vec4<f32>(0.0); }
 
@@ -1031,12 +1044,14 @@ class PatternTests {
                 isFrosted: bool,
                 colData: vec3<f32>,
                 colNote: vec3<f32>,
-                colEff: vec3<f32>
+                colEff: vec3<f32>,
+                dCap: f32,
+                dDx: f32,
+                dDy: f32,
+                aa: f32
             ) -> vec4<f32> {
                 let center = vec2<f32>(0.5, 0.5);
-                let capSize = vec2<f32>(0.46, 0.46);
-                let dCap = sdRoundedBox(uv - center, capSize, 0.04);
-                let aa = fwidth(dCap) * 0.5;
+                // dCap, aa passed in
                 let mask = 1.0 - smoothstep(-aa, aa, dCap);
 
                 // Bevel Calculation
@@ -1048,13 +1063,12 @@ class PatternTests {
                 // Normal Estimation
                 // Gradient of dCap points outwards. We want normal.
                 // Slope region: Normal tilts. Plateau: Normal is (0,0,1).
-                let dDx = dpdx(dCap);
-                let dDy = dpdy(dCap);
+                // dDx, dDy passed in
                 // If we are on the slope (h < 1.0), the normal has XY components proportional to gradient.
                 // We want the normal to point "up" and "in".
                 // Gradient points "out". So we use gradient as xy.
                 // N = normalize(vec3(dDx, dDy, steepness)).
-                let steepness = 0.5 * fwidth(dCap); // Scale factor
+                let steepness = aa; // Scale factor (approx)
                 var N = normalize(vec3<f32>(dDx, dDy, steepness));
                 if (h >= 0.95) { N = vec3<f32>(0.0, 0.0, 1.0); }
 
@@ -1113,6 +1127,23 @@ class PatternTests {
 
               let aa = fwidth(p.y) * 0.75;
 
+              // --- PRE-CALCULATE DERIVATIVES FOR CAPS (Uniform Flow) ---
+              let btnScale = 1.05;
+              let btnUV = (uv - 0.5) * btnScale + 0.5;
+              let center = vec2<f32>(0.5, 0.5);
+
+              // Full Cap Params
+              let capSizeFull = vec2<f32>(0.47, 0.47);
+              let dCapFull = sdRoundedBox(btnUV - center, capSizeFull, 0.06);
+              let aaFull = fwidth(dCapFull) * 0.5;
+
+              // Beveled Cap Params
+              let capSizeBevel = vec2<f32>(0.46, 0.46);
+              let dCapBevel = sdRoundedBox(btnUV - center, capSizeBevel, 0.04);
+              let dDxBevel = dpdx(dCapBevel);
+              let dDyBevel = dpdy(dCapBevel);
+              let aaBevel = fwidth(dCapBevel) * 0.5;
+
               if (in.channel == 0u) {
                   var col = fs.bgColor * 0.5;
                   let onPlayhead = (in.row == uniforms.playheadRow);
@@ -1140,8 +1171,7 @@ class PatternTests {
                   finalColor += vec3<f32>(0.15) * smoothstep(0.0, -0.1, p.y);
               }
 
-              let btnScale = 1.05;
-              let btnUV = (uv - 0.5) * btnScale + 0.5;
+              // btnScale/btnUV calculated at top
               var btnColor = vec3<f32>(0.0);
               var inButton = 0.0;
 
@@ -1201,13 +1231,13 @@ class PatternTests {
                        // Trap Mode
                        let isPlaying = (uniforms.isPlaying == 1u);
                        let dimFactor = select(1.0, 0.35, isPlaying);
-                       let cap = drawBeveledCap(btnUV, dimFactor, (uniforms.capStyle == 6u), colData, colNote, colEff);
+                       let cap = drawBeveledCap(btnUV, dimFactor, (uniforms.capStyle == 6u), colData, colNote, colEff, dCapBevel, dDxBevel, dDyBevel, aaBevel);
                        finalColor = mix(finalColor, cap.rgb, cap.a);
                   } else if (uniforms.capStyle >= 3u) {
                        // Full Cap Mode
                        let isPlaying = (uniforms.isPlaying == 1u);
                        let dimFactor = select(1.0, 0.35, isPlaying);
-                       let cap = drawFullCap(btnUV, dimFactor, (uniforms.capStyle == 4u), colData, colNote, colEff);
+                       let cap = drawFullCap(btnUV, dimFactor, (uniforms.capStyle == 4u), colData, colNote, colEff, dCapFull, aaFull);
                        finalColor = mix(finalColor, cap.rgb, cap.a);
                   } else {
                       // Standard Flat Mode
