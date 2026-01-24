@@ -91,6 +91,11 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Neutrino Storm container NOT found.")
 
+            # Check for Gravity Well container
+            if page.locator("#gravity-well-container").count() > 0:
+                print("SUCCESS: Gravity Well container found.")
+            else:
+                print("FAILURE: Gravity Well container NOT found.")
             # Check for Primordial Soup container
             if page.locator("#primordial-soup-container").count() > 0:
                 print("SUCCESS: Primordial Soup container found.")
