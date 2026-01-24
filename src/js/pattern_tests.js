@@ -601,8 +601,6 @@ class PatternTests {
                 let aa = fwidth(dCap) * 0.5;
                 let mask = 1.0 - smoothstep(-aa, aa, dCap);
 
-                if (mask < 0.01) { return vec4<f32>(0.0); }
-
                 // Bevel Calculation
                 // dCap is negative inside. Range approx -0.5 to 0.
                 let bevelWidth = 0.08;
@@ -1040,8 +1038,6 @@ class PatternTests {
                 let dCap = sdRoundedBox(uv - center, capSize, 0.04);
                 let aa = fwidth(dCap) * 0.5;
                 let mask = 1.0 - smoothstep(-aa, aa, dCap);
-
-                if (mask < 0.01) { return vec4<f32>(0.0); }
 
                 // Bevel Calculation
                 // dCap is negative inside. Range approx -0.5 to 0.
