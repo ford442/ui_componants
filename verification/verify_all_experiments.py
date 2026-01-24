@@ -96,6 +96,11 @@ def verify_all_experiments():
                 print("SUCCESS: Gravity Well container found.")
             else:
                 print("FAILURE: Gravity Well container NOT found.")
+            # Check for Primordial Soup container
+            if page.locator("#primordial-soup-container").count() > 0:
+                print("SUCCESS: Primordial Soup container found.")
+            else:
+                print("FAILURE: Primordial Soup container NOT found.")
 
             print("Verification finished.")
 
