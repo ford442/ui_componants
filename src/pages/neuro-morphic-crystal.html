@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neuro-Morphic Crystal - Hybrid Experiment</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050510;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #00aaff, #00ffcc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        p {
+            font-size: 0.9rem;
+            margin-top: 5px;
+            max-width: 300px;
+        }
+        .back-link {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            pointer-events: auto;
+            z-index: 10;
+        }
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div class="ui-overlay">
+        <h1>Neuro-Morphic Crystal</h1>
+        <p>Hybrid WebGL2 / WebGPU Experiment</p>
+        <p style="color: #888; font-size: 0.8rem;">
+            WebGL2 renders the pulsing neural crystal.
+            WebGPU simulates synaptic impulses reacting to it.
+            <br><br>
+            Move mouse to rotate and excite the particles.
+        </p>
+    </div>
+
+    <a href="experiments.html" class="back-link">Back to Lab</a>
+
+    <script type="module">
+        import { NeuroMorphicCrystal } from '../js/neuro-morphic-crystal.js';
+
+        const container = document.getElementById('canvas-container');
+        const experiment = new NeuroMorphicCrystal(container, {
+            particleCount: 50000
+        });
+    </script>
+</body>
+</html>

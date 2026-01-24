@@ -30,11 +30,9 @@ export class ChaosAttractor {
 
         // Interaction State
         this.isDragging = false;
+        this.isModifying = false; // Shift key state
         this.lastMouseX = 0;
         this.lastMouseY = 0;
-
-        // Stats
-        this.statsElement = document.getElementById('stats');
 
         this.init();
     }
@@ -75,6 +73,45 @@ export class ChaosAttractor {
         this.container.style.position = 'relative';
         this.container.style.overflow = 'hidden';
         this.container.style.background = '#000';
+
+        // UI Layer
+        this.uiLayer = document.createElement('div');
+        this.uiLayer.style.cssText = `
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 10;
+            text-align: left;
+            text-shadow: 0 0 2px rgba(0,0,0,0.8);
+            user-select: none;
+        `;
+        this.container.appendChild(this.uiLayer);
+        this.updateUI();
+    }
+
+    updateUI(dt = 0.016) {
+        if (!this.uiLayer) return;
+
+        this.uiLayer.innerHTML = `
+            <div style="margin-bottom: 8px; opacity: 0.7;">
+                Particles: ${this.options.particleCount.toLocaleString()}<br>
+                FPS: ${(1 / dt).toFixed(0)}
+            </div>
+            <div style="border-left: 2px solid #00ffcc; padding-left: 8px;">
+                <div style="color: #00ffcc; font-weight: bold;">INTERACTION MODE</div>
+                <div>Rotate: Left Click + Drag</div>
+                <div>Zoom: Mouse Wheel</div>
+                <div style="color: #ffcc00; margin-top: 4px;">➤ Mutate: Hold SHIFT + Drag</div>
+            </div>
+            <div style="margin-top: 8px; font-size: 11px; color: #aaa;">
+                RHO (Chaos): <span style="color:#fff">${this.options.rho.toFixed(2)}</span><br>
+                BETA (Shape): <span style="color:#fff">${this.options.beta.toFixed(2)}</span>
+            </div>
+        `;
     }
 
     showError(msg) {
@@ -397,9 +434,9 @@ export class ChaosAttractor {
 
         this.updateMatrices();
 
-        // Stats
-        if (this.statsElement && Math.random() < 0.05) {
-            this.statsElement.innerText = `Particles: ${this.options.particleCount.toLocaleString()} | FPS: ${(1/dt).toFixed(0)}`;
+        // Update UI
+        if (Math.random() < 0.1) { // Throttle UI updates
+            this.updateUI(dt);
         }
 
         // WebGL2 Render
@@ -471,10 +508,28 @@ export class ChaosAttractor {
     }
 
     setupEvents() {
-        window.addEventListener('resize', () => {
+        this.resizeHandler = () => {
             this.resizeGL();
             this.resizeGPU();
-        });
+        };
+        window.addEventListener('resize', this.resizeHandler);
+
+        // Key Modifiers
+        this.keyDownHandler = (e) => {
+            if (e.key === 'Shift') {
+                this.isModifying = true;
+                this.container.style.cursor = 'crosshair';
+            }
+        };
+        window.addEventListener('keydown', this.keyDownHandler);
+
+        this.keyUpHandler = (e) => {
+            if (e.key === 'Shift') {
+                this.isModifying = false;
+                this.container.style.cursor = 'default';
+            }
+        };
+        window.addEventListener('keyup', this.keyUpHandler);
 
         this.gpuCanvas.addEventListener('mousedown', (e) => {
             this.isDragging = true;
@@ -482,20 +537,32 @@ export class ChaosAttractor {
             this.lastMouseY = e.clientY;
         });
 
-        window.addEventListener('mousemove', (e) => {
+        this.mouseMoveHandler = (e) => {
             if (!this.isDragging) return;
             const dx = e.clientX - this.lastMouseX;
             const dy = e.clientY - this.lastMouseY;
             this.lastMouseX = e.clientX;
             this.lastMouseY = e.clientY;
 
-            this.camera.theta -= dx * 0.01;
-            this.camera.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this.camera.phi - dy * 0.01));
-        });
+            if (this.isModifying) {
+                // Mutate Parameters
+                // dx controls Rho (Chaos)
+                this.options.rho = Math.max(1.0, Math.min(100.0, this.options.rho + dx * 0.1));
 
-        window.addEventListener('mouseup', () => {
+                // dy controls Beta (Shape/Aspect)
+                this.options.beta = Math.max(0.1, Math.min(10.0, this.options.beta - dy * 0.01));
+            } else {
+                // Rotate Camera
+                this.camera.theta -= dx * 0.01;
+                this.camera.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this.camera.phi - dy * 0.01));
+            }
+        };
+        window.addEventListener('mousemove', this.mouseMoveHandler);
+
+        this.mouseUpHandler = () => {
             this.isDragging = false;
-        });
+        };
+        window.addEventListener('mouseup', this.mouseUpHandler);
 
         this.gpuCanvas.addEventListener('wheel', (e) => {
             this.camera.radius = Math.max(10, Math.min(500, this.camera.radius + e.deltaY * 0.1));
@@ -505,7 +572,15 @@ export class ChaosAttractor {
 
     destroy() {
         this.isActive = false;
-        // Cleanup resources if needed
+        window.removeEventListener('resize', this.resizeHandler);
+        window.removeEventListener('keydown', this.keyDownHandler);
+        window.removeEventListener('keyup', this.keyUpHandler);
+        window.removeEventListener('mousemove', this.mouseMoveHandler);
+        window.removeEventListener('mouseup', this.mouseUpHandler);
+
+        if (this.uiLayer && this.uiLayer.parentNode) {
+            this.uiLayer.parentNode.removeChild(this.uiLayer);
+        }
     }
 }
 

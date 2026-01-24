@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: 'src',
+  publicDir: '../public',
   build: {
     outDir: '../dist',
     rollupOptions: {
@@ -50,6 +51,14 @@ export default defineConfig({
         chaos_attractor: resolve(__dirname, 'src/pages/chaos-attractor.html'),
         energy_vortex: resolve(__dirname, 'src/pages/energy-vortex.html'),
         subatomic_collider: resolve(__dirname, 'src/pages/subatomic-collider.html'),
+        dark_energy_prism: resolve(__dirname, 'src/pages/dark-energy-prism.html'),
+        dyson_swarm: resolve(__dirname, 'src/pages/dyson-swarm.html'),
+        neuro_morphic_crystal: resolve(__dirname, 'src/pages/neuro-morphic-crystal.html'),
+        synaptic_fire: resolve(__dirname, 'src/pages/synaptic-fire.html'),
+        hyperspace_tunnel: resolve(__dirname, 'src/pages/hyperspace-tunnel.html'),
+        atmospheric_entry: resolve(__dirname, 'src/pages/atmospheric-entry.html'),
+        neutrino_storm: resolve(__dirname, 'src/pages/neutrino-storm.html'),
+        primordial_soup: resolve(__dirname, 'src/pages/primordial-soup.html'),
       },
     },
   },

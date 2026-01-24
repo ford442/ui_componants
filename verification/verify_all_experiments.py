@@ -57,6 +57,51 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Subatomic Collider container NOT found.")
 
+            # Check for Dark Energy Prism container
+            if page.locator("#dark-energy-prism-container").count() > 0:
+                print("SUCCESS: Dark Energy Prism container found.")
+            else:
+                print("FAILURE: Dark Energy Prism container NOT found.")
+            # Check for Dyson Swarm container
+            if page.locator("#dyson-swarm-container").count() > 0:
+                print("SUCCESS: Dyson Swarm container found.")
+            else:
+                print("FAILURE: Dyson Swarm container NOT found.")
+
+            # Check for Neuro-Morphic Crystal container
+            if page.locator("#neuro-morphic-crystal-container").count() > 0:
+                print("SUCCESS: Neuro-Morphic Crystal container found.")
+            else:
+                print("FAILURE: Neuro-Morphic Crystal container NOT found.")
+
+            # Check for Hyperspace Tunnel container
+            if page.locator("#hyperspace-tunnel-container").count() > 0:
+                print("SUCCESS: Hyperspace Tunnel container found.")
+            else:
+                print("FAILURE: Hyperspace Tunnel container NOT found.")
+
+            # Check for Atmospheric Entry container
+            if page.locator("#atmospheric-entry-container").count() > 0:
+                print("SUCCESS: Atmospheric Entry container found.")
+            else:
+                print("FAILURE: Atmospheric Entry container NOT found.")
+            # Check for Neutrino Storm container
+            if page.locator("#neutrino-storm-container").count() > 0:
+                print("SUCCESS: Neutrino Storm container found.")
+            else:
+                print("FAILURE: Neutrino Storm container NOT found.")
+
+            # Check for Gravity Well container
+            if page.locator("#gravity-well-container").count() > 0:
+                print("SUCCESS: Gravity Well container found.")
+            else:
+                print("FAILURE: Gravity Well container NOT found.")
+            # Check for Primordial Soup container
+            if page.locator("#primordial-soup-container").count() > 0:
+                print("SUCCESS: Primordial Soup container found.")
+            else:
+                print("FAILURE: Primordial Soup container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:

@@ -112,7 +112,7 @@ class PatternTests {
         // Load Texture
         try {
             // Try to load from public root
-            const response = await fetch('/buttons.png');
+            const response = await fetch('/unlit-button.png');
             if (!response.ok) throw new Error('Image not found');
             const blob = await response.blob();
             const bitmap = await createImageBitmap(blob);
@@ -744,8 +744,14 @@ class PatternTests {
 
                 // --- Common Light Calculation ---
                 let isDataPresent = hasExpression && !isMuted;
-                let topColorBase = vec3<f32>(0.0, 0.9, 1.0);
+                let topColorBase = vec3(0.0, 0.9, 1.0);
                 let dataColorVal = topColorBase * select(0.0, 1.5 + bloom, isDataPresent);
+
+                // COMPONENT 2: MAIN NOTE LIGHT
+                let mainUV = btnUV - vec2(0.5, 0.5);
+                let mainSize = vec2(0.55, 0.45);
+                var noteColor = vec3(0.2);
+                var lightAmount = 0.0;
 
                 var noteColorVal = vec3<f32>(0.2);
                 var noteIntensity = 0.0;
@@ -836,6 +842,10 @@ class PatternTests {
               kickTrigger: f32,
               activeChannels: u32,
               isModuleLoaded: u32,
+              bloomIntensity: f32,
+              bloomThreshold: f32,
+              invertChannels: u32,
+              capStyle: u32,
             };
 
             @group(0) @binding(0) var<storage, read> cells: array<u32>;
