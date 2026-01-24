@@ -58,6 +58,7 @@ export default defineConfig({
         hyperspace_tunnel: resolve(__dirname, 'src/pages/hyperspace-tunnel.html'),
         atmospheric_entry: resolve(__dirname, 'src/pages/atmospheric-entry.html'),
         neutrino_storm: resolve(__dirname, 'src/pages/neutrino-storm.html'),
+        primordial_soup: resolve(__dirname, 'src/pages/primordial-soup.html'),
       },
     },
   },

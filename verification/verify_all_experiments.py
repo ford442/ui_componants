@@ -91,6 +91,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Neutrino Storm container NOT found.")
 
+            # Check for Primordial Soup container
+            if page.locator("#primordial-soup-container").count() > 0:
+                print("SUCCESS: Primordial Soup container found.")
+            else:
+                print("FAILURE: Primordial Soup container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
