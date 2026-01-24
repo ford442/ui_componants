@@ -38,7 +38,7 @@ class PatternTests {
             horizontal: null
         };
 
-        this.capStyle = 0; // 0: Default, 1: Clear, 2: Frosted, 3: Full Clear, 4: Full Frosted
+        this.capStyle = 0; // 0: Default, 1: Clear, 2: Frosted, 3: Full Clear, 4: Full Frosted, 5: Trap Clear, 6: Trap Frosted
 
         this.init();
     }
@@ -48,8 +48,12 @@ class PatternTests {
         const btn = document.getElementById('btn-cap-style');
         if (btn) {
             btn.addEventListener('click', () => {
-                this.capStyle = (this.capStyle + 1) % 5;
-                const labels = ['Default', 'Clear', 'Frosted', 'Full Clear', 'Full Frosted'];
+                this.capStyle = (this.capStyle + 1) % 7;
+                const labels = [
+                    'Default', 'Clear', 'Frosted',
+                    'Full Clear', 'Full Frosted',
+                    'Trap Clear', 'Trap Frosted'
+                ];
                 btn.textContent = `Cap Style: ${labels[this.capStyle]}`;
             });
         }
@@ -532,7 +536,6 @@ class PatternTests {
 
             fn drawFullCap(
                 uv: vec2<f32>,
-                aa: f32,
                 dimFactor: f32,
                 isFrosted: bool,
                 colData: vec3<f32>,
@@ -544,6 +547,7 @@ class PatternTests {
                 let capSize = vec2<f32>(0.47, 0.47);
                 let dCap = sdRoundedBox(uv - center, capSize, 0.06);
 
+                let aa = fwidth(dCap) * 0.5;
                 let mask = 1.0 - smoothstep(-aa, aa, dCap);
                 if (mask < 0.01) { return vec4<f32>(0.0); }
 
@@ -581,6 +585,88 @@ class PatternTests {
                 finalCol += vec3<f32>(0.5) * rim * specStrength * dimFactor;
 
                 return vec4<f32>(finalCol, mask);
+            }
+
+            fn drawBeveledCap(
+                uv: vec2<f32>,
+                dimFactor: f32,
+                isFrosted: bool,
+                colData: vec3<f32>,
+                colNote: vec3<f32>,
+                colEff: vec3<f32>
+            ) -> vec4<f32> {
+                let center = vec2<f32>(0.5, 0.5);
+                let capSize = vec2<f32>(0.46, 0.46);
+                let dCap = sdRoundedBox(uv - center, capSize, 0.04);
+                let aa = fwidth(dCap) * 0.5;
+                let mask = 1.0 - smoothstep(-aa, aa, dCap);
+
+                if (mask < 0.01) { return vec4<f32>(0.0); }
+
+                // Bevel Calculation
+                // dCap is negative inside. Range approx -0.5 to 0.
+                let bevelWidth = 0.08;
+                // Height: 0 at edge, 1 at plateau
+                let h = clamp(-dCap / bevelWidth, 0.0, 1.0);
+
+                // Normal Estimation
+                // Gradient of dCap points outwards. We want normal.
+                // Slope region: Normal tilts. Plateau: Normal is (0,0,1).
+                let dDx = dpdx(dCap);
+                let dDy = dpdy(dCap);
+                // If we are on the slope (h < 1.0), the normal has XY components proportional to gradient.
+                // We want the normal to point "up" and "in".
+                // Gradient points "out". So we use gradient as xy.
+                // N = normalize(vec3(dDx, dDy, steepness)).
+                let steepness = 0.5 * fwidth(dCap); // Scale factor
+                var N = normalize(vec3<f32>(dDx, dDy, steepness));
+                if (h >= 0.95) { N = vec3<f32>(0.0, 0.0, 1.0); }
+
+                // Lighting
+                let lightDir = normalize(vec3<f32>(-0.5, 0.5, 1.0));
+                let viewDir = vec3<f32>(0.0, 0.0, 1.0);
+                let halfDir = normalize(lightDir + viewDir);
+
+                // Diffuse / Fresnel
+                let NdotL = max(0.0, dot(N, lightDir));
+                let NdotV = max(0.0, dot(N, viewDir));
+                let HdotN = max(0.0, dot(halfDir, N));
+
+                // Fresnel
+                let F0 = select(0.04, 0.1, isFrosted);
+                let fresnel = F0 + (1.0 - F0) * pow(1.0 - NdotV, 5.0);
+
+                // Specular
+                let rough = select(0.1, 0.6, isFrosted);
+                let specPower = select(64.0, 8.0, isFrosted);
+                let specular = pow(HdotN, specPower) * select(1.0, 0.4, isFrosted);
+
+                // Internal Lights
+                // Re-use falloff logic but distorted by refraction?
+                // Simple version: just overlay
+                let pData = vec2<f32>(0.5, 0.2);
+                let pNote = vec2<f32>(0.5, 0.5);
+                let pEff  = vec2<f32>(0.5, 0.8);
+                let falloff = select(10.0, 4.0, isFrosted);
+
+                var internalLight = vec3<f32>(0.0);
+                internalLight += colData * exp(-length(uv - pData) * falloff);
+                internalLight += colNote * exp(-length(uv - pNote) * falloff);
+                internalLight += colEff  * exp(-length(uv - pEff) * falloff);
+
+                // Composition
+                let baseColor = select(vec3<f32>(0.02), vec3<f32>(0.15), isFrosted);
+                var col = baseColor * dimFactor;
+
+                // Add Bevel Highlights
+                col += vec3<f32>(1.0) * specular * dimFactor;
+                col += vec3<f32>(0.5) * fresnel * dimFactor;
+
+                // Add Internal Transmitted Light
+                let transmit = select(0.9, 0.6, isFrosted);
+                col += internalLight * transmit;
+
+                return vec4<f32>(col, mask);
             }
 
             // --- MAIN FRAGMENT SHADER ---
@@ -707,8 +793,11 @@ class PatternTests {
                   if (!isMuted) { effColorVal *= strength * (1.0 + bloom * 2.5); isEffOn = true; }
                 }
 
-                if (uniforms.capStyle >= 3u) {
-                    let cap = drawFullCap(btnUV, aa, dimFactor, (uniforms.capStyle == 4u), dataColorVal, noteDisplayColor, effColorVal);
+                if (uniforms.capStyle >= 5u) {
+                    let cap = drawBeveledCap(btnUV, dimFactor, (uniforms.capStyle == 6u), dataColorVal, noteDisplayColor, effColorVal);
+                    finalColor = mix(finalColor, cap.rgb, cap.a);
+                } else if (uniforms.capStyle >= 3u) {
+                    let cap = drawFullCap(btnUV, dimFactor, (uniforms.capStyle == 4u), dataColorVal, noteDisplayColor, effColorVal);
                     finalColor = mix(finalColor, cap.rgb, cap.a);
                 } else {
                     let topUV = btnUV - vec2(0.5, 0.16);
@@ -887,7 +976,6 @@ class PatternTests {
 
             fn drawFullCap(
                 uv: vec2<f32>,
-                aa: f32,
                 dimFactor: f32,
                 isFrosted: bool,
                 colData: vec3<f32>,
@@ -899,6 +987,7 @@ class PatternTests {
                 let capSize = vec2<f32>(0.47, 0.47);
                 let dCap = sdRoundedBox(uv - center, capSize, 0.06);
 
+                let aa = fwidth(dCap) * 0.5;
                 let mask = 1.0 - smoothstep(-aa, aa, dCap);
                 if (mask < 0.01) { return vec4<f32>(0.0); }
 
@@ -936,6 +1025,88 @@ class PatternTests {
                 finalCol += vec3<f32>(0.5) * rim * specStrength * dimFactor;
 
                 return vec4<f32>(finalCol, mask);
+            }
+
+            fn drawBeveledCap(
+                uv: vec2<f32>,
+                dimFactor: f32,
+                isFrosted: bool,
+                colData: vec3<f32>,
+                colNote: vec3<f32>,
+                colEff: vec3<f32>
+            ) -> vec4<f32> {
+                let center = vec2<f32>(0.5, 0.5);
+                let capSize = vec2<f32>(0.46, 0.46);
+                let dCap = sdRoundedBox(uv - center, capSize, 0.04);
+                let aa = fwidth(dCap) * 0.5;
+                let mask = 1.0 - smoothstep(-aa, aa, dCap);
+
+                if (mask < 0.01) { return vec4<f32>(0.0); }
+
+                // Bevel Calculation
+                // dCap is negative inside. Range approx -0.5 to 0.
+                let bevelWidth = 0.08;
+                // Height: 0 at edge, 1 at plateau
+                let h = clamp(-dCap / bevelWidth, 0.0, 1.0);
+
+                // Normal Estimation
+                // Gradient of dCap points outwards. We want normal.
+                // Slope region: Normal tilts. Plateau: Normal is (0,0,1).
+                let dDx = dpdx(dCap);
+                let dDy = dpdy(dCap);
+                // If we are on the slope (h < 1.0), the normal has XY components proportional to gradient.
+                // We want the normal to point "up" and "in".
+                // Gradient points "out". So we use gradient as xy.
+                // N = normalize(vec3(dDx, dDy, steepness)).
+                let steepness = 0.5 * fwidth(dCap); // Scale factor
+                var N = normalize(vec3<f32>(dDx, dDy, steepness));
+                if (h >= 0.95) { N = vec3<f32>(0.0, 0.0, 1.0); }
+
+                // Lighting
+                let lightDir = normalize(vec3<f32>(-0.5, 0.5, 1.0));
+                let viewDir = vec3<f32>(0.0, 0.0, 1.0);
+                let halfDir = normalize(lightDir + viewDir);
+
+                // Diffuse / Fresnel
+                let NdotL = max(0.0, dot(N, lightDir));
+                let NdotV = max(0.0, dot(N, viewDir));
+                let HdotN = max(0.0, dot(halfDir, N));
+
+                // Fresnel
+                let F0 = select(0.04, 0.1, isFrosted);
+                let fresnel = F0 + (1.0 - F0) * pow(1.0 - NdotV, 5.0);
+
+                // Specular
+                let rough = select(0.1, 0.6, isFrosted);
+                let specPower = select(64.0, 8.0, isFrosted);
+                let specular = pow(HdotN, specPower) * select(1.0, 0.4, isFrosted);
+
+                // Internal Lights
+                // Re-use falloff logic but distorted by refraction?
+                // Simple version: just overlay
+                let pData = vec2<f32>(0.5, 0.2);
+                let pNote = vec2<f32>(0.5, 0.5);
+                let pEff  = vec2<f32>(0.5, 0.8);
+                let falloff = select(10.0, 4.0, isFrosted);
+
+                var internalLight = vec3<f32>(0.0);
+                internalLight += colData * exp(-length(uv - pData) * falloff);
+                internalLight += colNote * exp(-length(uv - pNote) * falloff);
+                internalLight += colEff  * exp(-length(uv - pEff) * falloff);
+
+                // Composition
+                let baseColor = select(vec3<f32>(0.02), vec3<f32>(0.15), isFrosted);
+                var col = baseColor * dimFactor;
+
+                // Add Bevel Highlights
+                col += vec3<f32>(1.0) * specular * dimFactor;
+                col += vec3<f32>(0.5) * fresnel * dimFactor;
+
+                // Add Internal Transmitted Light
+                let transmit = select(0.9, 0.6, isFrosted);
+                col += internalLight * transmit;
+
+                return vec4<f32>(col, mask);
             }
 
             @fragment
@@ -1030,11 +1201,17 @@ class PatternTests {
                       colEff = effectColor * strength * 2.5;
                   }
 
-                  if (uniforms.capStyle >= 3u) {
+                  if (uniforms.capStyle >= 5u) {
+                       // Trap Mode
+                       let isPlaying = (uniforms.isPlaying == 1u);
+                       let dimFactor = select(1.0, 0.35, isPlaying);
+                       let cap = drawBeveledCap(btnUV, dimFactor, (uniforms.capStyle == 6u), colData, colNote, colEff);
+                       finalColor = mix(finalColor, cap.rgb, cap.a);
+                  } else if (uniforms.capStyle >= 3u) {
                        // Full Cap Mode
                        let isPlaying = (uniforms.isPlaying == 1u);
                        let dimFactor = select(1.0, 0.35, isPlaying);
-                       let cap = drawFullCap(btnUV, aa, dimFactor, (uniforms.capStyle == 4u), colData, colNote, colEff);
+                       let cap = drawFullCap(btnUV, dimFactor, (uniforms.capStyle == 4u), colData, colNote, colEff);
                        finalColor = mix(finalColor, cap.rgb, cap.a);
                   } else {
                       // Standard Flat Mode
