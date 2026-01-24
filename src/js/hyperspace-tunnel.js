@@ -1,6 +1,11 @@
 /**
  * Hyperspace Tunnel Experiment
  * Combines WebGL2 (Wireframe Warp Tunnel) and WebGPU (Star Streak Particles).
+ *
+ * Refiner Upgrade: "Hyperboost" Interaction
+ * - Click/Hold to engage Warp Speed.
+ * - Accelerates tunnel scroll and star particles.
+ * - Shifts color spectrum and warps geometry.
  */
 
 export class HyperspaceTunnelExperiment {
@@ -11,10 +16,16 @@ export class HyperspaceTunnelExperiment {
         // State
         this.isActive = false;
         this.startTime = Date.now();
+        this.lastTime = Date.now();
         this.animationId = null;
         this.canvasSize = { width: 0, height: 0 };
         this.mouse = { x: 0, y: 0 };
         this.targetMouse = { x: 0, y: 0 };
+
+        // Hyperboost State
+        this.isBoosting = false;
+        this.boostFactor = 0.0; // 0.0 to 1.0
+        this.scrollProgress = 0.0;
 
         // WebGL2 State
         this.glCanvas = null;
@@ -36,6 +47,8 @@ export class HyperspaceTunnelExperiment {
 
         this.handleResize = this.handleResize.bind(this);
         this.handleMouseMove = this.handleMouseMove.bind(this);
+        this.handleMouseDown = this.handleMouseDown.bind(this);
+        this.handleMouseUp = this.handleMouseUp.bind(this);
 
         this.init();
     }
@@ -44,6 +57,7 @@ export class HyperspaceTunnelExperiment {
         this.container.style.position = 'relative';
         this.container.style.overflow = 'hidden';
         this.container.style.background = '#000';
+        this.container.style.cursor = 'pointer'; // Indicate interaction
 
         // 1. Initialize WebGL2 (The Tunnel)
         this.initWebGL2();
@@ -67,7 +81,36 @@ export class HyperspaceTunnelExperiment {
 
         window.addEventListener('resize', this.handleResize);
         window.addEventListener('mousemove', this.handleMouseMove);
+
+        // Interaction Listeners
+        this.container.addEventListener('mousedown', this.handleMouseDown);
+        window.addEventListener('mouseup', this.handleMouseUp);
+        this.container.addEventListener('touchstart', this.handleMouseDown, {passive: false});
+        window.addEventListener('touchend', this.handleMouseUp);
+
+        // Add instruction overlay
+        this.addOverlay();
+
         this.animate();
+    }
+
+    addOverlay() {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            pointer-events: none;
+            text-align: center;
+            z-index: 10;
+            text-shadow: 0 0 5px cyan;
+        `;
+        overlay.innerHTML = "CLICK & HOLD to ENGAGE HYPERDRIVE";
+        this.container.appendChild(overlay);
     }
 
     handleResize() {
@@ -79,6 +122,15 @@ export class HyperspaceTunnelExperiment {
         const y = -(e.clientY / window.innerHeight) * 2 + 1;
         this.targetMouse.x = x * 2.0; // Amplify for effect
         this.targetMouse.y = y * 2.0;
+    }
+
+    handleMouseDown(e) {
+        if(e.type === 'touchstart') e.preventDefault();
+        this.isBoosting = true;
+    }
+
+    handleMouseUp() {
+        this.isBoosting = false;
     }
 
     // ========================================================================
@@ -159,32 +211,40 @@ export class HyperspaceTunnelExperiment {
         const vsSource = `#version 300 es
             in vec3 a_position;
             uniform float u_time;
+            uniform float u_scrollProgress;
+            uniform float u_boostFactor;
             uniform vec2 u_mouse;
             uniform vec2 u_resolution;
 
             out float v_depth;
+            out float v_boost;
 
             void main() {
                 vec3 p = a_position;
 
-                // Infinite Scroll: Shift Z based on time
+                // Infinite Scroll: Shift Z based on scrollProgress
                 // The geometry is from 0 to -100
-                float speed = 20.0;
-                float zOffset = mod(u_time * speed, 100.0 / 40.0); // Move by one ring spacing segment?
-                // Actually, just scroll the whole thing and wrap?
-                // Let's scroll the texture coordinates effectively by moving vertices
 
-                p.z += mod(u_time * speed, 100.0);
+                p.z += mod(u_scrollProgress, 100.0);
                 if (p.z > 0.0) p.z -= 100.0;
 
                 // Warp/Bend based on mouse
                 // The further away (more negative Z), the more it bends
-                float bendFactor = p.z * 0.05; // Negative value
+                // Boost increases the "warp" feeling (less bend, more tunnel vision? Or more chaotic?)
+                // Let's make it more chaotic with boost.
+
+                float baseBend = 0.05;
+                float boostBend = 0.15; // More intense warp
+                float bendAmt = baseBend + u_boostFactor * boostBend;
+
+                float bendFactor = p.z * bendAmt; // Negative value
                 p.x += u_mouse.x * bendFactor * bendFactor * 0.1;
                 p.y += u_mouse.y * bendFactor * bendFactor * 0.1;
 
                 // Spiral twist
-                float angle = p.z * 0.02 + u_time * 0.5;
+                // Spin faster when boosting
+                float spinSpeed = 0.5 + u_boostFactor * 2.0;
+                float angle = p.z * 0.02 + u_time * spinSpeed;
                 float c = cos(angle);
                 float s = sin(angle);
                 float x = p.x * c - p.y * s;
@@ -193,11 +253,11 @@ export class HyperspaceTunnelExperiment {
                 p.y = y;
 
                 // Camera Projection
-                float fov = 1.2;
+                // Widen FOV when boosting (Dolly Zoom effect)
+                float fov = 1.2 + u_boostFactor * 0.5;
                 float scale = 1.0 / tan(fov * 0.5);
                 float aspect = u_resolution.x / u_resolution.y;
 
-                // Simple perspective projection manually
                 float z = p.z;
                 float px = p.x * scale / aspect;
                 float py = p.y * scale;
@@ -206,18 +266,30 @@ export class HyperspaceTunnelExperiment {
                 // We use z as w
                 gl_Position = vec4(px, py, z * 0.01 - 1.0, -z);
                 v_depth = -z;
+                v_boost = u_boostFactor;
             }
         `;
 
         const fsSource = `#version 300 es
             precision highp float;
             in float v_depth;
+            in float v_boost;
             out vec4 outColor;
 
             void main() {
                 // Fade based on depth (fog)
                 float alpha = smoothstep(90.0, 10.0, v_depth);
-                outColor = vec4(0.0, 1.0, 1.0, alpha * 0.3); // Cyan
+
+                // Color Shift
+                vec3 cyan = vec3(0.0, 1.0, 1.0);
+                vec3 magenta = vec3(1.0, 0.0, 1.0);
+                vec3 white = vec3(1.0);
+
+                // Mix: Normal -> Boost (Magenta) -> Max Boost (White tips)
+                vec3 col = mix(cyan, magenta, v_boost);
+                col = mix(col, white, v_boost * 0.5);
+
+                outColor = vec4(col, alpha * (0.3 + v_boost * 0.4)); // Brighter when boosting
             }
         `;
 
@@ -297,6 +369,8 @@ export class HyperspaceTunnelExperiment {
                 time : f32,
                 mouseX : f32,
                 mouseY : f32,
+                aspect : f32,
+                boostFactor : f32, // New uniform
             }
 
             @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
@@ -323,8 +397,13 @@ export class HyperspaceTunnelExperiment {
                     p.vel.w = 0.5 + hash(seed + 4.0); // Size
                 }
 
+                // Calculate Speed with Boost
+                let baseSpeed = p.vel.z;
+                let boostMult = 1.0 + uniforms.boostFactor * 4.0; // Up to 5x speed
+                let currentSpeed = baseSpeed * boostMult;
+
                 // Move stars towards camera (+Z)
-                p.pos.z += p.vel.z * uniforms.dt;
+                p.pos.z += currentSpeed * uniforms.dt;
 
                 // Reset if past camera (z > 0)
                 if (p.pos.z > 0.0) {
@@ -336,9 +415,7 @@ export class HyperspaceTunnelExperiment {
                 }
 
                 // Warp/Steer based on mouse
-                // We shift the particles opposite to the mouse to simulate turning
-                // Apply a "virtual camera" rotation
-                let turnSpeed = 20.0;
+                let turnSpeed = 20.0 * (1.0 + uniforms.boostFactor); // Steer faster too
                 p.pos.x -= uniforms.mouseX * turnSpeed * uniforms.dt;
                 p.pos.y -= uniforms.mouseY * turnSpeed * uniforms.dt;
 
@@ -366,6 +443,7 @@ export class HyperspaceTunnelExperiment {
                 mouseX : f32,
                 mouseY : f32,
                 aspect : f32,
+                boostFactor : f32,
             }
             @group(0) @binding(1) var<uniform> uniforms : Uniforms;
 
@@ -377,34 +455,12 @@ export class HyperspaceTunnelExperiment {
             ) -> VertexOutput {
                 var output : VertexOutput;
 
-                // We want to draw a trail line for each particle.
-                // 2 vertices per particle? No, primitive is triangle-list or line-list?
-                // Let's use points and stretch them in geometry if possible, but we don't have geometry shaders.
-                // Let's use 'point-list' for simplicity first, or instantiate quads?
-                // Actually, let's try instancing. But we are reading from storage buffer.
-                // Simpler: Draw lines. But lines are thin.
-                // Let's draw long thin triangles (quads).
-                // 6 vertices per particle (2 triangles).
-
-                // We'll use the 'vertex pulling' technique or just map input.
-                // But we are using a pipeline with buffers.
-                // If we use 'draw(6 * numParticles)', we can calculate the particle index from vertex_index.
-
-                // NOTE: For simplicity in this hybrid setup, let's stick to 'point-list' rendering
-                // but use a large point size and maybe motion blur via alpha?
-                // Or better: Use 'triangle-strip' with instance? No.
-
-                // Let's stick to the method used in 'rain' or similar: just points, but projected.
-
                 let p = pos.xyz;
-                let viewPos = p; // Camera is at 0,0,0 looking down -Z
+                let viewPos = p;
 
                 // Perspective
-                let fov = 1.2;
+                let fov = 1.2 + uniforms.boostFactor * 0.5; // Match WebGL FOV
                 let scale = 1.0 / tan(fov * 0.5);
-
-                // x' = x / -z
-                // y' = y / -z
 
                 let z_dist = -p.z; // since p.z is negative
 
@@ -422,10 +478,13 @@ export class HyperspaceTunnelExperiment {
 
                 // Color based on Z (fade distant)
                 let alpha = smoothstep(100.0, 20.0, z_dist);
-                output.color = vec4f(1.0, 0.8, 1.0, alpha); // Pink/White
 
-                // To make them "streak", we would need geometry.
-                // For now, simple points.
+                // Whiter/Brighter when boosting
+                let boostColor = vec4f(1.0, 1.0, 1.0, alpha);
+                let baseColor = vec4f(1.0, 0.8, 1.0, alpha);
+
+                output.color = mix(baseColor, boostColor, uniforms.boostFactor);
+
                 return output;
             }
 
@@ -444,7 +503,14 @@ export class HyperspaceTunnelExperiment {
         });
 
         this.simParamBuffer = this.device.createBuffer({
-            size: 32, // aligned
+            size: 48, // aligned: dt(4), time(4), mx(4), my(4), aspect(4), boost(4), pad(8) -> 32? No.
+            // dt, time, mx, my = 16 bytes
+            // aspect, boost, pad, pad = 16 bytes. Total 32 bytes should suffice.
+            // Let's verify alignment.
+            // vec4 chunks.
+            // Chunk 1: dt, time, mouseX, mouseY.
+            // Chunk 2: aspect, boostFactor, pad, pad.
+            // Total 32 bytes.
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -540,16 +606,30 @@ export class HyperspaceTunnelExperiment {
     animate() {
         if (!this.isActive) return;
 
-        const time = (Date.now() - this.startTime) * 0.001;
+        const now = Date.now();
+        const dt = Math.min((now - this.lastTime) * 0.001, 0.1); // Cap at 0.1s
+        this.lastTime = now;
+        const time = (now - this.startTime) * 0.001;
 
         // Smooth mouse
         this.mouse.x += (this.targetMouse.x - this.mouse.x) * 0.1;
         this.mouse.y += (this.targetMouse.y - this.mouse.y) * 0.1;
 
+        // Smooth Boost Factor
+        const targetBoost = this.isBoosting ? 1.0 : 0.0;
+        this.boostFactor += (targetBoost - this.boostFactor) * 0.1; // Smooth transition
+
+        // Update Scroll
+        const baseSpeed = 20.0;
+        const currentSpeed = baseSpeed * (1.0 + this.boostFactor * 4.0); // 1x to 5x speed
+        this.scrollProgress += currentSpeed * dt;
+
         // WebGL2 Render
         if (this.gl && this.glProgram) {
             this.gl.useProgram(this.glProgram);
             this.gl.uniform1f(this.gl.getUniformLocation(this.glProgram, 'u_time'), time);
+            this.gl.uniform1f(this.gl.getUniformLocation(this.glProgram, 'u_scrollProgress'), this.scrollProgress);
+            this.gl.uniform1f(this.gl.getUniformLocation(this.glProgram, 'u_boostFactor'), this.boostFactor);
             this.gl.uniform2f(this.gl.getUniformLocation(this.glProgram, 'u_mouse'), this.mouse.x, this.mouse.y);
             this.gl.uniform2f(this.gl.getUniformLocation(this.glProgram, 'u_resolution'), this.glCanvas.width, this.glCanvas.height);
 
@@ -567,9 +647,9 @@ export class HyperspaceTunnelExperiment {
         // WebGPU Render
         if (this.device && this.renderPipeline) {
             const aspect = this.canvasSize.width / this.canvasSize.height;
-            // Align: dt(4), time(4), mx(4), my(4), aspect(4), pad(4), pad(4), pad(4)
+            // Align: dt(4), time(4), mx(4), my(4), aspect(4), boost(4), pad(4), pad(4)
             const uniforms = new Float32Array([
-                0.016, time, this.mouse.x, this.mouse.y, aspect, 0, 0, 0
+                dt, time, this.mouse.x, this.mouse.y, aspect, this.boostFactor, 0, 0
             ]);
             this.device.queue.writeBuffer(this.simParamBuffer, 0, uniforms);
 
@@ -608,6 +688,9 @@ export class HyperspaceTunnelExperiment {
 
         window.removeEventListener('resize', this.handleResize);
         window.removeEventListener('mousemove', this.handleMouseMove);
+
+        window.removeEventListener('mouseup', this.handleMouseUp);
+        window.removeEventListener('touchend', this.handleMouseUp);
 
         if (this.gl) {
             const ext = this.gl.getExtension('WEBGL_lose_context');
