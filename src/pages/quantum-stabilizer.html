@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Stabilizer - WebGL2 + WebGPU Experiment</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000005;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px rgba(0, 255, 200, 0.5);
+            color: #00ffc8;
+        }
+
+        p {
+            color: #aaa;
+            max-width: 400px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #fff;
+            text-decoration: none;
+            opacity: 0.7;
+            pointer-events: auto;
+            transition: opacity 0.3s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+
+        .interaction-hint {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #88ccff;
+            border-left: 2px solid #00ffc8;
+            padding-left: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="overlay">
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+        <h1>Quantum Stabilizer</h1>
+        <p>A hybrid visualization featuring a WebGL2 "Quantum Core" Icosahedron and a WebGPU "Containment Field" particle swarm.</p>
+        <div class="interaction-hint">
+            <strong>Interaction:</strong> Move mouse to repel particles. Click to destabilize the field.
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script type="module" src="../js/quantum-stabilizer.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('canvas-container');
+            // Check if class is loaded
+            if (window.QuantumStabilizer) {
+                const experiment = new QuantumStabilizer(container, {
+                    numParticles: 30000
+                });
+            } else {
+                console.error("QuantumStabilizer class not found.");
+            }
+        });
+    </script>
+</body>
+
+</html>

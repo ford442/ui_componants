@@ -1292,6 +1292,23 @@
                 </div>
                 <div style="text-align: center; margin-top: 1rem;">
                     <a href="planetary-terraforming.html" style="color: #aaa; text-decoration: none; font-size: 0.9rem; border-bottom: 1px solid #555;">View Full Page Experiment</a>
+        <!-- Quantum Stabilizer Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Quantum Stabilizer</h2>
+                    <p class="description">Quantum Core (WebGL2) + Containment Field (WebGPU)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Core</span>
+                        <span class="layer-tag webgpu" style="background: rgba(0, 255, 200, 0.2); border-color: #00ffc8; color: #ccffee;">WebGPU Field</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="quantum-stabilizer-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #000005;"></div>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="quantum-stabilizer.html" style="color: #aaa; text-decoration: none; font-size: 0.9rem; border-bottom: 1px solid #555;">View Full Page Experiment</a>
                 </div>
             </div>
         </section>
@@ -1360,6 +1377,7 @@
     <script type="module" src="../js/hyperspace-tunnel.js"></script>
     <script type="module" src="../js/neutrino-storm.js"></script>
     <script type="module" src="../js/planetary-terraforming.js"></script>
+    <script type="module" src="../js/quantum-stabilizer.js"></script>
 
     <script type="module">
         import { GravityWellExperiment } from '../js/gravity-well.js';
@@ -1394,6 +1412,7 @@
         import { NeutrinoStormExperiment } from '../js/neutrino-storm.js';
         import { PrimordialSoup } from '../js/primordial-soup.js';
         import { PlanetaryTerraformingExperiment } from '../js/planetary-terraforming.js';
+        import { QuantumStabilizer } from '../js/quantum-stabilizer.js';
 
         // Initialize experiments when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
@@ -1688,6 +1707,10 @@
             const terraformingContainer = document.getElementById('planetary-terraforming-container');
             if (terraformingContainer) {
                 new PlanetaryTerraformingExperiment(terraformingContainer, { particleCount: 100000 });
+            // Initialize Quantum Stabilizer
+            const quantumStabilizerContainer = document.getElementById('quantum-stabilizer-container');
+            if (quantumStabilizerContainer) {
+                new QuantumStabilizer(quantumStabilizerContainer, { numParticles: 20000 });
             }
 
             // Create SVG Morphing Buttons

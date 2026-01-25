@@ -107,6 +107,11 @@ def verify_all_experiments():
                 print("SUCCESS: Planetary Terraforming container found.")
             else:
                 print("FAILURE: Planetary Terraforming container NOT found.")
+            # Check for Quantum Stabilizer container
+            if page.locator("#quantum-stabilizer-container").count() > 0:
+                print("SUCCESS: Quantum Stabilizer container found.")
+            else:
+                print("FAILURE: Quantum Stabilizer container NOT found.")
 
             print("Verification finished.")
 
