@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planetary Terraforming - Hybrid Experiment</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            overflow: hidden;
+        }
+        #planetary-terraforming-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            pointer-events: none;
+        }
+        .back-link {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            background: rgba(0,0,0,0.5);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            pointer-events: auto;
+        }
+        .back-link:hover {
+            color: #fff;
+            background: rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+    <a href="experiments.html" class="back-link">← Back to Experiments</a>
+
+    <div id="planetary-terraforming-container"></div>
+
+    <div class="ui-overlay">
+        <h3>Planetary Terraforming</h3>
+        <p style="color: #aaa; font-size: 0.9rem; margin-top: 0.5rem;">
+            WebGL2 Wireframe Sphere + WebGPU Surface Evolution<br>
+            <span style="color: #44ff88;">Evolution:</span> Barren &rarr; Water &rarr; Vegetation.<br>
+            Click to accelerate growth/terraform.
+        </p>
+    </div>
+
+    <script type="module">
+        import { PlanetaryTerraformingExperiment } from '../js/planetary-terraforming.js';
+
+        // Initialize when DOM is ready
+        window.addEventListener('load', () => {
+            const container = document.getElementById('planetary-terraforming-container');
+            new PlanetaryTerraformingExperiment(container, {
+                particleCount: 200000 // Higher count for fullscreen
+            });
+        });
+    </script>
+</body>
+</html>
