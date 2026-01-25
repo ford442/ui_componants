@@ -14,6 +14,7 @@ export class SubatomicColliderExperiment {
         this.animationId = null;
         this.canvasSize = { width: 0, height: 0 };
         this.mouse = { x: 0, y: 0 };
+        this.isClicked = false;
 
         // WebGL2 State
         this.glCanvas = null;
@@ -32,6 +33,12 @@ export class SubatomicColliderExperiment {
         this.simParamBuffer = null;
         this.particleBuffer = null;
         this.numParticles = options.numParticles || 100000;
+
+        // Bind handlers
+        this.handleResize = this.resize.bind(this);
+        this.handleMouseMove = this.onMouseMove.bind(this);
+        this.handleMouseDown = this.onMouseDown.bind(this);
+        this.handleMouseUp = this.onMouseUp.bind(this);
 
         this.init();
     }
@@ -63,6 +70,8 @@ export class SubatomicColliderExperiment {
 
         window.addEventListener('resize', this.handleResize);
         this.container.addEventListener('mousemove', this.handleMouseMove);
+        this.container.addEventListener('mousedown', this.handleMouseDown);
+        window.addEventListener('mouseup', this.handleMouseUp); // Window for drag release
         this.animate();
     }
 
@@ -72,6 +81,14 @@ export class SubatomicColliderExperiment {
         const y = -((e.clientY - rect.top) / rect.height * 2 - 1);
         this.mouse.x = x;
         this.mouse.y = y;
+    }
+
+    onMouseDown(e) {
+        this.isClicked = true;
+    }
+
+    onMouseUp(e) {
+        this.isClicked = false;
     }
 
     // ========================================================================
@@ -147,6 +164,8 @@ export class SubatomicColliderExperiment {
             in vec3 a_position;
             uniform float u_time;
             uniform vec2 u_resolution;
+            uniform float u_click;
+            uniform vec2 u_mouse;
 
             out float v_depth;
 
@@ -161,6 +180,16 @@ export class SubatomicColliderExperiment {
                 float y = p.x * s + p.y * c;
                 p.x = x;
                 p.y = y;
+
+                // Interaction Pulse: Deform when clicked
+                if (u_click > 0.0) {
+                    float dist = length(p.xy);
+                    // Create a wave that moves based on time
+                    float wave = sin(p.z * 2.0 + u_time * 10.0);
+                    // Distort radius
+                    p.x += p.x * wave * 0.1 * u_click;
+                    p.y += p.y * wave * 0.1 * u_click;
+                }
 
                 // Camera Projection
                 vec3 camPos = vec3(0.0, 0.0, -8.0);
@@ -182,38 +211,26 @@ export class SubatomicColliderExperiment {
         const fsSource = `#version 300 es
             precision highp float;
             in float v_depth;
+            uniform float u_click;
             out vec4 outColor;
 
             void main() {
                 // Fade based on depth
                 float alpha = 1.0 - smoothstep(5.0, 20.0, v_depth);
-                outColor = vec4(0.2, 0.3, 0.4, alpha * 0.4);
+
+                // Base color
+                vec3 color = vec3(0.2, 0.3, 0.4);
+
+                // Click boost
+                if (u_click > 0.0) {
+                    color = mix(color, vec3(0.5, 0.8, 1.0), u_click * 0.5);
+                }
+
+                outColor = vec4(color, alpha * 0.4);
             }
         `;
 
-        const vShader = this.gl.createShader(this.gl.VERTEX_SHADER);
-        this.gl.shaderSource(vShader, vsSource);
-        this.gl.compileShader(vShader);
-
-        if (!this.gl.getShaderParameter(vShader, this.gl.COMPILE_STATUS)) {
-            console.error(this.gl.getShaderInfoLog(vShader));
-            return null;
-        }
-
-        const fShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
-        this.gl.shaderSource(fShader, fsSource);
-        this.gl.compileShader(fShader);
-
-        if (!this.gl.getShaderParameter(fShader, this.gl.COMPILE_STATUS)) {
-            console.error(this.gl.getShaderInfoLog(fShader));
-            return null;
-        }
-
-        const prog = this.gl.createProgram();
-        this.gl.attachShader(prog, vShader);
-        this.gl.attachShader(prog, fShader);
-        this.gl.linkProgram(prog);
-        this.glProgram = prog;
+        this.glProgram = this.createGLProgram(vsSource, fsSource);
 
         if (!this.glProgram) return;
 
@@ -230,7 +247,7 @@ export class SubatomicColliderExperiment {
         this.gl.compileShader(vShader);
 
         if (!this.gl.getShaderParameter(vShader, this.gl.COMPILE_STATUS)) {
-            console.error(this.gl.getShaderInfoLog(vShader));
+            console.error('Vertex Shader Error:', this.gl.getShaderInfoLog(vShader));
             return null;
         }
 
@@ -239,7 +256,7 @@ export class SubatomicColliderExperiment {
         this.gl.compileShader(fShader);
 
         if (!this.gl.getShaderParameter(fShader, this.gl.COMPILE_STATUS)) {
-            console.error(this.gl.getShaderInfoLog(fShader));
+            console.error('Fragment Shader Error:', this.gl.getShaderInfoLog(fShader));
             return null;
         }
 
@@ -247,6 +264,12 @@ export class SubatomicColliderExperiment {
         this.gl.attachShader(prog, vShader);
         this.gl.attachShader(prog, fShader);
         this.gl.linkProgram(prog);
+
+        if (!this.gl.getProgramParameter(prog, this.gl.LINK_STATUS)) {
+            console.error('Program Link Error:', this.gl.getProgramInfoLog(prog));
+            return null;
+        }
+
         return prog;
     }
 
@@ -292,6 +315,8 @@ export class SubatomicColliderExperiment {
                 time : f32,
                 mouseX : f32,
                 mouseY : f32,
+                aspect : f32,
+                click : f32, // New interaction
             }
 
             @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
@@ -359,6 +384,26 @@ export class SubatomicColliderExperiment {
                     p.vel.z += F.z * uniforms.dt;
                 }
 
+                // Interaction Pulse: Repel from mouse ray
+                if (uniforms.click > 0.5) {
+                    // Project mouse to approximate world space at particle Z
+                    // This is rough approximation for effect
+                    let worldMouseX = uniforms.mouseX * 8.0 * uniforms.aspect;
+                    let worldMouseY = uniforms.mouseY * 8.0;
+
+                    let dx = p.pos.x - worldMouseX;
+                    let dy = p.pos.y - worldMouseY;
+                    let distSq = dx*dx + dy*dy;
+
+                    if (distSq < 25.0) {
+                        let force = 50.0 / (distSq + 1.0);
+                        p.vel.x += dx * force * uniforms.dt;
+                        p.vel.y += dy * force * uniforms.dt;
+                        // Add some Z chaos
+                        p.vel.z += force * uniforms.dt * 2.0;
+                    }
+                }
+
                 // Position Update
                 p.pos.x += p.vel.x * uniforms.dt;
                 p.pos.y += p.vel.y * uniforms.dt;
@@ -382,6 +427,7 @@ export class SubatomicColliderExperiment {
                 mouseX : f32,
                 mouseY : f32,
                 aspect : f32,
+                click : f32,
             }
             @group(0) @binding(1) var<uniform> uniforms : Uniforms;
 
@@ -411,6 +457,11 @@ export class SubatomicColliderExperiment {
                 else if (charge > 0.5) { col = vec3f(1.0, 0.2, 0.2); } // Red Positron
                 else { col = vec3f(1.0, 1.0, 0.5); } // Yellow Neutral
 
+                // Intensify color on click
+                if (uniforms.click > 0.5) {
+                    col = col + vec3f(0.5, 0.5, 0.5);
+                }
+
                 output.color = vec4f(col, 1.0);
                 output.life = pos.w;
 
@@ -432,7 +483,7 @@ export class SubatomicColliderExperiment {
         });
 
         this.simParamBuffer = this.device.createBuffer({
-            size: 32, // 5 floats * 4 = 20 -> aligned to 32? (16 + 16)
+            size: 32, // 8 floats * 4 = 32 bytes
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -529,12 +580,15 @@ export class SubatomicColliderExperiment {
         if (!this.isActive) return;
 
         const time = (Date.now() - this.startTime) * 0.001;
+        const clickVal = this.isClicked ? 1.0 : 0.0;
 
         // WebGL2 Render
         if (this.gl && this.glProgram) {
             this.gl.useProgram(this.glProgram);
             this.gl.uniform1f(this.gl.getUniformLocation(this.glProgram, 'u_time'), time);
             this.gl.uniform2f(this.gl.getUniformLocation(this.glProgram, 'u_resolution'), this.glCanvas.width, this.glCanvas.height);
+            this.gl.uniform2f(this.gl.getUniformLocation(this.glProgram, 'u_mouse'), this.mouse.x, this.mouse.y);
+            this.gl.uniform1f(this.gl.getUniformLocation(this.glProgram, 'u_click'), clickVal);
 
             this.gl.clearColor(0, 0, 0, 0);
             this.gl.clear(this.gl.COLOR_BUFFER_BIT);
@@ -546,9 +600,9 @@ export class SubatomicColliderExperiment {
         // WebGPU Render
         if (this.device && this.renderPipeline) {
             const aspect = this.canvasSize.width / this.canvasSize.height;
-            // Align: dt(4), time(4), mx(4), my(4), aspect(4), pad(4), pad(4), pad(4)
+            // Align: dt(4), time(4), mx(4), my(4), aspect(4), click(4), pad(4), pad(4)
             const uniforms = new Float32Array([
-                0.016, time, this.mouse.x, this.mouse.y, aspect, 0, 0, 0
+                0.016, time, this.mouse.x, this.mouse.y, aspect, clickVal, 0, 0
             ]);
             this.device.queue.writeBuffer(this.simParamBuffer, 0, uniforms);
 
@@ -584,14 +638,20 @@ export class SubatomicColliderExperiment {
     destroy() {
         this.isActive = false;
         if (this.animationId) cancelAnimationFrame(this.animationId);
-        if (this.container) this.container.removeEventListener('mousemove', this.handleMouseMove);
+
+        window.removeEventListener('resize', this.handleResize);
+        if (this.container) {
+            this.container.removeEventListener('mousemove', this.handleMouseMove);
+            this.container.removeEventListener('mousedown', this.handleMouseDown);
+        }
+        window.removeEventListener('mouseup', this.handleMouseUp);
 
         if (this.gl) {
             const ext = this.gl.getExtension('WEBGL_lose_context');
             if (ext) ext.loseContext();
         }
         if (this.device) this.device.destroy();
-        this.container.innerHTML = '';
+        if (this.container) this.container.innerHTML = '';
     }
 }
 
