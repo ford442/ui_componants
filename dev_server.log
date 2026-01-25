@@ -4,11 +4,8 @@
 
 [33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
 
-  VITE v5.4.21  ready in 427 ms
+  VITE v5.4.21  ready in 281 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
-1:20:46 AM [vite] page reload js/subatomic-collider.js
-1:22:21 AM [vite] page reload js/subatomic-collider.js
-1:22:47 AM [vite] page reload js/subatomic-collider.js
-1:25:50 AM [vite] page reload js/subatomic-collider.js
+5:25:34 AM [vite] page reload pages/planetary-terraforming.html

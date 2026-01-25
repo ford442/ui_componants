@@ -102,6 +102,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Primordial Soup container NOT found.")
 
+            # Check for Planetary Terraforming container
+            if page.locator("#planetary-terraforming-container").count() > 0:
+                print("SUCCESS: Planetary Terraforming container found.")
+            else:
+                print("FAILURE: Planetary Terraforming container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
