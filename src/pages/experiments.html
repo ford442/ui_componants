@@ -1292,6 +1292,27 @@
                 </div>
                 <div style="text-align: center; margin-top: 1rem;">
                     <a href="planetary-terraforming.html" style="color: #aaa; text-decoration: none; font-size: 0.9rem; border-bottom: 1px solid #555;">View Full Page Experiment</a>
+        <!-- Nanobot Construction Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Nanobot Construction</h2>
+                    <p class="description">Blueprint Geometry (WebGL2) + Assembler Swarm (WebGPU)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Blueprint</span>
+                        <span class="layer-tag webgpu" style="background: rgba(0, 255, 136, 0.2); border-color: #00ff88; color: #ccffdd;">WebGPU Swarm</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="nanobot-construction-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #050505;"></div>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <a href="nanobot-construction.html" style="color: #aaa; text-decoration: none; font-size: 0.9rem; border-bottom: 1px solid #555;">View Full Page Experiment</a>
+                </div>
+            </div>
+        </section>
+
         <!-- Quantum Stabilizer Experiment -->
         <section class="experiment-section">
             <div class="component-card">
@@ -1400,6 +1421,7 @@
     <script type="module" src="../js/planetary-terraforming.js"></script>
     <script type="module" src="../js/quantum-stabilizer.js"></script>
     <script type="module" src="../js/supernova-remnant.js"></script>
+    <script type="module" src="../js/nanobot-construction.js"></script>
 
     <script type="module">
         import { GravityWellExperiment } from '../js/gravity-well.js';
@@ -1436,6 +1458,7 @@
         import { PlanetaryTerraformingExperiment } from '../js/planetary-terraforming.js';
         import { QuantumStabilizer } from '../js/quantum-stabilizer.js';
         import { SupernovaRemnantExperiment } from '../js/supernova-remnant.js';
+        import { NanobotConstruction } from '../js/nanobot-construction.js';
 
         // Initialize experiments when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
@@ -1741,6 +1764,10 @@
             const supernovaRemnantContainer = document.getElementById('supernova-remnant-container');
             if (supernovaRemnantContainer) {
                 new SupernovaRemnantExperiment(supernovaRemnantContainer, { numParticles: 40000 });
+            // Initialize Nanobot Construction
+            const nanobotContainer = document.getElementById('nanobot-construction-container');
+            if (nanobotContainer) {
+                new NanobotConstruction(nanobotContainer, { numParticles: 30000 });
             }
 
             // Create SVG Morphing Buttons

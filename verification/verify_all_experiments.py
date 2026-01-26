@@ -118,6 +118,11 @@ def verify_all_experiments():
                 print("SUCCESS: Supernova Remnant container found.")
             else:
                 print("FAILURE: Supernova Remnant container NOT found.")
+            # Check for Nanobot Construction container
+            if page.locator("#nanobot-construction-container").count() > 0:
+                print("SUCCESS: Nanobot Construction container found.")
+            else:
+                print("FAILURE: Nanobot Construction container NOT found.")
 
             print("Verification finished.")
 
