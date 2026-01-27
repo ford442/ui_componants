@@ -124,6 +124,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Nanobot Construction container NOT found.")
 
+            # Check for Aerodynamic Stream container
+            if page.locator("#aerodynamic-stream-container").count() > 0:
+                print("SUCCESS: Aerodynamic Stream container found.")
+            else:
+                print("FAILURE: Aerodynamic Stream container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
