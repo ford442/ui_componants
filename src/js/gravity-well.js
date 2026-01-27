@@ -8,6 +8,7 @@ export class GravityWellExperiment {
         this.startTime = Date.now();
         this.animationId = null;
         this.mouse = { x: 0, y: 0 };
+        this.clickData = { time: -100, x: 0, y: 0 };
         this.canvasSize = { width: 0, height: 0 };
 
         // WebGL2
@@ -30,6 +31,7 @@ export class GravityWellExperiment {
 
         this.handleResize = this.resize.bind(this);
         this.handleMouseMove = this.onMouseMove.bind(this);
+        this.handleMouseDown = this.onMouseDown.bind(this);
 
         this.init();
     }
@@ -60,12 +62,33 @@ export class GravityWellExperiment {
 
         window.addEventListener('resize', this.handleResize);
         window.addEventListener('mousemove', this.handleMouseMove);
+        this.container.addEventListener('mousedown', this.handleMouseDown);
     }
 
     onMouseMove(e) {
         const rect = this.container.getBoundingClientRect();
         this.mouse.x = (e.clientX - rect.left) / rect.width * 2 - 1;
         this.mouse.y = -((e.clientY - rect.top) / rect.height * 2 - 1);
+    }
+
+    onMouseDown(e) {
+        // Shockwave effect
+        // Map screen mouse to approximate world coordinates on the XZ plane
+        // Since camera rotates, this is an approximation, but sufficient for a "blast" effect
+        // originating from where the user *thinks* they are clicking.
+        // Ideally we'd raycast, but for this visual effect, using the mouse vector is okay.
+
+        // Actually, let's just blast from the center if they click near it, or from a random point?
+        // Let's try to map it roughly.
+        // Camera is at radius 3.0.
+        // We'll just set the click position to be "somewhere" based on screen coords.
+        // But since the camera rotates, X on screen doesn't map to X in world constantly.
+        // The shader knows the camera angle. Maybe we pass raw mouse coords and the shader calculates the world position?
+        // Yes, let's pass the raw mouse coordinates at the time of click.
+
+        this.clickData.time = (Date.now() - this.startTime) * 0.001;
+        this.clickData.x = this.mouse.x;
+        this.clickData.y = this.mouse.y;
     }
 
     // ========================================================================
@@ -266,7 +289,7 @@ export class GravityWellExperiment {
         this.device.queue.writeBuffer(this.particleBuffer, 0, particleData);
 
         this.simParamBuffer = this.device.createBuffer({
-            size: 32, // time, dt, mouseX, mouseY, aspect, pad...
+            size: 32, // time, dt, mouseX, mouseY, aspect, clickTime, clickX, clickY
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -284,6 +307,9 @@ export class GravityWellExperiment {
             mouseX : f32,
             mouseY : f32,
             aspect : f32,
+            clickTime : f32,
+            clickX : f32,
+            clickY : f32,
         }
         @group(0) @binding(1) var<uniform> params : Params;
 
@@ -313,8 +339,27 @@ export class GravityWellExperiment {
             // Orbit speed increases near center
             let orbit = tangent * (2.0 / (r + 0.5));
 
+            // Shockwave interaction
+            var shock : vec2f = vec2f(0.0);
+            let shockTime = params.time - params.clickTime;
+            if (shockTime > 0.0 && shockTime < 1.0) {
+                // Determine shockwave origin
+                // Since we don't unproject, let's just use the current camera angle
+                // to estimate where the click was on the ring.
+                // Or simpler: Shockwave radiates from center if click was near center,
+                // or just adds a global radial push based on noise?
+
+                // Let's implement a "Repulse from Center" blast for now, triggered by click.
+                // It creates a ring of force that expands.
+                let waveRadius = shockTime * 5.0; // Expands fast
+                let distFromWave = abs(r - waveRadius);
+                if (distFromWave < 0.5) {
+                   shock = normalize(p.pos.xz) * 5.0 * (1.0 - distFromWave * 2.0);
+                }
+            }
+
             // Combine
-            let targetVelXZ = gravity + orbit;
+            let targetVelXZ = gravity + orbit + shock;
 
             // Update velocity
             p.vel.x = mix(p.vel.x, targetVelXZ.x, 0.1);
@@ -356,6 +401,7 @@ export class GravityWellExperiment {
         struct VertexOutput {
             @builtin(position) pos : vec4f,
             @location(0) color : vec4f,
+            @location(1) uv : vec2f,
         }
         struct Params {
             time : f32,
@@ -363,14 +409,21 @@ export class GravityWellExperiment {
             mouseX : f32,
             mouseY : f32,
             aspect : f32,
+            clickTime : f32,
+            clickX : f32,
+            clickY : f32,
         }
         @group(0) @binding(1) var<uniform> params : Params;
 
         @vertex
-        fn vs_main(@location(0) pos : vec4f, @location(1) vel : vec4f) -> VertexOutput {
+        fn vs_main(
+            @builtin(vertex_index) vIdx : u32,
+            @location(0) pos : vec4f,
+            @location(1) vel : vec4f
+        ) -> VertexOutput {
             var out : VertexOutput;
 
-            // Duplicate Camera Logic
+            // Camera Logic
             let camAngle = params.time * 0.1;
             let camDist = 3.0;
             let camPos = vec3f(cos(camAngle) * camDist, 1.5, sin(camAngle) * camDist);
@@ -401,22 +454,51 @@ export class GravityWellExperiment {
                 vec4f(0.0, 0.0, -(2.0 * f_n * n) / (f_n - n), 0.0)
             );
 
-            let p = vec4f(pos.xyz, 1.0);
-            out.pos = proj * view * p;
+            // Billboard Quad Generation
+            // 0, 1, 2
+            // 2, 1, 3 (triangle strip order or indexed list)
+            // Using triangle list: 0,1,2, 0,2,3 (or similar)
+            // Let's use array of 6 vertices
 
-            // Color based on speed
+            var corners = array<vec2f, 6>(
+                vec2f(-1.0, -1.0), vec2f( 1.0, -1.0), vec2f(-1.0,  1.0),
+                vec2f(-1.0,  1.0), vec2f( 1.0, -1.0), vec2f( 1.0,  1.0)
+            );
+
+            let corner = corners[vIdx];
+            out.uv = corner * 0.5 + 0.5; // 0..1
+
+            // Project center
+            let p_center = view * vec4f(pos.xyz, 1.0);
+
+            // Billboard size
+            let size = 0.03 * (1.0 + pos.w * 0.5); // Use life for size var
+
+            // Add offset in view space (billboarding)
+            let p_view = p_center + vec4f(corner * size, 0.0, 0.0);
+
+            out.pos = proj * p_view;
+
+            // Color based on speed and depth
             let speed = length(vel.xyz);
-            out.color = vec4f(1.0, 0.5, 0.2, 1.0) * (1.0 + speed * 2.0);
-            out.pos.w = 1.0; // Point size emulation needs separate handling in some APIs but for points topology in WebGPU, gl_PointSize equiv is not direct.
-            // Actually, to render points with size we need 'point-list' and maybe just rely on default size (1px)
-            // OR render quads. For now, 1px points.
+            // Hotter colors near center/fast
+            let colorBase = vec3f(1.0, 0.3, 0.1);
+            let colorHot = vec3f(0.5, 0.8, 1.0);
+
+            out.color = vec4f(mix(colorBase, colorHot, speed * 0.5), 1.0);
+
+            // Fade out edges of quad (soft particle) done in fragment
 
             return out;
         }
 
         @fragment
-        fn fs_main(@location(0) color : vec4f) -> @location(0) vec4f {
-            return color;
+        fn fs_main(@location(0) color : vec4f, @location(1) uv : vec2f) -> @location(0) vec4f {
+            // Circular particle
+            let d = distance(uv, vec2f(0.5));
+            let alpha = smoothstep(0.5, 0.2, d);
+            if (alpha < 0.01) { discard; }
+            return vec4f(color.rgb, color.a * alpha);
         }
         `;
 
@@ -437,7 +519,7 @@ export class GravityWellExperiment {
                 entryPoint: 'vs_main',
                 buffers: [{
                     arrayStride: 32,
-                    stepMode: 'vertex',
+                    stepMode: 'instance', // Changed to instance
                     attributes: [
                         { shaderLocation: 0, offset: 0, format: 'float32x4' },
                         { shaderLocation: 1, offset: 16, format: 'float32x4' }
@@ -455,7 +537,7 @@ export class GravityWellExperiment {
                     }
                 }]
             },
-            primitive: { topology: 'point-list' }
+            primitive: { topology: 'triangle-list' } // Changed to triangle-list
         });
 
         return true;
@@ -514,7 +596,16 @@ export class GravityWellExperiment {
         // 2. WebGPU
         if (this.device && this.context && this.renderPipeline) {
             const aspect = this.canvasSize.width / this.canvasSize.height;
-            const params = new Float32Array([time, 0.016, this.mouse.x, this.mouse.y, aspect, 0, 0, 0]);
+            const params = new Float32Array([
+                time,
+                0.016,
+                this.mouse.x,
+                this.mouse.y,
+                aspect,
+                this.clickData.time,
+                this.clickData.x,
+                this.clickData.y
+            ]);
             this.device.queue.writeBuffer(this.simParamBuffer, 0, params);
 
             const commandEncoder = this.device.createCommandEncoder();
@@ -536,7 +627,7 @@ export class GravityWellExperiment {
             renderPass.setPipeline(this.renderPipeline);
             renderPass.setBindGroup(0, this.computeBindGroup);
             renderPass.setVertexBuffer(0, this.particleBuffer);
-            renderPass.draw(this.numParticles);
+            renderPass.draw(6, this.numParticles); // Draw 6 vertices per instance
             renderPass.end();
 
             this.device.queue.submit([commandEncoder.finish()]);
@@ -550,6 +641,7 @@ export class GravityWellExperiment {
         if(this.animationId) cancelAnimationFrame(this.animationId);
         window.removeEventListener('resize', this.handleResize);
         window.removeEventListener('mousemove', this.handleMouseMove);
+        this.container.removeEventListener('mousedown', this.handleMouseDown);
         if(this.gl) this.gl.getExtension('WEBGL_lose_context')?.loseContext();
         this.device?.destroy();
         this.container.innerHTML = '';
