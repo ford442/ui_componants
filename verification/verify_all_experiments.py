@@ -124,6 +124,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Nanobot Construction container NOT found.")
 
+            # Check for Holographic Text container
+            if page.locator("#holographic-text-container").count() > 0:
+                print("SUCCESS: Holographic Text container found.")
+            else:
+                print("FAILURE: Holographic Text container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
