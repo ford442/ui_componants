@@ -1764,7 +1764,6 @@
             const supernovaRemnantContainer = document.getElementById('supernova-remnant-container');
             if (supernovaRemnantContainer) {
                 new SupernovaRemnantExperiment(supernovaRemnantContainer, { numParticles: 40000 });
-            }
             // Initialize Nanobot Construction
             const nanobotContainer = document.getElementById('nanobot-construction-container');
             if (nanobotContainer) {
@@ -1815,9 +1814,8 @@
 
             // Magnetic Particles toggle
             const particlesToggle = document.getElementById('toggle-particles');
-            if (particlesToggle) {
-                particlesToggle.addEventListener('change', (e) => {
-                    if (e.target.checked) {
+            particlesToggle?.addEventListener('change', (e) => {
+                if (e.target.checked) {
                     if (!particlesInstance && window.MagneticParticleField) {
                         particlesInstance = new MagneticParticleField(document.body, {
                             particleCount: 1800,
@@ -1837,7 +1835,6 @@
                     }
                 }
             });
-            }
         });
     </script>
 </body>
