@@ -124,6 +124,11 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Nanobot Construction container NOT found.")
 
+            # Check for Holographic Text container
+            if page.locator("#holographic-text-container").count() > 0:
+                print("SUCCESS: Holographic Text container found.")
+            else:
+                print("FAILURE: Holographic Text container NOT found.")
             # Check for Aerodynamic Stream container
             if page.locator("#aerodynamic-stream-container").count() > 0:
                 print("SUCCESS: Aerodynamic Stream container found.")
