@@ -16,6 +16,10 @@ export class SpectralLoomExperiment {
         this.mouse = { x: 0, y: 0 };
         this.threadCount = options.threadCount || 200;
 
+        // Interaction State
+        this.isWeaving = false;
+        this.tension = 0.0;
+
         // WebGL2 State
         this.glCanvas = null;
         this.gl = null;
@@ -50,6 +54,18 @@ export class SpectralLoomExperiment {
             const rect = this.container.getBoundingClientRect();
             this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        });
+
+        this.container.addEventListener('mousedown', () => {
+            this.isWeaving = true;
+        });
+
+        this.container.addEventListener('mouseup', () => {
+            this.isWeaving = false;
+        });
+
+        this.container.addEventListener('mouseleave', () => {
+            this.isWeaving = false;
         });
 
         // 1. Init WebGL2
@@ -135,15 +151,6 @@ export class SpectralLoomExperiment {
             }
         }
 
-        // We are drawing GL_LINES, so we need 2 points per segment.
-        // The loop above pushes start point, then if not last, pushes next point.
-        // Wait, for GL_LINES we need pairs.
-        // 0-1, 1-2, 2-3...
-        // My loop:
-        // j=0: push P0. if j<last, push P1. -> P0, P1
-        // j=1: push P1. if j<last, push P2. -> P1, P2
-        // Correct.
-
         this.vertexCount = vertices.length / 4; // 4 components per vertex
 
         // Shaders
@@ -154,16 +161,21 @@ export class SpectralLoomExperiment {
         uniform mat4 u_view;
         uniform float u_time;
         uniform vec2 u_mouse;
+        uniform float u_tension;
 
         out float v_intensity;
+        out float v_tension;
 
         void main() {
             vec3 pos = a_position.xyz;
             float threadIdx = a_position.w;
 
-            // Wave effect
-            float wave1 = sin(pos.y * 0.5 + u_time + threadIdx * 0.1) * 0.5;
-            float wave2 = cos(pos.y * 1.5 - u_time * 0.5 + threadIdx * 0.05) * 0.2;
+            // Wave effect - modulate by tension
+            float freqMult = 1.0 + u_tension * 4.0;
+            float ampMult = 1.0 - u_tension * 0.8;
+
+            float wave1 = sin(pos.y * 0.5 * freqMult + u_time + threadIdx * 0.1) * 0.5 * ampMult;
+            float wave2 = cos(pos.y * 1.5 * freqMult - u_time * 0.5 + threadIdx * 0.05) * 0.2 * ampMult;
 
             // Mouse interaction
             float dMouse = distance(pos.xy, u_mouse * vec2(20.0, 15.0)); // Approximate world scale
@@ -173,11 +185,19 @@ export class SpectralLoomExperiment {
             pos.z += wave1 + wave2;
             pos.x += push * (pos.x - u_mouse.x * 20.0); // Push away from mouse
 
+            // Tension contraction
+            if (u_tension > 0.0) {
+                 float centerDist = abs(pos.x);
+                 pos.x *= (1.0 - u_tension * 0.1);
+                 pos.z += u_tension * sin(pos.y * 10.0 + u_time * 20.0) * 0.2; // Vibrate
+            }
+
             gl_Position = u_projection * u_view * vec4(pos, 1.0);
 
             // Brightness based on movement
             v_intensity = 0.5 + abs(wave1 + wave2);
             v_intensity += push;
+            v_tension = u_tension;
         }
         `;
 
@@ -185,11 +205,22 @@ export class SpectralLoomExperiment {
         precision highp float;
 
         in float v_intensity;
+        in float v_tension;
         out vec4 outColor;
 
         void main() {
             vec3 color = vec3(0.2, 0.5, 1.0); // Cyan/Blue base
+
+            // Base intensity
             color *= v_intensity;
+
+            // Chromatic Aberration / Tension Effect
+            if (v_tension > 0.01) {
+                float shift = v_tension * 0.1;
+                color.r += shift * sin(v_intensity * 10.0);
+                color.b += shift * cos(v_intensity * 10.0);
+                color += vec3(0.8, 0.2, 1.0) * v_tension * 0.5; // Add purple glow
+            }
 
             // Add some "gold" highlights for the spectral feel
             color += vec3(1.0, 0.8, 0.2) * pow(v_intensity, 4.0) * 0.2;
@@ -275,6 +306,9 @@ export class SpectralLoomExperiment {
                 dt: f32,
                 mouseX: f32,
                 mouseY: f32,
+                tension: f32,
+                // Implicit padding happens here to align viewProj (if we had it here)
+                // But we only read these.
             }
             @group(0) @binding(1) var<uniform> uniforms : Uniforms;
 
@@ -321,18 +355,34 @@ export class SpectralLoomExperiment {
                     // Weave motion (Sine wave on Z)
                     p.pos.z = p.pos.z + sin(p.pos.x * 0.5 + uniforms.time * 5.0) * 0.1;
 
-                    // Mouse Attraction
+                    // Mouse Attraction / Interaction
                     let mx = uniforms.mouseX * 25.0;
                     let my = -uniforms.mouseY * 20.0;
                     let mouseTarget = vec3f(mx, my, 0.0);
 
                     let dir = mouseTarget - p.pos.xyz;
                     let dist = length(dir);
+
                     if (dist < 15.0) {
                         let force = normalize(dir) * (15.0 - dist) * 0.5;
                         p.vel.x = p.vel.x + force.x * uniforms.dt;
                         p.vel.y = p.vel.y + force.y * uniforms.dt;
                         p.vel.z = p.vel.z + force.z * uniforms.dt;
+
+                        // Rotational "Weaving" Force
+                        if (uniforms.tension > 0.0) {
+                            let up = vec3f(0.0, 0.0, 1.0);
+                            let tangent = cross(normalize(dir), up);
+                            // Spin force
+                            let spin = tangent * uniforms.tension * 80.0 * uniforms.dt;
+                            p.vel.x = p.vel.x + spin.x;
+                            p.vel.y = p.vel.y + spin.y;
+                            p.vel.z = p.vel.z + spin.z;
+
+                            // Tighten
+                            p.vel.x = p.vel.x + force.x * uniforms.tension * 5.0 * uniforms.dt;
+                            p.vel.y = p.vel.y + force.y * uniforms.tension * 5.0 * uniforms.dt;
+                        }
                     }
                 }
 
@@ -361,6 +411,8 @@ export class SpectralLoomExperiment {
                 dt: f32,
                 mouseX: f32,
                 mouseY: f32,
+                tension: f32,
+                pad1: f32, pad2: f32, pad3: f32, // Padding
                 viewProj: mat4x4f,
             }
 
@@ -384,10 +436,6 @@ export class SpectralLoomExperiment {
                 // Color palette: Gold to Purple based on speed
                 var color = mix(vec3f(1.0, 0.8, 0.2), vec3f(0.8, 0.2, 1.0), smoothstep(5.0, 15.0, speed));
 
-                // Add center glow
-                // Since we are rendering points, we can't easily do UV based glow without gl_PointCoord which is not in WGSL yet (or requires configuration).
-                // We'll just output flat color with alpha.
-
                 return vec4f(color, alpha);
             }
         `;
@@ -399,8 +447,9 @@ export class SpectralLoomExperiment {
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
 
+        // 96 Bytes = 24 floats
         this.uniformBuffer = this.device.createBuffer({
-            size: 80, // Same alignment as before
+            size: 96,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
 
@@ -486,6 +535,13 @@ export class SpectralLoomExperiment {
         const time = (now - this.startTime) * 0.001;
         const dt = 0.016;
 
+        // Update Tension
+        if (this.isWeaving) {
+            this.tension += (1.0 - this.tension) * 0.05;
+        } else {
+            this.tension += (0.0 - this.tension) * 0.05;
+        }
+
         // Camera Math
         const camX = this.mouse.x * 5.0;
         const camY = this.mouse.y * 5.0;
@@ -503,18 +559,16 @@ export class SpectralLoomExperiment {
             const uView = this.gl.getUniformLocation(this.glProgram, 'u_view');
             const uTime = this.gl.getUniformLocation(this.glProgram, 'u_time');
             const uMouse = this.gl.getUniformLocation(this.glProgram, 'u_mouse');
+            const uTension = this.gl.getUniformLocation(this.glProgram, 'u_tension');
 
             this.gl.uniformMatrix4fv(uProj, false, proj);
             this.gl.uniformMatrix4fv(uView, false, view);
             this.gl.uniform1f(uTime, time);
             this.gl.uniform2f(uMouse, this.mouse.x, this.mouse.y);
+            this.gl.uniform1f(uTension, this.tension);
 
             this.gl.clearColor(0.02, 0.01, 0.05, 0.0); // Transparent clear
-            this.gl.clear(this.gl.COLOR_BUFFER_BIT); // No Depth clear needed if 2D overlay, but lines are 3D
-            // Wait, lines are 3D. We should clear depth too?
-            // Actually, if we want transparency, we should be careful with depth.
-            // But let's just clear both for now.
-            // Note: Canvas is on top of bg color but below WebGPU canvas.
+            this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
             this.gl.bindVertexArray(this.glVao);
             this.gl.drawArrays(this.gl.LINES, 0, this.vertexCount);
@@ -522,12 +576,14 @@ export class SpectralLoomExperiment {
 
         // 2. WebGPU Render
         if (this.device && this.particlePipeline) {
-            const uniforms = new Float32Array(20);
+            const uniforms = new Float32Array(24);
             uniforms[0] = time;
             uniforms[1] = dt;
             uniforms[2] = this.mouse.x;
             uniforms[3] = this.mouse.y;
-            uniforms.set(viewProj, 4);
+            uniforms[4] = this.tension;
+            // 5,6,7 are padding
+            uniforms.set(viewProj, 8); // Start at float index 8 (byte 32)
 
             this.device.queue.writeBuffer(this.uniformBuffer, 0, uniforms);
 
