@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elastic Membrane - UI Components</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        #elastic-membrane-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            color: rgba(255, 255, 255, 0.7);
+            font-family: 'Inter', sans-serif;
+            pointer-events: none;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            pointer-events: auto;
+            transition: color 0.3s ease;
+        }
+        .back-link:hover {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+        <h1>Elastic Membrane</h1>
+        <p>Interactive WebGPU Spring-Mass System</p>
+    </div>
+    <div id="elastic-membrane-container"></div>
+
+    <script type="module">
+        import { ElasticMembraneExperiment } from '../js/elastic-membrane.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('elastic-membrane-container');
+            new ElasticMembraneExperiment(container);
+        });
+    </script>
+</body>
+</html>
