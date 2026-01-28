@@ -135,6 +135,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Aerodynamic Stream container NOT found.")
 
+            # Check for Fractal Bloom container
+            if page.locator("#fractal-bloom-container").count() > 0:
+                print("SUCCESS: Fractal Bloom container found.")
+            else:
+                print("FAILURE: Fractal Bloom container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
