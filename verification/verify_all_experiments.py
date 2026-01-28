@@ -135,6 +135,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Aerodynamic Stream container NOT found.")
 
+            # Check for Elastic Membrane container
+            if page.locator("#elastic-membrane-container").count() > 0:
+                print("SUCCESS: Elastic Membrane container found.")
+            else:
+                print("FAILURE: Elastic Membrane container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
