@@ -140,6 +140,11 @@ def verify_all_experiments():
                 print("SUCCESS: Elastic Membrane container found.")
             else:
                 print("FAILURE: Elastic Membrane container NOT found.")
+            # Check for Fractal Bloom container
+            if page.locator("#fractal-bloom-container").count() > 0:
+                print("SUCCESS: Fractal Bloom container found.")
+            else:
+                print("FAILURE: Fractal Bloom container NOT found.")
 
             print("Verification finished.")
 
