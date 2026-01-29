@@ -74,6 +74,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Neuro-Morphic Crystal container NOT found.")
 
+            # Check for Galactic Mycelium container
+            if page.locator("#galactic-mycelium-container").count() > 0:
+                print("SUCCESS: Galactic Mycelium container found.")
+            else:
+                print("FAILURE: Galactic Mycelium container NOT found.")
+
             # Check for Hyperspace Tunnel container
             if page.locator("#hyperspace-tunnel-container").count() > 0:
                 print("SUCCESS: Hyperspace Tunnel container found.")
