@@ -1957,25 +1957,25 @@
             if (particlesToggle) {
                 particlesToggle.addEventListener('change', (e) => {
                     if (e.target.checked) {
-                    if (!particlesInstance && window.MagneticParticleField) {
-                        particlesInstance = new MagneticParticleField(document.body, {
-                            particleCount: 1800,
-                            particleSize: 2,
-                            particleColor: 'rgba(0, 255, 136, 0.6)',
-                            lineColor: 'rgba(0, 170, 255, 0.2)',
-                            maxLineDistance: 100,
-                            magneticForce: 0.03,
-                            friction: 0.98,
-                            constellationMode: true
-                        });
+                        if (!particlesInstance && window.MagneticParticleField) {
+                            particlesInstance = new MagneticParticleField(document.body, {
+                                particleCount: 1800,
+                                particleSize: 2,
+                                particleColor: 'rgba(0, 255, 136, 0.6)',
+                                lineColor: 'rgba(0, 170, 255, 0.2)',
+                                maxLineDistance: 100,
+                                magneticForce: 0.03,
+                                friction: 0.98,
+                                constellationMode: true
+                            });
+                        }
+                    } else {
+                        if (particlesInstance) {
+                            particlesInstance.destroy();
+                            particlesInstance = null;
+                        }
                     }
-                } else {
-                    if (particlesInstance) {
-                        particlesInstance.destroy();
-                        particlesInstance = null;
-                    }
-                }
-            });
+                });
             }
         });
     </script>
