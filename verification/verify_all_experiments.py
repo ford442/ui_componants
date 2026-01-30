@@ -152,6 +152,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Fractal Bloom container NOT found.")
 
+            # Check for Encryption Lock container
+            if page.locator("#encryption-lock-container").count() > 0:
+                print("SUCCESS: Encryption Lock container found.")
+            else:
+                print("FAILURE: Encryption Lock container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
