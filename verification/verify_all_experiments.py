@@ -152,6 +152,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Fractal Bloom container NOT found.")
 
+            # Check for Black Hole Accretion container
+            if page.locator("#black-hole-accretion-container").count() > 0:
+                print("SUCCESS: Black Hole Accretion container found.")
+            else:
+                print("FAILURE: Black Hole Accretion container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
