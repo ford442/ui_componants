@@ -152,6 +152,11 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Fractal Bloom container NOT found.")
 
+            # Check for Time Dilation Chamber container
+            if page.locator("#time-dilation-container").count() > 0:
+                print("SUCCESS: Time Dilation Chamber container found.")
+            else:
+                print("FAILURE: Time Dilation Chamber container NOT found.")
             # Check for Black Hole Accretion container
             if page.locator("#black-hole-accretion-container").count() > 0:
                 print("SUCCESS: Black Hole Accretion container found.")
