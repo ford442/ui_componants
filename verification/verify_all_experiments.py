@@ -158,6 +158,11 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Fractal Bloom container NOT found.")
 
+            # Check for Electro-Weak Unification container
+            if page.locator("#electro-weak-unification-container").count() > 0:
+                print("SUCCESS: Electro-Weak Unification container found.")
+            else:
+                print("FAILURE: Electro-Weak Unification container NOT found.")
             # Check for Encryption Lock container
             if page.locator("#encryption-lock-container").count() > 0:
                 print("SUCCESS: Encryption Lock container found.")

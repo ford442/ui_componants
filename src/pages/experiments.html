@@ -1439,6 +1439,24 @@
             </div>
         </section>
 
+        <!-- Electro-Weak Unification Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Electro-Weak Unification</h2>
+                    <p class="description">Weinberg Angle (WebGL2) + Boson Swarm (WebGPU)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Knot</span>
+                        <span class="layer-tag webgpu" style="background: rgba(255, 215, 0, 0.2); border-color: #ffd700; color: #ffeb3b;">WebGPU Bosons</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="electro-weak-unification-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #020005;"></div>
+                </div>
+            </div>
+        </section>
+
         <!-- Fractal Bloom Experiment -->
         <section class="experiment-section">
             <div class="component-card">
@@ -1653,6 +1671,7 @@
         import { NanobotConstruction } from '../js/nanobot-construction.js';
         import { HolographicText } from '../js/holographic-text.js';
         import { AerodynamicStreamExperiment } from '../js/aerodynamic-stream.js';
+        import { ElectroWeakUnification } from '../js/electro-weak-unification.js';
         import { ElasticMembraneExperiment } from '../js/elastic-membrane.js';
         import { FractalBloomExperiment } from '../js/fractal-bloom.js';
         import { EncryptionLock } from '../js/encryption-lock.js';
@@ -1982,6 +2001,12 @@
             const elasticMembraneContainer = document.getElementById('elastic-membrane-container');
             if (elasticMembraneContainer) {
                 new ElasticMembraneExperiment(elasticMembraneContainer);
+            }
+
+            // Initialize Electro-Weak Unification
+            const electroWeakContainer = document.getElementById('electro-weak-unification-container');
+            if (electroWeakContainer) {
+                new ElectroWeakUnification(electroWeakContainer, { numParticles: 30000 });
             }
 
             // Initialize Fractal Bloom
