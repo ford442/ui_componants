@@ -254,8 +254,9 @@ export class ChaosAttractor {
         // 2. Uniform Buffers
 
         // Sim Params
+        // sigma, rho, beta, dt, time, aspectRatio, pad, pad
         this.simParamsBuffer = this.device.createBuffer({
-            size: 32, // sigma, rho, beta, dt, time, pad, pad, pad
+            size: 32,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
         });
 
@@ -325,35 +326,74 @@ export class ChaosAttractor {
             struct Uniforms {
                 viewProj: mat4x4f,
             }
+            struct Params {
+                sigma: f32,
+                rho: f32,
+                beta: f32,
+                dt: f32,
+                time: f32,
+                aspectRatio: f32,
+            }
+
+            struct Particle {
+                pos: vec4f,
+            }
+
             @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+            @group(0) @binding(1) var<storage, read> particles: array<Particle>;
+            @group(0) @binding(2) var<uniform> params: Params;
 
             struct VertexOutput {
                 @builtin(position) position: vec4f,
                 @location(0) color: vec4f,
+                @location(1) uv: vec2f,
             }
 
             @vertex
-            fn vs_main(@location(0) pos: vec4f) -> VertexOutput {
+            fn vs_main(@builtin(vertex_index) v_index: u32, @builtin(instance_index) i_index: u32) -> VertexOutput {
                 var out: VertexOutput;
-                out.position = uniforms.viewProj * vec4f(pos.xyz, 1.0);
 
-                // Color based on velocity (approx) or position
-                // Lorenz z is roughly 0-50.
+                // Quad corners
+                var corners = array<vec2f, 6>(
+                    vec2f(-1.0, -1.0), vec2f(1.0, -1.0), vec2f(-1.0, 1.0),
+                    vec2f(-1.0, 1.0), vec2f(1.0, -1.0), vec2f(1.0, 1.0)
+                );
+                let corner = corners[v_index];
+                out.uv = corner;
+
+                let particle = particles[i_index];
+                let pos = particle.pos.xyz;
+
+                // Project center
+                let p_clip = uniforms.viewProj * vec4f(pos, 1.0);
+
+                // Billboard size (0.5 scale for radius vs diameter)
+                let size = 0.5;
+                var offset = corner * size;
+
+                // Perspective scaling (approximate constant world size)
+                out.position = p_clip + vec4f(offset.x / params.aspectRatio, offset.y, 0.0, 0.0);
+
+                // Color based on Z
                 let t = clamp(pos.z / 50.0, 0.0, 1.0);
                 let col1 = vec3f(1.0, 0.2, 0.1); // Red/Orange
                 let col2 = vec3f(0.1, 0.5, 1.0); // Blue
                 let c = mix(col2, col1, t);
 
-                out.color = vec4f(c, 0.6); // Semi-transparent
+                out.color = vec4f(c, 1.0);
 
-                // Point size hack for simple points
-                out.position.z -= 0.001; // Bias ?
                 return out;
             }
 
             @fragment
-            fn fs_main(@location(0) color: vec4f) -> @location(0) vec4f {
-                return color;
+            fn fs_main(@location(0) color: vec4f, @location(1) uv: vec2f) -> @location(0) vec4f {
+                let dist = length(uv);
+                if (dist > 1.0) {
+                    discard;
+                }
+                // Soft glow
+                let alpha = pow(1.0 - dist, 2.0);
+                return vec4f(color.rgb, alpha * 0.8);
             }
         `;
 
@@ -363,11 +403,6 @@ export class ChaosAttractor {
             vertex: {
                 module: renderModule,
                 entryPoint: 'vs_main',
-                buffers: [{
-                    arrayStride: particleSize,
-                    stepMode: 'vertex',
-                    attributes: [{ shaderLocation: 0, offset: 0, format: 'float32x4' }]
-                }]
             },
             fragment: {
                 module: renderModule,
@@ -381,14 +416,16 @@ export class ChaosAttractor {
                 }]
             },
             primitive: {
-                topology: 'point-list'
+                topology: 'triangle-list'
             }
         });
 
         this.renderBindGroup = this.device.createBindGroup({
             layout: this.renderPipeline.getBindGroupLayout(0),
             entries: [
-                { binding: 0, resource: { buffer: this.viewProjBuffer } }
+                { binding: 0, resource: { buffer: this.viewProjBuffer } },
+                { binding: 1, resource: { buffer: this.particleBuffer } },
+                { binding: 2, resource: { buffer: this.simParamsBuffer } }
             ]
         });
 
@@ -453,12 +490,13 @@ export class ChaosAttractor {
         if (this.device) {
             // Update Uniforms
             const time = (now - this.startTime) * 0.001;
+            const aspect = this.gpuCanvas.width / this.gpuCanvas.height;
             const simParams = new Float32Array([
                 this.options.sigma,
                 this.options.rho,
                 this.options.beta,
                 0.01 * this.options.speed, // Fixed small dt for integration stability * speed
-                time, 0, 0, 0 // Padding
+                time, aspect, 0, 0 // Padding
             ]);
             this.device.queue.writeBuffer(this.simParamsBuffer, 0, simParams);
             this.device.queue.writeBuffer(this.viewProjBuffer, 0, this.camera.viewProjection);
@@ -484,7 +522,7 @@ export class ChaosAttractor {
             });
             renderPass.setPipeline(this.renderPipeline);
             renderPass.setBindGroup(0, this.renderBindGroup);
-            renderPass.draw(this.options.particleCount);
+            renderPass.draw(6, this.options.particleCount);
             renderPass.end();
 
             this.device.queue.submit([encoder.finish()]);

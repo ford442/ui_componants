@@ -113,6 +113,12 @@ def verify_all_experiments():
                 print("SUCCESS: Planetary Terraforming container found.")
             else:
                 print("FAILURE: Planetary Terraforming container NOT found.")
+            # Check for Crystal Growth container
+            if page.locator("#crystal-growth-container").count() > 0:
+                print("SUCCESS: Crystal Growth container found.")
+            else:
+                print("FAILURE: Crystal Growth container NOT found.")
+
             # Check for Quantum Stabilizer container
             if page.locator("#quantum-stabilizer-container").count() > 0:
                 print("SUCCESS: Quantum Stabilizer container found.")
@@ -157,6 +163,16 @@ def verify_all_experiments():
                 print("SUCCESS: Encryption Lock container found.")
             else:
                 print("FAILURE: Encryption Lock container NOT found.")
+            # Check for Time Dilation Chamber container
+            if page.locator("#time-dilation-container").count() > 0:
+                print("SUCCESS: Time Dilation Chamber container found.")
+            else:
+                print("FAILURE: Time Dilation Chamber container NOT found.")
+            # Check for Black Hole Accretion container
+            if page.locator("#black-hole-accretion-container").count() > 0:
+                print("SUCCESS: Black Hole Accretion container found.")
+            else:
+                print("FAILURE: Black Hole Accretion container NOT found.")
 
             print("Verification finished.")
 
