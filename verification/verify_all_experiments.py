@@ -179,6 +179,11 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Black Hole Accretion container NOT found.")
 
+            # Check for Cybernetic Eye container
+            if page.locator("#cybernetic-eye-container").count() > 0:
+                print("SUCCESS: Cybernetic Eye container found.")
+            else:
+                print("FAILURE: Cybernetic Eye container NOT found.")
             # Check for Quantum Tunneling container
             if page.locator("#quantum-tunneling-container").count() > 0:
                 print("SUCCESS: Quantum Tunneling container found.")
