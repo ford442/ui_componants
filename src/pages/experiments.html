@@ -1436,6 +1436,24 @@
             </div>
         </section>
 
+        <!-- Black Hole Accretion Experiment -->
+        <section class="experiment-section">
+            <div class="component-card">
+                <div class="section-header">
+                    <h2>Black Hole Accretion</h2>
+                    <p class="description">Event Horizon (WebGL2) + Accretion Disk (WebGPU)</p>
+                    <div class="layers">
+                        <span class="layer-tag webgl2">WebGL2 Horizon</span>
+                        <span class="layer-tag webgpu" style="background: rgba(255, 50, 0, 0.2); border-color: #ff3300; color: #ffaa88;">WebGPU Disk</span>
+                    </div>
+                </div>
+                <div class="experiment-showcase">
+                    <div id="black-hole-accretion-container"
+                        style="width: 100%; height: 400px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #000;"></div>
+                </div>
+            </div>
+        </section>
+
         <!-- Supernova Remnant Experiment -->
         <section class="experiment-section">
             <div class="component-card">
@@ -1593,6 +1611,7 @@
         import { ElasticMembraneExperiment } from '../js/elastic-membrane.js';
         import { FractalBloomExperiment } from '../js/fractal-bloom.js';
         import { TimeDilationChamber } from '../js/time-dilation.js';
+        import { BlackHoleAccretionExperiment } from '../js/black-hole-accretion.js';
 
         // Initialize experiments when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
@@ -1916,6 +1935,12 @@
             const fractalBloomContainer = document.getElementById('fractal-bloom-container');
             if (fractalBloomContainer) {
                 new FractalBloomExperiment(fractalBloomContainer, { numParticles: 20000 });
+            }
+
+            // Initialize Black Hole Accretion
+            const blackHoleContainer = document.getElementById('black-hole-accretion-container');
+            if (blackHoleContainer) {
+                new BlackHoleAccretionExperiment(blackHoleContainer, { particleCount: 40000 });
             }
 
             // Initialize Supernova Remnant
