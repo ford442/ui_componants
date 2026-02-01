@@ -15,6 +15,7 @@ class HolographicStream {
         this.isActive = false;
         this.startTime = Date.now();
         this.animationId = null;
+        this.mouse = { x: 0, y: 0 }; // Normalized -1 to 1
 
         // WebGL2 State
         this.glCanvas = null;
@@ -71,6 +72,16 @@ class HolographicStream {
         this.animate();
 
         window.addEventListener('resize', this.handleResize);
+
+        // Interaction
+        this.handleMouseMove = (e) => {
+            const rect = this.container.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = (e.clientY - rect.top) / rect.height;
+            this.mouse.x = x * 2 - 1;
+            this.mouse.y = -(y * 2 - 1); // Flip Y
+        };
+        this.container.addEventListener('mousemove', this.handleMouseMove);
     }
 
     // ========================================================================
@@ -154,6 +165,7 @@ class HolographicStream {
             in vec3 a_position;
 
             uniform float u_time;
+            uniform vec2 u_mouse;
             uniform mat4 u_projection;
             uniform mat4 u_view;
 
@@ -174,6 +186,11 @@ class HolographicStream {
                 float y = pos.x * s + pos.y * c;
                 pos.x = x;
                 pos.y = y;
+
+                // Mouse interaction: warping
+                float dist = length(pos.xy - u_mouse * 5.0);
+                float warp = 1.0 / (dist + 0.1) * 0.5;
+                pos.xy += (pos.xy - u_mouse * 5.0) * warp * smoothstep(10.0, 0.0, abs(pos.z));
 
                 v_pos = pos;
                 gl_Position = u_projection * u_view * vec4(pos, 1.0);
@@ -290,6 +307,8 @@ class HolographicStream {
                 dt : f32,
                 speed : f32,
                 pad : f32,
+                mouse : vec2f,
+                pad2 : vec2f,
             }
 
             @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
@@ -309,12 +328,24 @@ class HolographicStream {
                 // Move
                 p.pos.z = p.pos.z + params.speed * 10.0 * params.dt;
 
-                // Spiral motion
+                // Spiral motion (Base)
                 let angle = params.time * 2.0 + f32(i) * 0.01;
                 let radius = 1.5 + sin(params.time + f32(i) * 0.1) * 0.5;
 
-                p.pos.x = cos(angle) * radius;
-                p.pos.y = sin(angle) * radius;
+                var targetX = cos(angle) * radius;
+                var targetY = sin(angle) * radius;
+
+                // Mouse Attraction
+                let mousePos = params.mouse * 5.0; // Scale to world roughly
+                let dist = distance(vec2f(targetX, targetY), mousePos);
+                let attraction = 1.0 / (dist * dist + 0.1) * 2.0;
+
+                // Blend base motion with attraction
+                targetX = mix(targetX, mousePos.x, clamp(attraction * 0.1, 0.0, 0.8));
+                targetY = mix(targetY, mousePos.y, clamp(attraction * 0.1, 0.0, 0.8));
+
+                p.pos.x = targetX;
+                p.pos.y = targetY;
 
                 // Reset if too close
                 if (p.pos.z > 5.0) {
@@ -380,7 +411,7 @@ class HolographicStream {
         this.device.queue.writeBuffer(this.particleBuffer, 0, initialData);
 
         this.simParamBuffer = this.device.createBuffer({
-            size: 16, // 4 floats
+            size: 32, // 8 floats (align 16)
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -546,10 +577,12 @@ class HolographicStream {
             ]);
 
             const timeLoc = this.gl.getUniformLocation(this.glProgram, 'u_time');
+            const mouseLoc = this.gl.getUniformLocation(this.glProgram, 'u_mouse');
             const projLoc = this.gl.getUniformLocation(this.glProgram, 'u_projection');
             const viewLoc = this.gl.getUniformLocation(this.glProgram, 'u_view');
 
             this.gl.uniform1f(timeLoc, time);
+            this.gl.uniform2f(mouseLoc, this.mouse.x, this.mouse.y);
             this.gl.uniformMatrix4fv(projLoc, false, proj);
             this.gl.uniformMatrix4fv(viewLoc, false, view);
 
@@ -566,7 +599,10 @@ class HolographicStream {
         // --- Render WebGPU ---
         if (this.device && this.context && this.renderPipeline) {
             // Update Uniforms
-            const params = new Float32Array([time, dt, this.options.particleSpeed, 0]);
+            const params = new Float32Array([
+                time, dt, this.options.particleSpeed, 0,
+                this.mouse.x, this.mouse.y, 0, 0
+            ]);
             this.device.queue.writeBuffer(this.simParamBuffer, 0, params);
 
             // ViewProj for WebGPU
@@ -634,6 +670,9 @@ class HolographicStream {
         this.isActive = false;
         if (this.animationId) cancelAnimationFrame(this.animationId);
         window.removeEventListener('resize', this.handleResize);
+        if (this.handleMouseMove) {
+             this.container.removeEventListener('mousemove', this.handleMouseMove);
+        }
 
         if (this.gl) {
             this.gl.getExtension('WEBGL_lose_context')?.loseContext();
