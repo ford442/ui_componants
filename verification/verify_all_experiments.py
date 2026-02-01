@@ -184,6 +184,11 @@ def verify_all_experiments():
                 print("SUCCESS: Cybernetic Eye container found.")
             else:
                 print("FAILURE: Cybernetic Eye container NOT found.")
+            # Check for Quantum Tunneling container
+            if page.locator("#quantum-tunneling-container").count() > 0:
+                print("SUCCESS: Quantum Tunneling container found.")
+            else:
+                print("FAILURE: Quantum Tunneling container NOT found.")
 
             print("Verification finished.")
 
