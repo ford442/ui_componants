@@ -190,6 +190,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Quantum Tunneling container NOT found.")
 
+            # Check for Lidar Bio-Scan container
+            if page.locator("#lidar-bio-scan-container").count() > 0:
+                print("SUCCESS: Lidar Bio-Scan container found.")
+            else:
+                print("FAILURE: Lidar Bio-Scan container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lidar Bio-Scan - UI Components</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Inter', sans-serif;
+        }
+        #lidar-bio-scan-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(0, 255, 136, 0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+        h1 {
+            font-size: 1.2rem;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+        p {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+        .back-link {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            font-size: 0.9rem;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="ui-overlay">
+        <h1>Lidar Bio-Scan</h1>
+        <p>Volumetric Point Cloud Analysis</p>
+    </div>
+
+    <a href="experiments.html" class="back-link">← Back to Dashboard</a>
+
+    <div id="lidar-bio-scan-container"></div>
+
+    <script type="module">
+        import { LidarBioScanExperiment } from '../js/lidar-bio-scan.js';
+
+        const container = document.getElementById('lidar-bio-scan-container');
+        // Initialize with high particle count for full page demo
+        new LidarBioScanExperiment(container, { numParticles: 262144 }); // 64^3
+    </script>
+</body>
+</html>
