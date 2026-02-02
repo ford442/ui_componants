@@ -195,6 +195,11 @@ def verify_all_experiments():
                 print("SUCCESS: Lidar Bio-Scan container found.")
             else:
                 print("FAILURE: Lidar Bio-Scan container NOT found.")
+            # Check for Genetic Splicing container
+            if page.locator("#genetic-splicing-container").count() > 0:
+                print("SUCCESS: Genetic Splicing container found.")
+            else:
+                print("FAILURE: Genetic Splicing container NOT found.")
 
             print("Verification finished.")
 
