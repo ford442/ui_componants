@@ -190,6 +190,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Quantum Tunneling container NOT found.")
 
+            # Check for Genetic Splicing container
+            if page.locator("#genetic-splicing-container").count() > 0:
+                print("SUCCESS: Genetic Splicing container found.")
+            else:
+                print("FAILURE: Genetic Splicing container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
