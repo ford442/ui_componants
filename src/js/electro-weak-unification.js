@@ -285,7 +285,7 @@ class ElectroWeakUnification {
         this.gl.vertexAttribPointer(positionLoc, 3, this.gl.FLOAT, false, 0, 0);
 
         this.glVao = vao;
-        this.resizeGL();
+        this.resize();
     }
 
     createGLProgram(vsSource, fsSource) {
