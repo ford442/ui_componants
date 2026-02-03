@@ -11,6 +11,8 @@ export class BlackHoleAccretionExperiment {
         this.isActive = true;
         this.time = 0;
         this.mouse = { x: 0.0, y: 0.0 };
+        this.isMouseDown = false;
+        this.gravityPulse = 0.0;
 
         // Init
         this.init();
@@ -150,11 +152,17 @@ export class BlackHoleAccretionExperiment {
         uniform float u_time;
         uniform float u_rotationX;
         uniform float u_rotationY;
+        uniform float u_gravity;
         uniform float u_aspect;
         out float v_depth;
 
         void main() {
             vec3 pos = a_position;
+
+            // Gravity Distortion (Pulse/Ripple)
+            float dist = length(pos);
+            float ripple = sin(dist * 10.0 - u_time * 5.0) * 0.1;
+            pos += normalize(pos) * ripple * u_gravity;
 
             // Rotate Y (Spin)
             float cy = cos(u_time * 0.2 + u_rotationX);
@@ -196,6 +204,7 @@ export class BlackHoleAccretionExperiment {
             time: gl.getUniformLocation(this.program, 'u_time'),
             rotationX: gl.getUniformLocation(this.program, 'u_rotationX'),
             rotationY: gl.getUniformLocation(this.program, 'u_rotationY'),
+            gravity: gl.getUniformLocation(this.program, 'u_gravity'),
             aspect: gl.getUniformLocation(this.program, 'u_aspect')
         };
 
@@ -290,7 +299,7 @@ export class BlackHoleAccretionExperiment {
                     time: f32,
                     rotationX: f32,
                     rotationY: f32,
-                    padding: f32,
+                    gravity: f32,
                 }
 
                 @group(0) @binding(0) var<storage, read_write> particles: array<Particle>;
@@ -315,10 +324,10 @@ export class BlackHoleAccretionExperiment {
                     var life = p.props.w;
 
                     // Dynamics
-                    // Orbital speed roughly 1/sqrt(radius)
-                    speed = 2.0 / sqrt(radius);
+                    let gravity = params.gravity;
+                    speed = (2.0 / sqrt(radius)) * (1.0 + gravity * 1.5);
                     angle += speed * 0.01;
-                    radius -= 0.005 * speed; // Decay inwards
+                    radius -= (0.005 + gravity * 0.02) * speed;
 
                     // Event Horizon check (radius < 1.6)
                     if (radius < 1.6) {
@@ -355,7 +364,7 @@ export class BlackHoleAccretionExperiment {
                     time: f32,
                     rotationX: f32,
                     rotationY: f32,
-                    padding: f32,
+                    gravity: f32,
                 }
 
                 @group(0) @binding(0) var<storage, read> particles: array<Particle>;
@@ -367,6 +376,7 @@ export class BlackHoleAccretionExperiment {
                     var pos = p.pos.xyz;
                     let radius = p.props.x;
                     let size = p.props.z;
+                    let gravity = params.gravity;
 
                     var output: VertexOutput;
 
@@ -420,7 +430,13 @@ export class BlackHoleAccretionExperiment {
 
                     let innerColor = vec3<f32>(0.5, 0.8, 1.0);
                     let outerColor = vec3<f32>(1.0, 0.2, 0.0);
-                    let color = mix(outerColor, innerColor, heat);
+                    var color = mix(outerColor, innerColor, heat);
+
+                    // Gravity Shift (turn violet/bright)
+                    color = mix(color, vec3<f32>(1.0, 0.0, 1.0), gravity * 0.5);
+                    if (gravity > 0.1) {
+                        color += gravity * 0.2; // boost brightness
+                    }
 
                     // Alpha fade at edges
                     let alpha = 1.0 - smoothstep(0.0, 1.0, length(corner));
@@ -518,6 +534,12 @@ export class BlackHoleAccretionExperiment {
         };
         this.container.addEventListener('mousemove', this.mouseHandler);
 
+        this.mouseDownHandler = () => { this.isMouseDown = true; };
+        this.mouseUpHandler = () => { this.isMouseDown = false; };
+
+        this.container.addEventListener('mousedown', this.mouseDownHandler);
+        window.addEventListener('mouseup', this.mouseUpHandler);
+
         this.resizeHandler = () => this.resize();
         window.addEventListener('resize', this.resizeHandler);
     }
@@ -525,6 +547,10 @@ export class BlackHoleAccretionExperiment {
     animate() {
         if (!this.isActive) return;
         this.time += 0.01;
+
+        // Update Gravity Pulse
+        const targetPulse = this.isMouseDown ? 1.0 : 0.0;
+        this.gravityPulse += (targetPulse - this.gravityPulse) * 0.1;
 
         // Render WebGL2
         if (this.gl) {
@@ -536,6 +562,7 @@ export class BlackHoleAccretionExperiment {
             gl.uniform1f(this.locations.time, this.time);
             gl.uniform1f(this.locations.rotationX, this.mouse.x);
             gl.uniform1f(this.locations.rotationY, this.mouse.y);
+            gl.uniform1f(this.locations.gravity, this.gravityPulse);
             gl.uniform1f(this.locations.aspect, this.width / this.height);
 
             gl.bindVertexArray(this.vao);
@@ -548,7 +575,7 @@ export class BlackHoleAccretionExperiment {
                 this.time,
                 this.mouse.x,
                 this.mouse.y,
-                0.0
+                this.gravityPulse
             ]);
             this.device.queue.writeBuffer(this.uniformBuffer, 0, uniforms);
 
@@ -584,6 +611,12 @@ export class BlackHoleAccretionExperiment {
         this.isActive = false;
         if (this.mouseHandler) {
             this.container.removeEventListener('mousemove', this.mouseHandler);
+        }
+        if (this.mouseDownHandler) {
+            this.container.removeEventListener('mousedown', this.mouseDownHandler);
+        }
+        if (this.mouseUpHandler) {
+            window.removeEventListener('mouseup', this.mouseUpHandler);
         }
         if (this.resizeHandler) {
             window.removeEventListener('resize', this.resizeHandler);
