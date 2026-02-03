@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Entanglement - UI Components</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        #experiment-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h1>Quantum Entanglement</h1>
+        <p>WebGL2 (Torus Knots) + WebGPU (Compute Swarm)</p>
+        <p style="font-size: 0.8em; opacity: 0.8;">Click left or right side to transfer particles.</p>
+        <a href="experiments.html" style="pointer-events: auto; color: #00ffff;">Back to Experiments</a>
+    </div>
+    <div id="experiment-container"></div>
+
+    <script type="module">
+        import { QuantumEntanglementExperiment } from '../js/quantum-entanglement.js';
+
+        const container = document.getElementById('experiment-container');
+        const experiment = new QuantumEntanglementExperiment(container, {
+            numParticles: 40000
+        });
+    </script>
+</body>
+</html>
