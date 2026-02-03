@@ -196,6 +196,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Genetic Splicing container NOT found.")
 
+            # Check for Quantum Entanglement container
+            if page.locator("#quantum-entanglement-container").count() > 0:
+                print("SUCCESS: Quantum Entanglement container found.")
+            else:
+                print("FAILURE: Quantum Entanglement container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
