@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plasma Thruster - WebGL2 + WebGPU Experiment</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000005;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #plasma-thruster-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px rgba(255, 100, 50, 0.5);
+            color: #ffaa55;
+        }
+
+        p {
+            color: #aaa;
+            max-width: 400px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #fff;
+            text-decoration: none;
+            opacity: 0.7;
+            pointer-events: auto;
+            transition: opacity 0.3s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+
+        .interaction-hint {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #ffccaa;
+            border-left: 2px solid #ffaa55;
+            padding-left: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="overlay">
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+        <h1>Plasma Thruster</h1>
+        <p>A hybrid visualization featuring a WebGL2 "Magnetic Nozzle" and a WebGPU "Ion Stream" particle simulation.</p>
+        <div class="interaction-hint">
+            <strong>Interaction:</strong> Mouse Y controls Thrust Intensity. Mouse X controls Vector Gimbal.
+        </div>
+    </div>
+
+    <div id="plasma-thruster-container"></div>
+
+    <script type="module" src="../js/plasma-thruster.js"></script>
+    <script type="module">
+        import { PlasmaThrusterExperiment } from '../js/plasma-thruster.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('plasma-thruster-container');
+            if (PlasmaThrusterExperiment) {
+                new PlasmaThrusterExperiment(container, {
+                    numParticles: 40000
+                });
+            } else {
+                console.error("PlasmaThrusterExperiment class not found.");
+            }
+        });
+    </script>
+</body>
+
+</html>

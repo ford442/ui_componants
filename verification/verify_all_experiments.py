@@ -125,6 +125,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Quantum Stabilizer container NOT found.")
 
+            # Check for Plasma Thruster container
+            if page.locator("#plasma-thruster-container").count() > 0:
+                print("SUCCESS: Plasma Thruster container found.")
+            else:
+                print("FAILURE: Plasma Thruster container NOT found.")
+
             # Check for Supernova Remnant container
             if page.locator("#supernova-remnant-container").count() > 0:
                 print("SUCCESS: Supernova Remnant container found.")
