@@ -208,6 +208,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Quantum Entanglement container NOT found.")
 
+            # Check for Dark Matter Web container
+            if page.locator("#dark-matter-web-container").count() > 0:
+                print("SUCCESS: Dark Matter Web container found.")
+            else:
+                print("FAILURE: Dark Matter Web container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
