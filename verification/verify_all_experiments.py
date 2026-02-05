@@ -214,6 +214,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Dark Matter Web container NOT found.")
 
+            # Check for Hive Mind container
+            if page.locator("#hive-mind-container").count() > 0:
+                print("SUCCESS: Hive Mind container found.")
+            else:
+                print("FAILURE: Hive Mind container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
