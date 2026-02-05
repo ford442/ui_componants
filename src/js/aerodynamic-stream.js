@@ -262,7 +262,7 @@ export class AerodynamicStreamExperiment {
         time : f32,
         angle : f32,
         speed : f32,
-        padding : f32,
+        aspect : f32,
       }
       @group(0) @binding(1) var<uniform> params : SimParams;
 
@@ -351,16 +351,40 @@ export class AerodynamicStreamExperiment {
       }
       @group(0) @binding(0) var<storage, read> particles : array<Particle>;
 
+      struct SimParams {
+        time : f32,
+        angle : f32,
+        speed : f32,
+        aspect : f32,
+      }
+      @group(0) @binding(1) var<uniform> params : SimParams;
+
       struct VertexOutput {
         @builtin(position) position : vec4f,
         @location(0) color : vec4f,
+        @location(1) uv : vec2f,
       }
 
       @vertex
-      fn vs_main(@builtin(vertex_index) vertexIndex : u32) -> VertexOutput {
-        let p = particles[vertexIndex];
+      fn vs_main(@builtin(vertex_index) vertexIndex : u32, @builtin(instance_index) instanceIndex : u32) -> VertexOutput {
+        let p = particles[instanceIndex];
+
+        // Quad vertices (2 triangles)
+        var quad = array<vec2f, 6>(
+          vec2f(-1.0, -1.0), vec2f( 1.0, -1.0), vec2f(-1.0,  1.0),
+          vec2f(-1.0,  1.0), vec2f( 1.0, -1.0), vec2f( 1.0,  1.0)
+        );
+        let qPos = quad[vertexIndex];
+
         var out : VertexOutput;
-        out.position = vec4f(p.pos, 0.0, 1.0);
+        out.uv = qPos; // -1 to 1
+
+        let size = 0.015; // Particle size
+        // Adjust x size by aspect ratio to keep it square
+        let aspectCorrection = vec2f(1.0 / params.aspect, 1.0);
+        let finalPos = p.pos + qPos * size * aspectCorrection;
+
+        out.position = vec4f(finalPos, 0.0, 1.0);
 
         // Color based on velocity (pressure visualization)
         let speed = length(p.vel);
@@ -373,8 +397,13 @@ export class AerodynamicStreamExperiment {
       }
 
       @fragment
-      fn fs_main(@location(0) color : vec4f) -> @location(0) vec4f {
-        return color;
+      fn fs_main(@location(0) color : vec4f, @location(1) uv : vec2f) -> @location(0) vec4f {
+        let dist = length(uv);
+        if (dist > 1.0) { discard; }
+
+        // Soft glow
+        let alpha = smoothstep(1.0, 0.2, dist);
+        return vec4f(color.rgb, color.a * alpha);
       }
     `;
 
@@ -404,7 +433,7 @@ export class AerodynamicStreamExperiment {
             }],
         },
         primitive: {
-            topology: 'point-list',
+            topology: 'triangle-list',
         },
     });
 
@@ -412,6 +441,7 @@ export class AerodynamicStreamExperiment {
         layout: this.renderPipeline.getBindGroupLayout(0),
         entries: [
             { binding: 0, resource: { buffer: this.particleBuffer } },
+            { binding: 1, resource: { buffer: this.simParamsBuffer } },
         ],
     });
 
@@ -456,7 +486,7 @@ export class AerodynamicStreamExperiment {
             this.time,
             this.angle,
             this.speed,
-            0.0
+            this.canvasGPU.width / this.canvasGPU.height
         ]);
         this.device.queue.writeBuffer(this.simParamsBuffer, 0, simParams);
 
@@ -480,7 +510,7 @@ export class AerodynamicStreamExperiment {
         });
         renderPass.setPipeline(this.renderPipeline);
         renderPass.setBindGroup(0, this.renderBindGroup);
-        renderPass.draw(this.particleCount);
+        renderPass.draw(6, this.particleCount);
         renderPass.end();
 
         this.device.queue.submit([commandEncoder.finish()]);
