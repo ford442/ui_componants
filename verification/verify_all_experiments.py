@@ -220,6 +220,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Hive Mind container NOT found.")
 
+            # Check for Temporal Vortex container
+            if page.locator("#temporal-vortex-container").count() > 0:
+                print("SUCCESS: Temporal Vortex container found.")
+            else:
+                print("FAILURE: Temporal Vortex container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
