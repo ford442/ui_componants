@@ -4,9 +4,8 @@
 
 [33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
 
-  VITE v5.4.21  ready in 439 ms
+  VITE v5.4.21  ready in 435 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
-5:28:04 AM [vite] page reload pages/hive-mind.html
-5:30:20 AM [vite] page reload pages/experiments.html
+1:32:33 AM [vite] page reload js/dyson-swarm.js
