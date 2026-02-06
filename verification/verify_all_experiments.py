@@ -226,6 +226,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Temporal Vortex container NOT found.")
 
+            # Check for Silicon Life container
+            if page.locator("#silicon-life-container").count() > 0:
+                print("SUCCESS: Silicon Life container found.")
+            else:
+                print("FAILURE: Silicon Life container NOT found.")
+
             print("Verification finished.")
 
         except Exception as e:
