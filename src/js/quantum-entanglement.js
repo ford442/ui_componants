@@ -315,11 +315,6 @@ class QuantumEntanglementExperiment {
             return false;
         }
 
-        if (!adapter) {
-            this.gpuCanvas.remove();
-            return false;
-        }
-
         this.device = await adapter.requestDevice();
         this.context = this.gpuCanvas.getContext('webgpu');
 

@@ -125,6 +125,12 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Quantum Stabilizer container NOT found.")
 
+            # Check for Plasma Thruster container
+            if page.locator("#plasma-thruster-container").count() > 0:
+                print("SUCCESS: Plasma Thruster container found.")
+            else:
+                print("FAILURE: Plasma Thruster container NOT found.")
+
             # Check for Supernova Remnant container
             if page.locator("#supernova-remnant-container").count() > 0:
                 print("SUCCESS: Supernova Remnant container found.")
@@ -190,6 +196,11 @@ def verify_all_experiments():
             else:
                 print("FAILURE: Quantum Tunneling container NOT found.")
 
+            # Check for Lidar Bio-Scan container
+            if page.locator("#lidar-bio-scan-container").count() > 0:
+                print("SUCCESS: Lidar Bio-Scan container found.")
+            else:
+                print("FAILURE: Lidar Bio-Scan container NOT found.")
             # Check for Genetic Splicing container
             if page.locator("#genetic-splicing-container").count() > 0:
                 print("SUCCESS: Genetic Splicing container found.")
@@ -201,6 +212,30 @@ def verify_all_experiments():
                 print("SUCCESS: Quantum Entanglement container found.")
             else:
                 print("FAILURE: Quantum Entanglement container NOT found.")
+
+            # Check for Dark Matter Web container
+            if page.locator("#dark-matter-web-container").count() > 0:
+                print("SUCCESS: Dark Matter Web container found.")
+            else:
+                print("FAILURE: Dark Matter Web container NOT found.")
+
+            # Check for Hive Mind container
+            if page.locator("#hive-mind-container").count() > 0:
+                print("SUCCESS: Hive Mind container found.")
+            else:
+                print("FAILURE: Hive Mind container NOT found.")
+
+            # Check for Temporal Vortex container
+            if page.locator("#temporal-vortex-container").count() > 0:
+                print("SUCCESS: Temporal Vortex container found.")
+            else:
+                print("FAILURE: Temporal Vortex container NOT found.")
+
+            # Check for Silicon Life container
+            if page.locator("#silicon-life-container").count() > 0:
+                print("SUCCESS: Silicon Life container found.")
+            else:
+                print("FAILURE: Silicon Life container NOT found.")
 
             print("Verification finished.")
 

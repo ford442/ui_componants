@@ -277,7 +277,7 @@ export class DysonSwarmExperiment {
         new Float32Array(this.particleBuffer.getMappedRange()).set(data);
         this.particleBuffer.unmap();
 
-        // Uniforms: time(f32), pad(f32), mouse(vec2) => 16 bytes
+        // Uniforms: time(f32), aspect(f32), mouse(vec2) => 16 bytes
         this.uniformBuffer = this.device.createBuffer({
             size: 16,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
@@ -292,7 +292,7 @@ export class DysonSwarmExperiment {
 
             struct Uniforms {
                 time : f32,
-                pad : f32,
+                aspect : f32,
                 mouse : vec2f,
             }
 
@@ -370,27 +370,35 @@ export class DysonSwarmExperiment {
                 pos : vec4f,
                 vel : vec4f,
             }
+            struct Uniforms {
+                time : f32,
+                aspect : f32,
+                mouse : vec2f,
+            }
             @group(0) @binding(0) var<storage, read> particles : array<Particle>;
+            @group(0) @binding(1) var<uniform> uniforms : Uniforms;
 
             struct VertexOutput {
                 @builtin(position) position : vec4f,
                 @location(0) color : vec4f,
+                @location(1) uv : vec2f,
             }
 
             @vertex
-            fn vs_main(@builtin(vertex_index) vertex_index : u32) -> VertexOutput {
-                let p = particles[vertex_index];
+            fn vs_main(@builtin(vertex_index) vertex_index : u32, @builtin(instance_index) instance_index : u32) -> VertexOutput {
+                let p = particles[instance_index];
 
-                // 3D Projection (Simple Perspective)
-                // Camera at (0, 1.5, 2.0) looking at (0,0,0)
+                // Quad Geometry (Billboarding)
+                var quad = array<vec2f, 6>(
+                    vec2f(-1.0, -1.0), vec2f( 1.0, -1.0), vec2f(-1.0,  1.0),
+                    vec2f(-1.0,  1.0), vec2f( 1.0, -1.0), vec2f( 1.0,  1.0)
+                );
+                let corner = quad[vertex_index];
+
+                // 3D Projection
                 let pos = p.pos.xyz;
 
-                // Rotate view slightly over time
-                let viewTime = 0.0; // Fixed view for now, or pass time if needed
-
-                // Simple View Matrix (Camera raised and tilted down)
-                // y' = y*cos - z*sin
-                // z' = y*sin + z*cos
+                // View Rotation
                 let angle = 0.7; // ~40 degrees
                 let y_rot = pos.y * cos(angle) - pos.z * sin(angle);
                 let z_rot = pos.y * sin(angle) + pos.z * cos(angle);
@@ -403,31 +411,34 @@ export class DysonSwarmExperiment {
                 let projX = x_rot / -z_final;
                 let projY = y_rot / -z_final;
 
-                // Aspect correction (assuming square for simplicity or fix in CPU)
-                // To fix aspect, we should pass aspect ratio.
-                // For now, let's assume ~1.0 or close enough for "art"
+                // Size attenuation
+                let size = 0.015 / -z_final;
 
                 var output : VertexOutput;
-                output.position = vec4f(projX, projY, 0.0, 1.0);
+                // Aspect correction on X
+                output.position = vec4f(
+                    projX + (corner.x * size) / uniforms.aspect,
+                    projY + (corner.y * size),
+                    0.0, 1.0
+                );
+
+                output.uv = corner;
 
                 // Color based on velocity/energy
                 let speed = length(p.vel.xyz);
-                let energy = smoothstep(0.4, 0.8, speed); // Normalized speed estimate
+                let energy = smoothstep(0.4, 0.8, speed);
 
                 // Blue/Cyan to White/Gold
                 output.color = mix(vec4f(0.0, 0.5, 1.0, 0.6), vec4f(1.0, 0.9, 0.5, 0.8), energy);
-
-                // Point size trick
-                output.position.w = 1.0;
-                // In WebGPU point size is fixed to 1.0 unless using specific features or quads
-                // We'll just draw 1px points for the "swarm" look.
 
                 return output;
             }
 
             @fragment
-            fn fs_main(@location(0) color : vec4f) -> @location(0) vec4f {
-                return color;
+            fn fs_main(@location(0) color : vec4f, @location(1) uv : vec2f) -> @location(0) vec4f {
+                let dist = length(uv);
+                let alpha = smoothstep(1.0, 0.2, dist);
+                return vec4f(color.rgb, color.a * alpha);
             }
         `;
 
@@ -449,12 +460,15 @@ export class DysonSwarmExperiment {
                     }
                 }]
             },
-            primitive: { topology: 'point-list' }
+            primitive: { topology: 'triangle-list' }
         });
 
         this.renderBindGroup = this.device.createBindGroup({
             layout: this.renderPipeline.getBindGroupLayout(0),
-            entries: [{ binding: 0, resource: { buffer: this.particleBuffer } }]
+            entries: [
+                { binding: 0, resource: { buffer: this.particleBuffer } },
+                { binding: 1, resource: { buffer: this.uniformBuffer } }
+            ]
         });
     }
 
@@ -488,7 +502,8 @@ export class DysonSwarmExperiment {
         // --- Render WebGPU (Foreground Swarm) ---
         if (this.device && this.contextGPU) {
             // Update Uniforms
-            const uniData = new Float32Array([timeSec, 0.0, this.mouse.x, this.mouse.y]);
+            const aspect = this.canvasGPU.width / this.canvasGPU.height;
+            const uniData = new Float32Array([timeSec, aspect, this.mouse.x, this.mouse.y]);
             this.device.queue.writeBuffer(this.uniformBuffer, 0, uniData);
 
             const cmd = this.device.createCommandEncoder();
@@ -511,7 +526,7 @@ export class DysonSwarmExperiment {
             });
             rPass.setPipeline(this.renderPipeline);
             rPass.setBindGroup(0, this.renderBindGroup);
-            rPass.draw(this.config.particleCount);
+            rPass.draw(6, this.config.particleCount);
             rPass.end();
 
             this.device.queue.submit([cmd.finish()]);
