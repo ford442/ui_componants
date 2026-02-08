@@ -1,23 +1,30 @@
+/**
+ * Quantum Entanglement Experiment
+ * Demonstrates Hybrid WebGL2 + WebGPU implementation.
+ * - WebGL2: Renders two rotating Torus "Entangled Rings".
+ * - WebGPU: Renders a particle swarm transferring between them.
+ */
 
-export class QuantumEntanglementExperiment {
+class QuantumEntanglementExperiment {
     constructor(container, options = {}) {
         this.container = container;
         this.options = options;
 
+        // State
         this.isActive = false;
         this.startTime = Date.now();
         this.animationId = null;
-        this.mouse = { x: 0, y: 0 };
-        this.canvasSize = { width: 0, height: 0 };
+        this.mouse = { x: 0, y: 0, isPressed: false };
 
-        // WebGL2
+        // WebGL2 State
         this.glCanvas = null;
         this.gl = null;
         this.glProgram = null;
         this.glVao = null;
-        this.vertexCount = 0;
+        this.glIndexBuffer = null;
+        this.glIndexCount = 0;
 
-        // WebGPU
+        // WebGPU State
         this.gpuCanvas = null;
         this.device = null;
         this.context = null;
@@ -26,10 +33,13 @@ export class QuantumEntanglementExperiment {
         this.computeBindGroup = null;
         this.simParamBuffer = null;
         this.particleBuffer = null;
-        this.numParticles = options.numParticles || 40000;
+        this.numParticles = options.numParticles || 30000;
 
+        // Bind handlers
         this.handleResize = this.resize.bind(this);
         this.handleMouseMove = this.onMouseMove.bind(this);
+        this.handleMouseDown = this.onMouseDown.bind(this);
+        this.handleMouseUp = this.onMouseUp.bind(this);
 
         this.init();
     }
@@ -37,590 +47,689 @@ export class QuantumEntanglementExperiment {
     async init() {
         this.container.style.position = 'relative';
         this.container.style.overflow = 'hidden';
-        this.container.style.background = '#050010';
+        this.container.style.background = '#020105'; // Deep dark background
 
+        console.log("QuantumEntanglement: Initializing...");
+
+        // 1. Initialize WebGL2 Layer (Rings)
         this.initWebGL2();
 
+        // 2. Initialize WebGPU Layer (Particles)
         let gpuSuccess = false;
         if (typeof navigator !== 'undefined' && navigator.gpu) {
             try {
                 gpuSuccess = await this.initWebGPU();
             } catch (e) {
-                console.warn("QuantumEntanglement: WebGPU init failed", e);
+                console.warn("QuantumEntanglement: WebGPU initialization error:", e);
             }
         }
 
         if (!gpuSuccess) {
+            console.log("QuantumEntanglement: WebGPU not enabled/supported. Running in WebGL2-only mode.");
             this.addWebGPUNotSupportedMessage();
+        } else {
+            console.log("QuantumEntanglement: WebGPU initialized successfully.");
         }
 
-        this.resize();
         this.isActive = true;
-        this.animate();
 
+        // Event Listeners
         window.addEventListener('resize', this.handleResize);
-        window.addEventListener('mousemove', this.handleMouseMove);
-    }
+        this.container.addEventListener('mousemove', this.handleMouseMove);
+        this.container.addEventListener('mousedown', this.handleMouseDown);
+        window.addEventListener('mouseup', this.handleMouseUp);
 
-    onMouseMove(e) {
-        const rect = this.container.getBoundingClientRect();
-        this.mouse.x = (e.clientX - rect.left) / rect.width * 2 - 1;
-        this.mouse.y = -((e.clientY - rect.top) / rect.height * 2 - 1);
+        this.resize();
+        this.animate();
     }
 
     // ========================================================================
-    // WebGL2 (Torus Knots)
+    // WebGL2 IMPLEMENTATION (Torus Rings)
     // ========================================================================
+
     initWebGL2() {
         this.glCanvas = document.createElement('canvas');
         this.glCanvas.style.cssText = `
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: 1;
         `;
         this.container.appendChild(this.glCanvas);
 
         this.gl = this.glCanvas.getContext('webgl2');
-        if (!this.gl) return;
+        if (!this.gl) {
+            console.warn("QuantumEntanglement: WebGL2 not supported.");
+            return;
+        }
 
-        const gl = this.gl;
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        gl.enable(gl.DEPTH_TEST);
+        // Generate Torus Geometry
+        const { positions, indices } = this.createTorusGeometry(0.3, 0.05, 32, 16);
+        this.glIndexCount = indices.length;
 
-        // Generate Torus Knot Geometry
-        // Trefoil knot: x = sin(t) + 2sin(2t), y = cos(t) - 2cos(2t), z = -sin(3t)
-        // Or (p,q) torus knot
-        const vertices = [];
-        const steps = 300;
-        const p = 2, q = 3;
-        const tubeRadius = 0.15;
-        const radius = 0.8;
+        // Setup VAO and Buffers
+        const vao = this.gl.createVertexArray();
+        this.gl.bindVertexArray(vao);
 
-        // We'll generate a tube
-        const tubeSteps = 12;
+        const positionBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(positions), this.gl.STATIC_DRAW);
 
-        for (let i = 0; i <= steps; i++) {
-            const t = (i / steps) * Math.PI * 2;
-            const tNext = ((i + 1) / steps) * Math.PI * 2;
+        const indexBuffer = this.gl.createBuffer();
+        this.glIndexBuffer = indexBuffer;
+        this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), this.gl.STATIC_DRAW);
 
-            // Central path
-            const getPos = (ang) => {
-                const r = radius * (2 + Math.cos(q * ang));
-                return [
-                    r * Math.cos(p * ang),
-                    r * Math.sin(p * ang),
-                    radius * Math.sin(q * ang)
-                ];
-            };
+        // Vertex Shader
+        const vsSource = `#version 300 es
+            in vec3 a_position;
 
-            const p1 = getPos(t);
-            const p2 = getPos(tNext);
+            uniform float u_time;
+            uniform vec2 u_resolution;
+            uniform float u_offsetX; // -0.5 or 0.5
 
-            // Frenet frame approx
-            const tangent = [p2[0]-p1[0], p2[1]-p1[1], p2[2]-p1[2]];
-            const len = Math.sqrt(tangent[0]**2 + tangent[1]**2 + tangent[2]**2);
-            const T = [tangent[0]/len, tangent[1]/len, tangent[2]/len];
+            out vec3 v_pos;
+            out vec3 v_normal;
 
-            const up = [0, 0, 1];
-            // N = T x up (rough)
-            let N = [T[1]*up[2] - T[2]*up[1], T[2]*up[0] - T[0]*up[2], T[0]*up[1] - T[1]*up[0]];
-            let nLen = Math.sqrt(N[0]**2 + N[1]**2 + N[2]**2);
-            if (nLen < 0.001) N = [1, 0, 0]; // Degenerate case
-            else N = [N[0]/nLen, N[1]/nLen, N[2]/nLen];
+            mat4 rotationX(float angle) {
+                return mat4(1.0, 0.0, 0.0, 0.0,
+                            0.0, cos(angle), -sin(angle), 0.0,
+                            0.0, sin(angle), cos(angle), 0.0,
+                            0.0, 0.0, 0.0, 1.0);
+            }
 
-            const B = [T[1]*N[2] - T[2]*N[1], T[2]*N[0] - T[0]*N[2], T[0]*N[1] - T[1]*N[0]];
+            mat4 rotationY(float angle) {
+                return mat4(cos(angle), 0.0, sin(angle), 0.0,
+                            0.0, 1.0, 0.0, 0.0,
+                            -sin(angle), 0.0, cos(angle), 0.0,
+                            0.0, 0.0, 0.0, 1.0);
+            }
 
-            // Generate circle at this segment
-            for (let j = 0; j <= tubeSteps; j++) {
-                const phi = (j / tubeSteps) * Math.PI * 2;
-                const phiNext = ((j + 1) / tubeSteps) * Math.PI * 2;
+             mat4 rotationZ(float angle) {
+                return mat4(cos(angle), -sin(angle), 0.0, 0.0,
+                            sin(angle), cos(angle), 0.0, 0.0,
+                            0.0, 0.0, 1.0, 0.0,
+                            0.0, 0.0, 0.0, 1.0);
+            }
 
-                // We'll draw lines for wireframe look
-                // Current ring vertex
-                const cx = Math.cos(phi);
-                const cy = Math.sin(phi);
+            void main() {
+                v_pos = a_position;
 
-                const vx = p1[0] + tubeRadius * (cx * N[0] + cy * B[0]);
-                const vy = p1[1] + tubeRadius * (cx * N[1] + cy * B[1]);
-                const vz = p1[2] + tubeRadius * (cx * N[2] + cy * B[2]);
+                // Rotate the torus
+                // Different rotation direction based on offset for visual interest
+                float dir = sign(u_offsetX);
+                mat4 rot = rotationY(u_time * 0.5 * dir) * rotationX(u_time * 0.3);
 
-                // Next ring vertex
-                // Re-calculate frame for p2? For simplicity just use p1's frame for the segment connection
-                // but that causes twisting artifacts.
-                // For a wireframe experiment, let's just draw rings or longitudinal lines.
-                // Let's just store points and draw GL_LINES_STRIP or similar.
+                vec4 pos = rot * vec4(a_position, 1.0);
 
-                // Simpler: Just the center line curve
-                // No, wireframe tube looks cooler.
+                // Shift position
+                pos.x += u_offsetX;
 
-                // Let's just output triangles for a tube and render as gl.LINES using barycentric coords in shader?
-                // Or just standard wireframe mesh.
+                // Perspective projection aspect ratio fix
+                float aspect = u_resolution.x / u_resolution.y;
+                pos.x /= aspect;
 
-                vertices.push(vx, vy, vz);
+                gl_Position = pos;
+            }
+        `;
+
+        // Fragment Shader
+        const fsSource = `#version 300 es
+            precision highp float;
+
+            in vec3 v_pos;
+            uniform float u_offsetX;
+            uniform float u_time;
+
+            out vec4 outColor;
+
+            void main() {
+                // Color based on offset
+                vec3 color;
+                if (u_offsetX < 0.0) {
+                    // Left: Cyan
+                    color = vec3(0.0, 0.8, 1.0);
+                } else {
+                    // Right: Magenta
+                    color = vec3(1.0, 0.0, 0.8);
+                }
+
+                // Simple wireframe-ish glow
+                // We don't have normals passed perfectly for wireframe, but let's just make it glowy
+                float pulse = 0.5 + 0.5 * sin(u_time * 2.0);
+
+                // Add some variation
+                color += pulse * 0.2;
+
+                outColor = vec4(color, 0.6); // Semi-transparent
+            }
+        `;
+
+        this.glProgram = this.createGLProgram(vsSource, fsSource);
+        if (!this.glProgram) return;
+
+        const positionLoc = this.gl.getAttribLocation(this.glProgram, 'a_position');
+        this.gl.enableVertexAttribArray(positionLoc);
+        this.gl.vertexAttribPointer(positionLoc, 3, this.gl.FLOAT, false, 0, 0);
+
+        this.glVao = vao;
+
+        // Enable blending for transparency
+        this.gl.enable(this.gl.BLEND);
+        this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+
+        this.resizeGL();
+    }
+
+    createTorusGeometry(radius, tube, radialSegments, tubularSegments) {
+        const positions = [];
+        const indices = [];
+
+        for (let j = 0; j <= radialSegments; j++) {
+            for (let i = 0; i <= tubularSegments; i++) {
+                const u = i / tubularSegments * Math.PI * 2;
+                const v = j / radialSegments * Math.PI * 2;
+
+                const centerX = radius * Math.cos(u);
+                const centerY = radius * Math.sin(u);
+
+                const x = (radius + tube * Math.cos(v)) * Math.cos(u);
+                const y = (radius + tube * Math.cos(v)) * Math.sin(u);
+                const z = tube * Math.sin(v);
+
+                positions.push(x, y, z);
             }
         }
 
-        // Actually, for a clean wireframe, let's just draw the center curve with high thickness
-        // NO, the prompt asked for "Structure".
-        // Let's settle for just the center curve but drawn twice (left and right).
+        for (let j = 1; j <= radialSegments; j++) {
+            for (let i = 1; i <= tubularSegments; i++) {
+                const a = (tubularSegments + 1) * j + i - 1;
+                const b = (tubularSegments + 1) * (j - 1) + i - 1;
+                const c = (tubularSegments + 1) * (j - 1) + i;
+                const d = (tubularSegments + 1) * j + i;
 
-        const lineVertices = [];
-        for(let i=0; i<=steps; i++) {
-             const t = (i / steps) * Math.PI * 2 * 10; // multiple loops? No 0 to 2PI is full loop for knot
-             // Torus knot closes at 2PI * something?
-             // P=2, Q=3. Period is 2PI.
-             const ang = (i / steps) * Math.PI * 2;
-             const r = 0.6 * (2 + Math.cos(q * ang));
-             const x = r * Math.cos(p * ang);
-             const y = r * Math.sin(p * ang);
-             const z = 0.6 * Math.sin(q * ang);
-             lineVertices.push(x, y, z);
+                // Wireframe lines: a-b, b-c?
+                // Just triangles for now, but draw with LINE_STRIP or LINES
+                // Let's use LINES topology in draw call for wireframe look
+                indices.push(a, b);
+                indices.push(b, c);
+                indices.push(c, d);
+                indices.push(d, a);
+            }
         }
 
-        this.vertexCount = lineVertices.length / 3;
-
-        const vao = gl.createVertexArray();
-        gl.bindVertexArray(vao);
-
-        const buffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineVertices), gl.STATIC_DRAW);
-
-        const vsSource = `#version 300 es
-        in vec3 a_position;
-        uniform float u_time;
-        uniform vec2 u_resolution;
-        uniform float u_offset; // X offset for the knot
-        uniform vec3 u_color;
-
-        out vec3 v_color;
-
-        void main() {
-            vec3 pos = a_position;
-
-            // Rotation
-            float c = cos(u_time * 0.5);
-            float s = sin(u_time * 0.5);
-
-            // Rotate around Z locally
-            float x = pos.x * c - pos.y * s;
-            float y = pos.x * s + pos.y * c;
-            pos.x = x;
-            pos.y = y;
-
-            // World position
-            vec3 worldPos = pos + vec3(u_offset, 0.0, 0.0);
-
-            // Camera
-            vec3 camPos = vec3(0.0, 0.0, 4.0);
-            vec3 target = vec3(0.0, 0.0, 0.0);
-
-            // Simple perspective
-            float aspect = u_resolution.x / u_resolution.y;
-            float fov = 1.0;
-            float f = 1.0 / tan(fov/2.0);
-
-            // View transform (look at 0) - identity for now as cam is at Z=4 looking at Z=0
-            vec3 p = worldPos - camPos;
-
-            // Projection
-            float z_near = 0.1;
-            float z_far = 100.0;
-
-            gl_Position = vec4(p.x * f / aspect, p.y * f, (p.z * (z_far+z_near)/(z_near-z_far)) + (2.0*z_far*z_near)/(z_near-z_far), -p.z);
-
-            // Fade with depth
-            float dist = length(worldPos - camPos);
-            float alpha = 1.0 / (dist * 0.5);
-
-            v_color = u_color * alpha;
-        }`;
-
-        const fsSource = `#version 300 es
-        precision highp float;
-        in vec3 v_color;
-        out vec4 outColor;
-
-        void main() {
-            outColor = vec4(v_color, 0.6);
-        }`;
-
-        this.glProgram = this.createGLProgram(gl, vsSource, fsSource);
-        if (this.glProgram) {
-            const loc = gl.getAttribLocation(this.glProgram, 'a_position');
-            gl.enableVertexAttribArray(loc);
-            gl.vertexAttribPointer(loc, 3, gl.FLOAT, false, 0, 0);
-        }
-        this.glVao = vao;
+        return { positions, indices };
     }
 
-    createGLProgram(gl, vsSource, fsSource) {
-        const vs = gl.createShader(gl.VERTEX_SHADER);
-        gl.shaderSource(vs, vsSource);
-        gl.compileShader(vs);
-        if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
-            console.error(gl.getShaderInfoLog(vs));
+    createGLProgram(vsSource, fsSource) {
+        const vs = this.gl.createShader(this.gl.VERTEX_SHADER);
+        this.gl.shaderSource(vs, vsSource);
+        this.gl.compileShader(vs);
+        if (!this.gl.getShaderParameter(vs, this.gl.COMPILE_STATUS)) {
+            console.error('WebGL VS Error:', this.gl.getShaderInfoLog(vs));
             return null;
         }
-        const fs = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(fs, fsSource);
-        gl.compileShader(fs);
-        if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
-            console.error(gl.getShaderInfoLog(fs));
+
+        const fs = this.gl.createShader(this.gl.FRAGMENT_SHADER);
+        this.gl.shaderSource(fs, fsSource);
+        this.gl.compileShader(fs);
+        if (!this.gl.getShaderParameter(fs, this.gl.COMPILE_STATUS)) {
+            console.error('WebGL FS Error:', this.gl.getShaderInfoLog(fs));
             return null;
         }
-        const p = gl.createProgram();
-        gl.attachShader(p, vs);
-        gl.attachShader(p, fs);
-        gl.linkProgram(p);
-        return p;
+
+        const program = this.gl.createProgram();
+        this.gl.attachShader(program, vs);
+        this.gl.attachShader(program, fs);
+        this.gl.linkProgram(program);
+
+        return program;
     }
 
     // ========================================================================
-    // WebGPU (Entangled Particles)
+    // WebGPU IMPLEMENTATION (Entangled Particles)
     // ========================================================================
+
     async initWebGPU() {
         this.gpuCanvas = document.createElement('canvas');
         this.gpuCanvas.style.cssText = `
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 2; pointer-events: none; background: transparent;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+            background: transparent;
         `;
         this.container.appendChild(this.gpuCanvas);
 
-        const adapter = await navigator.gpu?.requestAdapter();
-        if (!adapter) {
+        let adapter;
+        try {
+            adapter = await navigator.gpu.requestAdapter();
+        } catch (e) {
+            console.warn("WebGPU Adapter request failed:", e);
             this.gpuCanvas.remove();
             return false;
         }
+
         this.device = await adapter.requestDevice();
         this.context = this.gpuCanvas.getContext('webgpu');
-        const format = navigator.gpu.getPreferredCanvasFormat();
-        this.context.configure({ device: this.device, format, alphaMode: 'premultiplied' });
 
-        // Init Particles
-        const particleData = new Float32Array(this.numParticles * 8);
-        for(let i=0; i<this.numParticles; i++) {
-            const idx = i * 8;
+        const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
+        this.context.configure({
+            device: this.device,
+            format: presentationFormat,
+            alphaMode: 'premultiplied',
+        });
 
-            // Even: Left (-1.5), Odd: Right (1.5)
-            const isLeft = (i % 2 === 0);
-            const centerX = isLeft ? -1.5 : 1.5;
+        // COMPUTE SHADER
+        const computeShaderCode = `
+            struct Particle {
+                pos : vec2f,
+                vel : vec2f,
+                state : f32, // 0: Left, 1: Right, 2: Transit L->R, 3: Transit R->L
+                target : f32, // Progress of transit (0..1) or random seed
+                dummy1: f32,
+                dummy2: f32,
+            }
 
-            // Random start around torus knot? Or just sphere cloud?
-            // Random sphere cloud around center
-            const r = 0.5 * Math.random();
+            @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
+
+            struct SimParams {
+                dt : f32,
+                time : f32,
+                mousePos : vec2f,
+                isPressed : f32,
+                aspect : f32,
+                dummy : f32, // Padding
+                dummy2 : f32, // Padding
+            }
+            @group(0) @binding(1) var<uniform> params : SimParams;
+
+            fn rand(co: vec2f) -> f32 {
+                return fract(sin(dot(co, vec2f(12.9898, 78.233))) * 43758.5453);
+            }
+
+            @compute @workgroup_size(64)
+            fn main(@builtin(global_invocation_id) GlobalInvocationID : vec3u) {
+                let index = GlobalInvocationID.x;
+                if (index >= ${this.numParticles}) {
+                    return;
+                }
+
+                var p = particles[index];
+
+                // Centers adjusted for aspect ratio in compute?
+                // Aspect ratio is applied at rendering time or simulation?
+                // Let's keep simulation space -1..1 (x) and apply aspect ratio during render.
+                // However, our WebGL rings are at +/- 0.5 * aspect corrected?
+                // The WebGL shader does: pos.x += offset; pos.x /= aspect;
+                // So the visual center in NDC is offset/aspect.
+                // If aspect is 16/9 (~1.77), then 0.5 becomes 0.28.
+                // To match, we should define simulation centers as +/- 0.5 * params.aspect.
+                // Wait, if I want them to align, I should match the logic.
+
+                let leftCenter = vec2f(-0.5 * params.aspect, 0.0);
+                let rightCenter = vec2f(0.5 * params.aspect, 0.0);
+
+                // States
+                // 0: Orbit Left
+                // 1: Orbit Right
+                // 2: Transit to Right
+                // 3: Transit to Left
+
+                if (p.state < 0.5) { // State 0 (Left)
+                    let diff = p.pos - leftCenter;
+                    let dist = length(diff);
+                    let dir = normalize(diff);
+
+                    // Orbit
+                    let tangent = vec2f(-dir.y, dir.x);
+                    p.vel = mix(p.vel, tangent * 0.5, 0.1);
+                    p.vel += -dir * 0.5 * params.dt; // Centripetal
+
+                    p.pos += p.vel * params.dt;
+
+                    // Interaction: Mouse click on left side
+                    if (params.isPressed > 0.5 && params.mousePos.x < 0.0) {
+                         let mouseDist = distance(p.pos, params.mousePos);
+                         if (mouseDist < 0.5) {
+                             p.state = 2.0; // Trigger transit
+                             p.target = 0.0; // Reset progress
+                         }
+                    }
+
+                } else if (p.state < 1.5) { // State 1 (Right)
+                    let diff = p.pos - rightCenter;
+                    let dist = length(diff);
+                    let dir = normalize(diff);
+
+                    // Orbit
+                    let tangent = vec2f(-dir.y, dir.x);
+                    p.vel = mix(p.vel, tangent * 0.5, 0.1);
+                    p.vel += -dir * 0.5 * params.dt; // Centripetal
+
+                    p.pos += p.vel * params.dt;
+
+                    // Interaction: Mouse click on right side
+                    if (params.isPressed > 0.5 && params.mousePos.x > 0.0) {
+                         let mouseDist = distance(p.pos, params.mousePos);
+                         if (mouseDist < 0.5) {
+                             p.state = 3.0; // Trigger transit back
+                             p.target = 0.0;
+                         }
+                    }
+
+                } else if (p.state < 2.5) { // State 2 (Transit L->R)
+                    p.target += params.dt * 2.0; // Speed of transfer
+                    if (p.target >= 1.0) {
+                        p.state = 1.0; // Arrived
+                        p.pos = rightCenter + (p.pos - leftCenter); // Teleport relatively? Or just snap
+                    } else {
+                         // Lerp with some noise
+                         let t = p.target;
+                         let basePos = mix(leftCenter, rightCenter, t);
+                         let noise = vec2f(rand(vec2f(t, f32(index))), rand(vec2f(t+1.0, f32(index)))) - 0.5;
+                         p.pos = basePos + noise * 0.2 * sin(t * 3.14);
+                    }
+                } else { // State 3 (Transit R->L)
+                    p.target += params.dt * 2.0;
+                    if (p.target >= 1.0) {
+                        p.state = 0.0; // Arrived
+                        p.pos = leftCenter + (p.pos - rightCenter);
+                    } else {
+                         let t = p.target;
+                         let basePos = mix(rightCenter, leftCenter, t);
+                         let noise = vec2f(rand(vec2f(t, f32(index))), rand(vec2f(t+1.0, f32(index)))) - 0.5;
+                         p.pos = basePos + noise * 0.2 * sin(t * 3.14);
+                    }
+                }
+
+                particles[index] = p;
+            }
+        `;
+
+        // RENDER SHADER
+        const drawShaderCode = `
+            struct VertexOutput {
+                @builtin(position) position : vec4f,
+                @location(0) color : vec4f,
+                @location(1) size : f32,
+            }
+
+            struct SimParams {
+                dt : f32,
+                time : f32,
+                mousePos : vec2f,
+                isPressed : f32,
+                aspect : f32,
+            }
+            @group(0) @binding(1) var<uniform> params : SimParams;
+
+            @vertex
+            fn vs_main(
+                @builtin(vertex_index) vertexIndex : u32,
+                @location(0) particlePos : vec2f,
+                @location(1) particleVel : vec2f,
+                @location(2) particleState : f32,
+            ) -> VertexOutput {
+                var output : VertexOutput;
+
+                // Convert simulation space to NDC
+                // Sim space x is already scaled by aspect logic in compute?
+                // Wait, in compute I used aspect to position centers.
+                // So particlePos is in "World Space" where X is wide.
+                // To get to NDC, we divide X by aspect.
+
+                var pos = particlePos;
+                pos.x /= params.aspect;
+
+                output.position = vec4f(pos, 0.0, 1.0);
+
+                // Color based on state
+                if (particleState < 0.5) {
+                    // Left: Cyan
+                    output.color = vec4f(0.0, 1.0, 1.0, 1.0);
+                } else if (particleState < 1.5) {
+                    // Right: Magenta
+                    output.color = vec4f(1.0, 0.0, 1.0, 1.0);
+                } else {
+                    // Transit: White/Energy
+                    output.color = vec4f(1.0, 1.0, 1.0, 1.0);
+                }
+
+                output.size = 2.0;
+                return output;
+            }
+
+            @fragment
+            fn fs_main(@location(0) color : vec4f) -> @location(0) vec4f {
+                return color;
+            }
+        `;
+
+        const particleUnitSize = 32; // 8 floats * 4 bytes
+        const particleBufferSize = this.numParticles * particleUnitSize;
+        const initialParticleData = new Float32Array(this.numParticles * 8);
+
+        for (let i = 0; i < this.numParticles; i++) {
+            // Randomly assign to Left (0) or Right (1)
+            const state = Math.random() > 0.5 ? 1.0 : 0.0;
+            const centerX = (state === 0.0 ? -0.5 : 0.5); // * aspect happens in loop, we just need initial near center
+            // Approx aspect for init
+            const aspect = this.container.clientWidth / this.container.clientHeight;
+
             const theta = Math.random() * Math.PI * 2;
-            const phi = Math.random() * Math.PI;
+            const r = 0.2 + Math.random() * 0.1;
 
-            const lx = r * Math.sin(phi) * Math.cos(theta);
-            const ly = r * Math.sin(phi) * Math.sin(theta);
-            const lz = r * Math.cos(phi);
+            initialParticleData[i * 8 + 0] = (centerX * aspect) + Math.cos(theta) * r; // Pos X
+            initialParticleData[i * 8 + 1] = Math.sin(theta) * r; // Pos Y
 
-            particleData[idx] = centerX + lx; // x
-            particleData[idx+1] = ly;         // y
-            particleData[idx+2] = lz;         // z
-            particleData[idx+3] = Math.random(); // life/phase
+            initialParticleData[i * 8 + 2] = 0; // Vel X
+            initialParticleData[i * 8 + 3] = 0; // Vel Y
 
-            particleData[idx+4] = 0; // vx
-            particleData[idx+5] = 0; // vy
-            particleData[idx+6] = 0; // vz
-            particleData[idx+7] = 0; // pad
+            initialParticleData[i * 8 + 4] = state; // State
+            initialParticleData[i * 8 + 5] = 0; // Target
+            initialParticleData[i * 8 + 6] = 0; // Pad
+            initialParticleData[i * 8 + 7] = 0; // Pad
         }
 
         this.particleBuffer = this.device.createBuffer({
-            size: particleData.byteLength,
+            size: particleBufferSize,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
         });
-        this.device.queue.writeBuffer(this.particleBuffer, 0, particleData);
+        this.device.queue.writeBuffer(this.particleBuffer, 0, initialParticleData);
 
+        // Uniform Buffer
+        // dt(4) + time(4) + mousePos(8) + isPressed(4) + aspect(4) + pad(8) -> 32 bytes
         this.simParamBuffer = this.device.createBuffer({
-            size: 32, // time, dt, mouseX, mouseY, aspect, padding...
+            size: 32,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
-        // Compute Shader
-        const computeCode = `
-        struct Particle {
-            pos : vec4f,
-            vel : vec4f,
-        }
-        @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
-
-        struct Params {
-            time : f32,
-            dt : f32,
-            mouseX : f32,
-            mouseY : f32,
-            aspect : f32,
-            pad1: f32,
-            pad2: f32,
-            pad3: f32,
-        }
-        @group(0) @binding(1) var<uniform> params : Params;
-
-        fn random(st: vec2f) -> f32 {
-            return fract(sin(dot(st, vec2f(12.9898, 78.233))) * 43758.5453123);
-        }
-
-        // Noise function for flow
-        fn snoise(v : vec3f) -> f32 {
-             return sin(v.x * 10.0 + params.time) * sin(v.y * 10.0) * sin(v.z * 10.0);
-        }
-
-        @compute @workgroup_size(64)
-        fn main(@builtin(global_invocation_id) id : vec3u) {
-            let idx = id.x;
-            if (idx >= arrayLength(&particles)) { return; }
-
-            var p = particles[idx];
-            let isLeft = (idx % 2 == 0);
-            let centerX = select(1.5, -1.5, isLeft);
-
-            // Base orbit/flow
-            let localPos = p.pos.xyz - vec3f(centerX, 0.0, 0.0);
-
-            // Attract to ring center
-            let r = length(localPos);
-            let attract = -normalize(localPos) * (r - 0.7) * 2.0; // Target radius 0.7
-
-            // Rotate
-            let tan = vec3f(-localPos.y, localPos.x, 0.0);
-
-            var force = attract + tan * 2.0;
-
-            // Mouse Interaction (Entanglement)
-            // Real mouse position
-            let mPos = vec3f(params.mouseX * params.aspect * 2.0, params.mouseY * 2.0, 0.0); // Rough projection mapping
-
-            // Mirrored mouse position (The "Ghost" interaction)
-            let ghostMPos = vec3f(-mPos.x, mPos.y, mPos.z);
-
-            // Interaction logic:
-            // Calculate force from Real Mouse
-            let dirM = p.pos.xyz - mPos;
-            let distM = length(dirM);
-            var mouseForce = vec3f(0.0);
-            if (distM < 1.0) {
-                mouseForce += normalize(dirM) * 10.0 * (1.0 - distM); // Repel
-            }
-
-            // Calculate force from Ghost Mouse (Entanglement effect)
-            let dirG = p.pos.xyz - ghostMPos;
-            let distG = length(dirG);
-            if (distG < 1.0) {
-                // If the mouse is disturbing my partner's region (mirrored), I react too!
-                mouseForce += normalize(dirG) * 10.0 * (1.0 - distG);
-            }
-
-            // Apply forces
-            p.vel = vec4f(mix(p.vel.xyz, force + mouseForce, 0.1), 0.0);
-
-            // Update pos
-            p.pos = vec4f(p.pos.xyz + p.vel.xyz * params.dt, p.pos.w);
-
-            // Life/Reset
-            // p.pos.w stores life?
-            // Keep constrained
-            if (length(p.pos.xyz - vec3f(centerX, 0.0, 0.0)) > 2.5) {
-                p.pos.x = centerX;
-                p.pos.y = 0.0;
-                p.pos.z = 0.0;
-            }
-
-            particles[idx] = p;
-        }
-        `;
-
-        const computeModule = this.device.createShaderModule({ code: computeCode });
-        this.computePipeline = this.device.createComputePipeline({
-            layout: 'auto',
-            compute: { module: computeModule, entryPoint: 'main' }
+        // Bind Group
+        const computeBindGroupLayout = this.device.createBindGroupLayout({
+            entries: [
+                { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+                { binding: 1, visibility: GPUShaderStage.COMPUTE | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
+            ],
         });
-
-        // Draw Shader
-        const drawCode = `
-        struct VertexOutput {
-            @builtin(position) pos : vec4f,
-            @location(0) color : vec4f,
-            @location(1) uv : vec2f,
-        }
-        struct Params {
-            time : f32,
-            dt : f32,
-            mouseX : f32,
-            mouseY : f32,
-            aspect : f32,
-        }
-        @group(0) @binding(1) var<uniform> params : Params;
-
-        @vertex
-        fn vs_main(
-            @builtin(vertex_index) vIdx : u32,
-            @location(0) pos : vec4f,
-            @location(1) vel : vec4f,
-            @builtin(instance_index) iIdx : u32
-        ) -> VertexOutput {
-            var out : VertexOutput;
-
-            // Simple Perspective (matches WebGL)
-            let camPos = vec3f(0.0, 0.0, 4.0);
-            let p = pos.xyz - camPos;
-
-            let fov = 1.0;
-            let f = 1.0 / tan(fov/2.0);
-            let z_near = 0.1;
-            let z_far = 100.0;
-            let aspect = params.aspect;
-
-            let projPos = vec4f(
-                p.x * f / aspect,
-                p.y * f,
-                (p.z * (z_far+z_near)/(z_near-z_far)) + (2.0*z_far*z_near)/(z_near-z_far),
-                -p.z
-            );
-
-            // Billboard logic
-            var corners = array<vec2f, 6>(
-                vec2f(-1.0, -1.0), vec2f( 1.0, -1.0), vec2f(-1.0,  1.0),
-                vec2f(-1.0,  1.0), vec2f( 1.0, -1.0), vec2f( 1.0,  1.0)
-            );
-            let corner = corners[vIdx];
-            out.uv = corner * 0.5 + 0.5;
-
-            let size = 0.02;
-            let finalPos = projPos + vec4f(corner * size, 0.0, 0.0);
-            out.pos = finalPos;
-
-            // Color
-            // Left (Even) = Cyan, Right (Odd) = Magenta
-            let isLeft = (iIdx % 2 == 0);
-            let baseColor = select(vec3f(1.0, 0.0, 1.0), vec3f(0.0, 1.0, 1.0), isLeft);
-
-            // Velocity brightness
-            let speed = length(vel.xyz);
-            out.color = vec4f(baseColor + speed * 0.1, 1.0);
-
-            return out;
-        }
-
-        @fragment
-        fn fs_main(@location(0) color : vec4f, @location(1) uv : vec2f) -> @location(0) vec4f {
-            let d = distance(uv, vec2f(0.5));
-            let alpha = smoothstep(0.5, 0.2, d);
-            if (alpha < 0.01) { discard; }
-            return vec4f(color.rgb, color.a * alpha);
-        }
-        `;
-
-        const drawModule = this.device.createShaderModule({ code: drawCode });
 
         this.computeBindGroup = this.device.createBindGroup({
-            layout: this.computePipeline.getBindGroupLayout(0),
+            layout: computeBindGroupLayout,
             entries: [
                 { binding: 0, resource: { buffer: this.particleBuffer } },
-                { binding: 1, resource: { buffer: this.simParamBuffer } }
-            ]
+                { binding: 1, resource: { buffer: this.simParamBuffer } },
+            ],
         });
 
+        // Pipelines
+        const computeModule = this.device.createShaderModule({ code: computeShaderCode });
+        this.computePipeline = this.device.createComputePipeline({
+            layout: this.device.createPipelineLayout({ bindGroupLayouts: [computeBindGroupLayout] }),
+            compute: { module: computeModule, entryPoint: 'main' },
+        });
+
+        const drawModule = this.device.createShaderModule({ code: drawShaderCode });
         this.renderPipeline = this.device.createRenderPipeline({
-            layout: this.device.createPipelineLayout({ bindGroupLayouts: [this.computePipeline.getBindGroupLayout(0)] }),
+            layout: this.device.createPipelineLayout({ bindGroupLayouts: [computeBindGroupLayout] }), // Need params in VS
             vertex: {
                 module: drawModule,
                 entryPoint: 'vs_main',
                 buffers: [{
-                    arrayStride: 32,
-                    stepMode: 'instance',
+                    arrayStride: particleUnitSize,
+                    stepMode: 'vertex',
                     attributes: [
-                        { shaderLocation: 0, offset: 0, format: 'float32x4' },
-                        { shaderLocation: 1, offset: 16, format: 'float32x4' }
-                    ]
-                }]
+                        { shaderLocation: 0, offset: 0, format: 'float32x2' }, // pos
+                        { shaderLocation: 1, offset: 8, format: 'float32x2' }, // vel
+                        { shaderLocation: 2, offset: 16, format: 'float32' },  // state
+                    ],
+                }],
             },
             fragment: {
                 module: drawModule,
                 entryPoint: 'fs_main',
                 targets: [{
-                    format,
+                    format: presentationFormat,
                     blend: {
                         color: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
-                        alpha: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' }
+                        alpha: { srcFactor: 'src-alpha', dstFactor: 'one', operation: 'add' },
                     }
-                }]
+                }],
             },
-            primitive: { topology: 'triangle-list' }
+            primitive: { topology: 'point-list' },
         });
 
+        this.resizeGPU();
         return true;
     }
 
     addWebGPUNotSupportedMessage() {
         if (this.container.querySelector('.webgpu-error')) return;
+
         const msg = document.createElement('div');
         msg.className = 'webgpu-error';
-        msg.innerText = "WebGPU Not Available (WebGL2 Only)";
-        msg.style.cssText = "position:absolute; bottom:20px; right:20px; color:white; background:rgba(100,0,0,0.8); padding:10px;";
+        msg.style.cssText = `
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(90deg, rgba(200, 50, 50, 0.8), rgba(100, 20, 20, 0.9));
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: monospace;
+            z-index: 10;
+            pointer-events: none;
+            border: 1px solid rgba(255,100,100,0.5);
+        `;
+        msg.innerHTML = "⚠️ WebGPU Not Available &mdash; Core Only Mode";
         this.container.appendChild(msg);
     }
 
+    // ========================================================================
+    // EVENTS & LOOP
+    // ========================================================================
+
     resize() {
+        const dpr = window.devicePixelRatio || 1;
         const width = this.container.clientWidth;
         const height = this.container.clientHeight;
-        const dpr = window.devicePixelRatio || 1;
 
-        this.canvasSize.width = width;
-        this.canvasSize.height = height;
+        const displayWidth = Math.floor(width * dpr);
+        const displayHeight = Math.floor(height * dpr);
 
-        const dw = Math.floor(width * dpr);
-        const dh = Math.floor(height * dpr);
+        this.resizeGL(displayWidth, displayHeight);
+        this.resizeGPU(displayWidth, displayHeight);
+    }
 
-        if(this.glCanvas) {
-            this.glCanvas.width = dw;
-            this.glCanvas.height = dh;
-            if(this.gl) this.gl.viewport(0, 0, dw, dh);
+    resizeGL(width, height) {
+        if (!this.glCanvas) return;
+        if (this.glCanvas.width !== width || this.glCanvas.height !== height) {
+            this.glCanvas.width = width;
+            this.glCanvas.height = height;
+            this.gl.viewport(0, 0, width, height);
         }
-        if(this.gpuCanvas) {
-            this.gpuCanvas.width = dw;
-            this.gpuCanvas.height = dh;
+    }
+
+    resizeGPU(width, height) {
+        if (!this.gpuCanvas) return;
+        if (this.gpuCanvas.width !== width || this.gpuCanvas.height !== height) {
+            this.gpuCanvas.width = width;
+            this.gpuCanvas.height = height;
         }
+    }
+
+    onMouseMove(e) {
+        const rect = this.container.getBoundingClientRect();
+        // Normalize mouse to -1..1
+        // Need to match simulation space which scales X by aspect
+        const aspect = rect.width / rect.height;
+
+        const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        const ndcY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+
+        this.mouse.x = ndcX * aspect; // Sim space X
+        this.mouse.y = ndcY; // Sim space Y
+    }
+
+    onMouseDown(e) {
+        this.mouse.isPressed = true;
+    }
+
+    onMouseUp(e) {
+        this.mouse.isPressed = false;
     }
 
     animate() {
         if (!this.isActive) return;
 
-        const time = (Date.now() - this.startTime) * 0.001;
+        const now = Date.now();
+        const time = (now - this.startTime) * 0.001;
+        const dt = 0.016; // Fixed step approximation
 
-        // 1. WebGL2 - Draw Two Knots
+        // 1. Render WebGL2
         if (this.gl && this.glProgram) {
             this.gl.useProgram(this.glProgram);
+
+            const timeLoc = this.gl.getUniformLocation(this.glProgram, 'u_time');
+            const resLoc = this.gl.getUniformLocation(this.glProgram, 'u_resolution');
+            const offsetLoc = this.gl.getUniformLocation(this.glProgram, 'u_offsetX');
+
+            this.gl.uniform1f(timeLoc, time);
+            this.gl.uniform2f(resLoc, this.glCanvas.width, this.glCanvas.height);
+
+            this.gl.clearColor(0.02, 0.01, 0.05, 1.0);
+            this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
             this.gl.bindVertexArray(this.glVao);
+            this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.glIndexBuffer);
 
-            this.gl.uniform1f(this.gl.getUniformLocation(this.glProgram, 'u_time'), time);
-            this.gl.uniform2f(this.gl.getUniformLocation(this.glProgram, 'u_resolution'), this.glCanvas.width, this.glCanvas.height);
+            // Draw Left Ring
+            this.gl.uniform1f(offsetLoc, -0.5);
+            this.gl.drawElements(this.gl.LINES, this.glIndexCount, this.gl.UNSIGNED_SHORT, 0);
 
-            this.gl.clearColor(0,0,0,0);
-            this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-
-            // Left Knot (Cyan)
-            this.gl.uniform1f(this.gl.getUniformLocation(this.glProgram, 'u_offset'), -1.5);
-            this.gl.uniform3f(this.gl.getUniformLocation(this.glProgram, 'u_color'), 0.0, 1.0, 1.0);
-            this.gl.drawArrays(this.gl.LINE_LOOP, 0, this.vertexCount);
-
-            // Right Knot (Magenta)
-            this.gl.uniform1f(this.gl.getUniformLocation(this.glProgram, 'u_offset'), 1.5);
-            this.gl.uniform3f(this.gl.getUniformLocation(this.glProgram, 'u_color'), 1.0, 0.0, 1.0);
-            this.gl.drawArrays(this.gl.LINE_LOOP, 0, this.vertexCount);
+            // Draw Right Ring
+            this.gl.uniform1f(offsetLoc, 0.5);
+            this.gl.drawElements(this.gl.LINES, this.glIndexCount, this.gl.UNSIGNED_SHORT, 0);
         }
 
-        // 2. WebGPU
+        // 2. Render WebGPU
         if (this.device && this.context && this.renderPipeline) {
-            const aspect = this.canvasSize.width / this.canvasSize.height;
+            // Update Uniforms
+            const aspect = this.gpuCanvas.width / this.gpuCanvas.height;
+            // dt(4), time(4), mouseX(4), mouseY(4), isPressed(4), aspect(4), pad(4), pad(4)
             const params = new Float32Array([
+                dt,
                 time,
-                0.016,
                 this.mouse.x,
                 this.mouse.y,
+                this.mouse.isPressed ? 1.0 : 0.0,
                 aspect,
-                0,0,0
+                0, 0 // Padding
             ]);
             this.device.queue.writeBuffer(this.simParamBuffer, 0, params);
 
@@ -632,18 +741,21 @@ export class QuantumEntanglementExperiment {
             computePass.dispatchWorkgroups(Math.ceil(this.numParticles / 64));
             computePass.end();
 
-            const renderPass = commandEncoder.beginRenderPass({
+            const textureView = this.context.getCurrentTexture().createView();
+            const renderPassDescriptor = {
                 colorAttachments: [{
-                    view: this.context.getCurrentTexture().createView(),
-                    clearValue: { r:0, g:0, b:0, a:0 },
+                    view: textureView,
+                    clearValue: { r: 0, g: 0, b: 0, a: 0 },
                     loadOp: 'clear',
-                    storeOp: 'store'
-                }]
-            });
+                    storeOp: 'store',
+                }],
+            };
+
+            const renderPass = commandEncoder.beginRenderPass(renderPassDescriptor);
             renderPass.setPipeline(this.renderPipeline);
-            renderPass.setBindGroup(0, this.computeBindGroup);
+            renderPass.setBindGroup(0, this.computeBindGroup); // Need for VS
             renderPass.setVertexBuffer(0, this.particleBuffer);
-            renderPass.draw(6, this.numParticles);
+            renderPass.draw(this.numParticles);
             renderPass.end();
 
             this.device.queue.submit([commandEncoder.finish()]);
@@ -654,11 +766,22 @@ export class QuantumEntanglementExperiment {
 
     destroy() {
         this.isActive = false;
-        if(this.animationId) cancelAnimationFrame(this.animationId);
+        if (this.animationId) cancelAnimationFrame(this.animationId);
+
         window.removeEventListener('resize', this.handleResize);
-        window.removeEventListener('mousemove', this.handleMouseMove);
-        if(this.gl) this.gl.getExtension('WEBGL_lose_context')?.loseContext();
-        this.device?.destroy();
+        this.container.removeEventListener('mousemove', this.handleMouseMove);
+        this.container.removeEventListener('mousedown', this.handleMouseDown);
+        window.removeEventListener('mouseup', this.handleMouseUp);
+
+        if (this.gl) {
+            const ext = this.gl.getExtension('WEBGL_lose_context');
+            if (ext) ext.loseContext();
+        }
+
+        if (this.device) {
+            this.device.destroy();
+        }
+
         this.container.innerHTML = '';
     }
 }
@@ -666,3 +789,5 @@ export class QuantumEntanglementExperiment {
 if (typeof window !== 'undefined') {
     window.QuantumEntanglementExperiment = QuantumEntanglementExperiment;
 }
+
+export { QuantumEntanglementExperiment };
