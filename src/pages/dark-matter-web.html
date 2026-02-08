@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Matter Web - WebGL2 + WebGPU Experiment</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px rgba(100, 100, 255, 0.5);
+        }
+
+        p {
+            color: #aaa;
+            max-width: 400px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #fff;
+            text-decoration: none;
+            opacity: 0.7;
+            pointer-events: auto;
+            transition: opacity 0.3s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="overlay">
+        <a href="experiments.html" class="back-link">← Back to Experiments</a>
+        <h1>Dark Matter Web</h1>
+        <p>A hybrid rendering experiment.
+           <br><br>
+           <span style="color: #6688cc;">WebGL2:</span> 3D Cosmic Web structure (Lines).
+           <br>
+           <span style="color: #ff33aa;">WebGPU:</span> Energy particles flowing along the filaments.
+        </p>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script type="module" src="../js/dark-matter-web.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('canvas-container');
+            // Assuming the class is exported globally or imported by the script
+            // Wait, main scripts usually export properly. Let's rely on global fallback in the js file
+            if (window.DarkMatterWebExperiment) {
+                 new DarkMatterWebExperiment(container, {
+                    numParticles: 40000
+                });
+            } else {
+                console.error("DarkMatterWebExperiment class not found");
+            }
+        });
+    </script>
+</body>
+
+</html>

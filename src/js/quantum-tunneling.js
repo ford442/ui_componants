@@ -18,6 +18,7 @@ class QuantumTunneling {
         // Simulation Parameters
         this.barrierWidth = 0.2;
         this.barrierPotential = 0.8; // Normalized Energy Height
+        this.particleEnergy = 0.6;   // Constant particle energy
 
         // WebGL2 State
         this.glCanvas = null;
@@ -36,6 +37,9 @@ class QuantumTunneling {
         this.particleBuffer = null;
         this.numParticles = options.numParticles || 50000;
 
+        // UI
+        this.infoPanel = null;
+
         // Bind resize handler for cleanup
         this.handleResize = this.resize.bind(this);
         this.handleMouseMove = this.onMouseMove.bind(this);
@@ -49,6 +53,25 @@ class QuantumTunneling {
         this.container.style.background = '#0a0a0f';
 
         console.log("QuantumTunneling: Initializing...");
+
+        // UI Layer
+        this.infoPanel = document.createElement('div');
+        this.infoPanel.style.cssText = `
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: rgba(100, 200, 255, 0.9);
+            font-family: monospace;
+            font-size: 11px;
+            pointer-events: none;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px;
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            border-radius: 4px;
+            line-height: 1.5;
+        `;
+        this.container.appendChild(this.infoPanel);
 
         // 1. Initialize WebGL2 Layer (Barrier)
         this.initWebGL2();
@@ -144,22 +167,45 @@ class QuantumTunneling {
 
             void main() {
                 vec3 normal = normalize(v_normal);
-                vec3 viewDir = normalize(-v_worldPos); // Approx view dir for simple lighting
 
-                // Fresnel effect
-                float fresnel = pow(1.0 - abs(dot(normal, vec3(0.0, 0.0, 1.0))), 2.0);
+                // 1. 3D Grid Pattern
+                float gridSize = 4.0;
+                vec3 pos = v_worldPos * gridSize;
+                vec3 f = fract(pos);
+                // Simple grid lines using step
+                float lineThickness = 0.05;
+                vec3 gridVec = step(1.0 - lineThickness, f);
+                float grid = max(max(gridVec.x, gridVec.y), gridVec.z);
 
-                // Pulsing energy field
-                float pulse = sin(v_worldPos.y * 10.0 + u_time * 2.0) * 0.5 + 0.5;
+                // 2. Scanline Effect (Vertical)
+                float scanSpeed = 2.0;
+                float scan = smoothstep(0.0, 0.1, abs(sin(v_worldPos.y * 3.0 - u_time * scanSpeed)));
+                float scanLine = pow(scan, 8.0);
 
-                vec3 baseColor = vec3(0.2, 0.0, 0.5); // Dark Purple base
-                vec3 activeColor = vec3(0.5, 0.8, 1.0); // Cyan energy
+                // 3. Fresnel Effect
+                float fresnel = pow(1.0 - abs(dot(normal, vec3(0.0, 0.0, 1.0))), 2.5);
 
-                vec3 color = mix(baseColor, activeColor, u_potential * 0.8 + pulse * 0.2);
+                // Colors
+                vec3 colorBase = vec3(0.0, 0.05, 0.15); // Deep blue
+                vec3 colorGrid = vec3(0.0, 0.6, 0.8);   // Cyan grid
+                vec3 colorHigh = vec3(1.0, 0.2, 0.5);   // Magenta/Red for high potential
 
-                float alpha = 0.3 + fresnel * 0.4 + u_potential * 0.2;
+                // Mix grid color based on potential
+                vec3 activeGridColor = mix(colorGrid, colorHigh, u_potential);
 
-                outColor = vec4(color, alpha);
+                vec3 finalColor = colorBase;
+                finalColor += activeGridColor * grid * 0.6;
+                finalColor += activeGridColor * scanLine * 0.5;
+                finalColor += activeGridColor * fresnel * 0.8;
+
+                // Pulse based on time
+                float pulse = sin(u_time * 4.0) * 0.5 + 0.5;
+                finalColor += activeGridColor * pulse * 0.1 * u_potential;
+
+                float alpha = 0.1 + grid * 0.2 + scanLine * 0.3 + fresnel * 0.5;
+                alpha = clamp(alpha, 0.0, 0.85);
+
+                outColor = vec4(finalColor, alpha);
             }
         `;
 
@@ -167,7 +213,6 @@ class QuantumTunneling {
         if (!this.glProgram) return;
 
         // Create Cube Geometry
-        // Simple 1x1x1 cube centered at origin
         const positions = new Float32Array([
             // Front face
             -0.5, -0.5,  0.5,   0.5, -0.5,  0.5,   0.5,  0.5,  0.5,  -0.5,  0.5,  0.5,
@@ -191,10 +236,6 @@ class QuantumTunneling {
             16, 17, 18,     16, 18, 19,   // right
             20, 21, 22,     20, 22, 23    // left
         ]);
-
-        // Approximate normals (flat shading logic but simplified)
-        const normals = new Float32Array(positions.length);
-        // Not filling strictly correct normals for brevity, using positions as varying helps visualize
 
         this.glVao = this.gl.createVertexArray();
         this.gl.bindVertexArray(this.glVao);
@@ -298,7 +339,7 @@ class QuantumTunneling {
                 barrierWidth : f32,
                 barrierPotential : f32,
                 seed : f32,
-                pad1 : f32,
+                energy : f32,
                 pad2 : f32,
                 pad3 : f32,
             }
@@ -332,13 +373,8 @@ class QuantumTunneling {
                 // Only if state is 0 (Incident) and we just entered the barrier region
                 if (p.vel.w < 0.5 && p.pos.x > barrierXMin && p.pos.x < barrierXMax) {
 
-                    // Simple quantum tunneling model approximation
-                    // Probability P ~ exp(-2 * width * sqrt(Potential - Energy))
-                    // Assume Energy is proportional to velocity squared? Or just a constant for sim.
-                    // Let's model Energy as 0.5. Potential as params.barrierPotential (0.0 to 1.0).
-
-                    let energy = 0.6;
-                    let potential = params.barrierPotential + 0.1; // Ensure potential can exceed energy
+                    let energy = params.energy;
+                    let potential = params.barrierPotential + 0.1;
 
                     var prob = 1.0;
 
@@ -349,7 +385,6 @@ class QuantumTunneling {
                         let diff = potential - energy;
                         prob = exp(-k * w * sqrt(diff));
                     } else {
-                        // Above barrier (mostly pass, some reflection technically but let's say 100% pass)
                         prob = 0.98;
                     }
 
@@ -359,19 +394,17 @@ class QuantumTunneling {
                     if (rnd < prob) {
                         // Tunnel!
                         p.vel.w = 2.0; // State: Tunneled
-                        // Slightly disturb velocity
-                        p.vel.x *= 0.8; // Slow down a bit inside?
+                        p.vel.x *= 0.8;
                     } else {
                         // Reflect!
                         p.vel.w = 1.0; // State: Reflected
                         p.vel.x = -abs(p.vel.x);
-                        p.pos.x = barrierXMin - 0.01; // Push back out
+                        p.pos.x = barrierXMin - 0.01;
                     }
                 }
 
                 // Reset logic
                 if (p.pos.x > 3.0 || p.pos.x < -3.0 || abs(p.pos.y) > 2.0) {
-                    // Respawn on left
                     let rnd1 = hash(index * 3u + u32(params.time));
                     let rnd2 = hash(index * 7u + u32(params.time));
 
@@ -379,7 +412,7 @@ class QuantumTunneling {
                     p.pos.y = (rnd2 - 0.5) * 2.0;
                     p.pos.z = (hash(index) - 0.5) * 2.0;
 
-                    p.vel.x = 2.0 + rnd1 * 0.5; // High speed right
+                    p.vel.x = 2.0 + rnd1 * 0.5;
                     p.vel.y = 0.0;
                     p.vel.z = 0.0;
                     p.vel.w = 0.0; // Reset to incident
@@ -422,7 +455,7 @@ class QuantumTunneling {
                 );
 
                 let uv = pos[vertexIndex];
-                let size = 0.02;
+                let size = 0.03;
 
                 let worldPos = particlePos.xyz +
                                uniforms.cameraRight.xyz * uv.x * size +
@@ -436,9 +469,9 @@ class QuantumTunneling {
                 var col = vec3f(0.0, 0.6, 1.0); // Incident (Blue)
 
                 if (state > 0.5 && state < 1.5) {
-                    col = vec3f(1.0, 0.6, 0.0); // Reflected (Orange)
+                    col = vec3f(1.0, 0.5, 0.0); // Reflected (Orange)
                 } else if (state > 1.5) {
-                    col = vec3f(1.0, 0.0, 0.3); // Tunneled (Red/Pink)
+                    col = vec3f(1.0, 0.0, 0.5); // Tunneled (Magenta)
                 }
 
                 output.color = vec4f(col, 1.0);
@@ -449,8 +482,15 @@ class QuantumTunneling {
             fn fs_main(@location(0) color : vec4f, @location(1) uv : vec2f) -> @location(0) vec4f {
                 let r = length(uv);
                 if (r > 1.0) { discard; }
-                let alpha = 1.0 - smoothstep(0.8, 1.0, r);
-                return vec4f(color.rgb, alpha);
+
+                // Soft glowing particle
+                // Gaussian falloff
+                let glow = exp(-r * r * 4.0);
+                let core = smoothstep(0.4, 0.0, r);
+
+                let intensity = glow * 0.7 + core * 0.8;
+
+                return vec4f(color.rgb, intensity * color.a);
             }
         `;
 
@@ -597,6 +637,33 @@ class QuantumTunneling {
         const now = Date.now();
         const time = (now - this.startTime) * 0.001;
 
+        // Update Info Panel
+        if (this.infoPanel) {
+            let energy = this.particleEnergy;
+            let potential = this.barrierPotential + 0.1;
+            let prob = 0;
+            let region = "Incident";
+
+            if (energy < potential) {
+                region = "Tunneling";
+                let k = 10.0;
+                let w = this.barrierWidth;
+                let diff = potential - energy;
+                prob = Math.exp(-k * w * Math.sqrt(diff));
+            } else {
+                region = "Passing";
+                prob = 0.98;
+            }
+
+            this.infoPanel.innerHTML = `
+                <div style="margin-bottom:4px; font-weight:bold; color:white">QUANTUM DATA</div>
+                Barrier Width: ${this.barrierWidth.toFixed(2)}<br>
+                Potential V:   ${this.barrierPotential.toFixed(2)}<br>
+                Regime:        ${region}<br>
+                Transmission:  ${(prob * 100).toFixed(4)}%
+            `;
+        }
+
         // Camera setup
         const aspect = this.canvasSize.width / this.canvasSize.height;
         const camZ = 5.0;
@@ -613,17 +680,13 @@ class QuantumTunneling {
             this.gl.uniformMatrix4fv(this.gl.getUniformLocation(this.glProgram, 'u_projection'), false, projectionMatrix);
             this.gl.uniformMatrix4fv(this.gl.getUniformLocation(this.glProgram, 'u_view'), false, viewMatrix);
 
-            // Model Matrix: Scale x by barrierWidth, y by barrierPotential * 3.0?
-            // Actually barrier height should be large enough to block 'visual' path,
-            // but physically we just check X in compute shader.
-            // Let's visualize the "Potential Height" as the Y scale of the box.
-            let h = 2.0; // Full height
+            let h = 2.0;
             let w = this.barrierWidth;
             let model = new Float32Array([
                 w, 0, 0, 0,
                 0, h, 0, 0,
                 0, 0, 1, 0,
-                0, 0, 0, 1 // Center at 0,0,0
+                0, 0, 0, 1
             ]);
 
             this.gl.uniformMatrix4fv(this.gl.getUniformLocation(this.glProgram, 'u_model'), false, model);
@@ -647,7 +710,8 @@ class QuantumTunneling {
                 this.barrierWidth,
                 this.barrierPotential,
                 Math.random(), // seed
-                0, 0, 0
+                this.particleEnergy, // energy
+                0, 0
             ]);
             this.device.queue.writeBuffer(this.simParamBuffer, 0, params);
 
@@ -699,6 +763,11 @@ class QuantumTunneling {
         if (this.animationId) cancelAnimationFrame(this.animationId);
         window.removeEventListener('resize', this.handleResize);
         window.removeEventListener('mousemove', this.handleMouseMove);
+
+        if (this.infoPanel) {
+            this.infoPanel.remove();
+            this.infoPanel = null;
+        }
 
         if (this.gl) this.gl.getExtension('WEBGL_lose_context')?.loseContext();
         if (this.device) this.device.destroy();
