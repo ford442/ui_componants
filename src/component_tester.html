@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Components - Visual Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --bg-hover: #252535;
+            --accent-primary: #00d4ff;
+            --accent-secondary: #7c3aed;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-error: #ef4444;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --text-muted: #606070;
+            --border-color: #2a2a3a;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .sidebar-header p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Stats */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 8px;
+            border-radius: 6px;
+            background: var(--bg-secondary);
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Search & Filters */
+        .filters {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .search-box {
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px 10px 36px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+        }
+
+        .search-box::before {
+            content: "🔍";
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.875rem;
+            opacity: 0.5;
+        }
+
+        .filter-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .filter-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        .filter-btn.error {
+            border-color: var(--accent-error);
+            color: var(--accent-error);
+        }
+
+        .filter-btn.error.active {
+            background: var(--accent-error);
+            color: white;
+        }
+
+        /* Component List */
+        .component-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .component-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .component-list::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        .component-list::-webkit-scrollbar-thumb {
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+        }
+
+        .component-group {
+            margin-bottom: 8px;
+        }
+
+        .group-header {
+            padding: 8px 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .group-header::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        .component-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            margin: 2px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .component-item:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-color);
+        }
+
+        .component-item.active {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: var(--accent-primary);
+        }
+
+        .component-item.error {
+            border-left: 3px solid var(--accent-error);
+        }
+
+        .component-item.warning {
+            border-left: 3px solid var(--accent-warning);
+        }
+
+        .component-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .component-status.ok { background: var(--accent-success); }
+        .component-status.error { background: var(--accent-error); }
+        .component-status.warning { background: var(--accent-warning); }
+        .component-status.unknown { background: var(--text-muted); }
+        .component-status.testing { 
+            background: var(--accent-primary);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .component-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .component-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .component-meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: flex;
+            gap: 8px;
+            margin-top: 2px;
+        }
+
+        .component-tag {
+            padding: 1px 6px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-size: 0.65rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .toolbar-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent-primary);
+        }
+
+        .btn.primary {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        .btn.primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Preview Area */
+        .preview-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .preview-frame-container {
+            flex: 1;
+            position: relative;
+            background: 
+                linear-gradient(45deg, #0f0f15 25%, transparent 25%),
+                linear-gradient(-45deg, #0f0f15 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #0f0f15 75%),
+                linear-gradient(-45deg, transparent 75%, #0f0f15 75%),
+                var(--bg-primary);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        .preview-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+
+        .preview-overlay {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .preview-badge {
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            backdrop-filter: blur(4px);
+        }
+
+        .preview-badge.error {
+            border-color: var(--accent-error);
+            color: var(--accent-error);
+        }
+
+        .preview-badge.success {
+            border-color: var(--accent-success);
+            color: var(--accent-success);
+        }
+
+        /* Console Panel */
+        .console-panel {
+            height: 200px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .console-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .console-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        .console-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .console-action {
+            padding: 4px 8px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .console-action:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .console-output {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+
+        .console-entry {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
+        .console-time {
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .console-level {
+            flex-shrink: 0;
+            font-weight: 600;
+        }
+
+        .console-level.error { color: var(--accent-error); }
+        .console-level.warn { color: var(--accent-warning); }
+        .console-level.info { color: var(--accent-primary); }
+        .console-level.log { color: var(--text-secondary); }
+
+        .console-message {
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 40px;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state h2 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .empty-state p {
+            max-width: 400px;
+            line-height: 1.6;
+        }
+
+        /* Batch Test Progress */
+        .progress-bar {
+            position: fixed;
+            bottom: 0;
+            left: 320px;
+            right: 0;
+            height: 3px;
+            background: var(--bg-tertiary);
+            z-index: 100;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            transition: width 0.3s;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .app-container {
+                grid-template-columns: 280px 1fr;
+            }
+            .progress-bar {
+                left: 280px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 280px;
+                z-index: 1000;
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .progress-bar {
+                left: 0;
+            }
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--bg-tertiary);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>🔧 Component Tester</h1>
+                <p>Visual testing & validation tool</p>
+            </div>
+
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-total">0</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-ok" style="color: var(--accent-success)">0</div>
+                    <div class="stat-label">OK</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-errors" style="color: var(--accent-error)">0</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+            </div>
+
+            <div class="filters">
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="Search components...">
+                </div>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="ui">UI Basics</button>
+                    <button class="filter-btn" data-filter="experimental">Visual FX</button>
+                    <button class="filter-btn error" data-filter="errors">Errors Only</button>
+                </div>
+            </div>
+
+            <div class="component-list" id="component-list">
+                <!-- Components will be populated here -->
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <span class="toolbar-title" id="current-component">Select a component</span>
+                </div>
+                <div class="toolbar-actions">
+                    <button class="btn" id="btn-reload" disabled>
+                        🔄 Reload
+                    </button>
+                    <button class="btn" id="btn-open-tab" disabled>
+                        ↗️ Open in Tab
+                    </button>
+                    <button class="btn primary" id="btn-test-all">
+                        ▶️ Test All
+                    </button>
+                </div>
+            </div>
+
+            <div class="preview-container">
+                <div class="preview-frame-container" id="preview-container">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔬</div>
+                        <h2>Component Visual Tester</h2>
+                        <p>Select a component from the sidebar to preview it, or click "Test All" to run automated validation on all components. Errors and console messages will be captured and displayed below.</p>
+                    </div>
+                </div>
+                <div class="preview-overlay" id="preview-overlay" style="display: none;">
+                    <div class="preview-badge" id="render-status">Testing...</div>
+                </div>
+            </div>
+
+            <div class="console-panel">
+                <div class="console-header">
+                    <span class="console-title">📋 Console Output</span>
+                    <div class="console-actions">
+                        <button class="console-action" id="btn-clear-console">Clear</button>
+                        <button class="console-action" id="btn-copy-console">Copy</button>
+                    </div>
+                </div>
+                <div class="console-output" id="console-output">
+                    <div class="console-entry">
+                        <span class="console-time">--:--:--</span>
+                        <span class="console-level info">INFO</span>
+                        <span class="console-message">Ready. Select a component to begin testing.</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="progress-bar" id="progress-bar" style="display: none;">
+        <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
+    </div>
+
+    <script>
+        // Component definitions
+        const components = [
+            // UI Basics
+            { id: 'buttons', name: 'Buttons', category: 'ui', path: 'pages/buttons.html', tags: ['UI', 'WebGL'] },
+            { id: 'knobs', name: 'Knobs', category: 'ui', path: 'pages/knobs.html', tags: ['UI', 'SVG', 'WebGL'] },
+            { id: 'switches', name: 'Switches', category: 'ui', path: 'pages/switches.html', tags: ['UI', 'CSS'] },
+            { id: 'indicators', name: 'Indicators', category: 'ui', path: 'pages/indicators.html', tags: ['UI', 'Canvas'] },
+            { id: 'surfaces', name: 'Surfaces', category: 'ui', path: 'pages/surfaces.html', tags: ['UI', 'Materials'] },
+            { id: 'signage_lab', name: 'Signage Lab', category: 'ui', path: 'pages/signage_lab.html', tags: ['UI', 'Typography'] },
+
+            // Experimental Visual FX
+            { id: 'acoustic-levitation', name: 'Acoustic Levitation', category: 'experimental', path: 'pages/acoustic-levitation.html', tags: ['Physics', 'Animation'] },
+            { id: 'advanced-physics', name: 'Advanced Physics', category: 'experimental', path: 'pages/advanced-physics.html', tags: ['Physics', 'Simulation'] },
+            { id: 'aerodynamic-stream', name: 'Aerodynamic Stream', category: 'experimental', path: 'pages/aerodynamic-stream.html', tags: ['Fluid', 'Particles'] },
+            { id: 'artifact-404', name: 'Artifact 404', category: 'experimental', path: 'pages/artifact-404.html', tags: ['Glitch', 'Error'] },
+            { id: 'atmospheric-entry', name: 'Atmospheric Entry', category: 'experimental', path: 'pages/atmospheric-entry.html', tags: ['Particles', 'Fire'] },
+            { id: 'bio-digital-synthesis', name: 'Bio-Digital Synthesis', category: 'experimental', path: 'pages/bio-digital-synthesis.html', tags: ['Organic', 'WebGL'] },
+            { id: 'bioluminescent-abyss', name: 'Bioluminescent Abyss', category: 'experimental', path: 'pages/bioluminescent-abyss.html', tags: ['Underwater', 'Glow'] },
+            { id: 'biomechanical-growth', name: 'Biomechanical Growth', category: 'experimental', path: 'pages/biomechanical-growth.html', tags: ['Organic', 'Growth'] },
+            // Note: Some JS files exist without corresponding HTML pages (library modules)
+            { id: 'chaos-attractor', name: 'Chaos Attractor', category: 'experimental', path: 'pages/chaos-attractor.html', tags: ['Math', 'Particles'] },
+            { id: 'chrono-dial', name: 'Chrono Dial', category: 'experimental', path: 'pages/chrono-dial.html', tags: ['Time', 'Clock'] },
+            { id: 'chrono-excavation', name: 'Chrono Excavation', category: 'experimental', path: 'pages/chrono-excavation.html', tags: ['Time', 'Dig'] },
+            { id: 'composite_blending', name: 'Composite Blending', category: 'experimental', path: 'pages/composite_blending.html', tags: ['Blend', 'Effects'] },
+            { id: 'cosmic-radiation', name: 'Cosmic Radiation', category: 'experimental', path: 'pages/cosmic-radiation.html', tags: ['Space', 'Particles'] },
+            { id: 'cosmic-string', name: 'Cosmic String', category: 'experimental', path: 'pages/cosmic-string.html', tags: ['Space', 'WebGL'] },
+            { id: 'crystal-cavern', name: 'Crystal Cavern', category: 'experimental', path: 'pages/crystal-cavern.html', tags: ['Crystal', '3D'] },
+            { id: 'crystal-growth', name: 'Crystal Growth', category: 'experimental', path: 'pages/crystal-growth.html', tags: ['Crystal', 'Growth'] },
+            { id: 'cyber-biology', name: 'Cyber Biology', category: 'experimental', path: 'pages/cyber-biology.html', tags: ['Organic', 'Tech'] },
+            { id: 'cyber-crystal', name: 'Cyber Crystal', category: 'experimental', path: 'pages/cyber-crystal.html', tags: ['Crystal', 'Neon'] },
+            { id: 'cyber-rain', name: 'Cyber Rain', category: 'experimental', path: 'pages/cyber-rain.html', tags: ['Rain', 'Matrix'] },
+            { id: 'cybernetic-eye', name: 'Cybernetic Eye', category: 'experimental', path: 'pages/cybernetic-eye.html', tags: ['Eye', 'Scan'] },
+            { id: 'cymatic-plate', name: 'Cymatic Plate', category: 'experimental', path: 'pages/cymatic-plate.html', tags: ['Audio', 'Vibration'] },
+            { id: 'dark-energy-prism', name: 'Dark Energy Prism', category: 'experimental', path: 'pages/dark-energy-prism.html', tags: ['Prism', 'Light'] },
+            { id: 'dark-matter-web', name: 'Dark Matter Web', category: 'experimental', path: 'pages/dark-matter-web.html', tags: ['Space', 'Network'] },
+            { id: 'dyson-swarm', name: 'Dyson Swarm', category: 'experimental', path: 'pages/dyson-swarm.html', tags: ['Space', 'Solar'] },
+            { id: 'elastic-membrane', name: 'Elastic Membrane', category: 'experimental', path: 'pages/elastic-membrane.html', tags: ['Physics', 'Cloth'] },
+            { id: 'electro-weak-unification', name: 'Electro-Weak Unification', category: 'experimental', path: 'pages/electro-weak-unification.html', tags: ['Physics', 'Field'] },
+            { id: 'encryption-lock', name: 'Encryption Lock', category: 'experimental', path: 'pages/encryption-lock.html', tags: ['Security', 'Animation'] },
+            { id: 'energy-vortex', name: 'Energy Vortex', category: 'experimental', path: 'pages/energy-vortex.html', tags: ['Vortex', 'Energy'] },
+            { id: 'experiments', name: 'Experiments', category: 'experimental', path: 'pages/experiments.html', tags: ['Mixed', 'Demo'] },
+            { id: 'fiber-optics', name: 'Fiber Optics', category: 'experimental', path: 'pages/fiber-optics.html', tags: ['Light', 'Data'] },
+            { id: 'fireworks', name: 'Fireworks', category: 'experimental', path: 'pages/fireworks.html', tags: ['Particles', 'Explosion'] },
+            { id: 'galactic-mycelium', name: 'Galactic Mycelium', category: 'experimental', path: 'pages/galactic-mycelium.html', tags: ['Network', 'Organic'] },
+            { id: 'genetic-splicing', name: 'Genetic Splicing', category: 'experimental', path: 'pages/genetic-splicing.html', tags: ['DNA', 'Bio'] },
+            { id: 'gravitational-nebula', name: 'Gravitational Nebula', category: 'experimental', path: 'pages/gravitational-nebula.html', tags: ['Space', 'Gas'] },
+            { id: 'gravity-well', name: 'Gravity Well', category: 'experimental', path: 'pages/gravity-well.html', tags: ['Physics', 'Gravity'] },
+            { id: 'hive-mind', name: 'Hive Mind', category: 'experimental', path: 'pages/hive-mind.html', tags: ['Swarm', 'AI'] },
+            { id: 'hologram', name: 'Hologram', category: 'experimental', path: 'pages/hologram.html', tags: ['3D', 'Projection'] },
+            { id: 'holographic-stream', name: 'Holographic Stream', category: 'experimental', path: 'pages/holographic-stream.html', tags: ['Data', 'Stream'] },
+            { id: 'holographic-text', name: 'Holographic Text', category: 'experimental', path: 'pages/holographic-text.html', tags: ['Text', 'Glitch'] },
+            { id: 'hybrid-magnetic-field', name: 'Hybrid Magnetic Field', category: 'experimental', path: 'pages/hybrid-magnetic-field.html', tags: ['Field', 'Physics'] },
+            { id: 'hyper-cube', name: 'Hyper Cube', category: 'experimental', path: 'pages/hyper-cube.html', tags: ['4D', 'Geometry'] },
+            { id: 'hyperspace-tunnel', name: 'Hyperspace Tunnel', category: 'experimental', path: 'pages/hyperspace-tunnel.html', tags: ['Space', 'Warp'] },
+            { id: 'lidar-bio-scan', name: 'Lidar Bio Scan', category: 'experimental', path: 'pages/lidar-bio-scan.html', tags: ['Scan', 'Detection'] },
+            { id: 'nano-plex', name: 'Nano Plex', category: 'experimental', path: 'pages/nano-plex.html', tags: ['Nano', 'Structure'] },
+            { id: 'nanobot-construction', name: 'Nanobot Construction', category: 'experimental', path: 'pages/nanobot-construction.html', tags: ['Robots', 'Build'] },
+            { id: 'neon_city', name: 'Neon City', category: 'experimental', path: 'pages/neon_city.html', tags: ['City', 'Night'] },
+            { id: 'neural-data-core', name: 'Neural Data Core', category: 'experimental', path: 'pages/neural-data-core.html', tags: ['AI', 'Brain'] },
+            { id: 'neural-lace', name: 'Neural Lace', category: 'experimental', path: 'pages/neural-lace.html', tags: ['Neural', 'Interface'] },
+            { id: 'neural-network', name: 'Neural Network', category: 'experimental', path: 'pages/neural-network.html', tags: ['AI', 'Nodes'] },
+            { id: 'neuro-morphic-crystal', name: 'Neuro-Morphic Crystal', category: 'experimental', path: 'pages/neuro-morphic-crystal.html', tags: ['Crystal', 'Neural'] },
+            { id: 'neutrino-storm', name: 'Neutrino Storm', category: 'experimental', path: 'pages/neutrino-storm.html', tags: ['Particles', 'Storm'] },
+            { id: 'pattern_tests', name: 'Pattern Tests', category: 'experimental', path: 'pages/pattern_tests.html', tags: ['Patterns', 'Test'] },
+            { id: 'photon-containment', name: 'Photon Containment', category: 'experimental', path: 'pages/photon-containment.html', tags: ['Light', 'Prison'] },
+            { id: 'planetary-terraforming', name: 'Planetary Terraforming', category: 'experimental', path: 'pages/planetary-terraforming.html', tags: ['Planet', 'Transform'] },
+            { id: 'plasma-confinement', name: 'Plasma Confinement', category: 'experimental', path: 'pages/plasma-confinement.html', tags: ['Plasma', 'Energy'] },
+            { id: 'plasma-thruster', name: 'Plasma Thruster', category: 'experimental', path: 'pages/plasma-thruster.html', tags: ['Engine', 'Fire'] },
+            { id: 'portal_vortex', name: 'Portal Vortex', category: 'experimental', path: 'pages/portal_vortex.html', tags: ['Portal', 'Wormhole'] },
+            { id: 'primordial-soup', name: 'Primordial Soup', category: 'experimental', path: 'pages/primordial-soup.html', tags: ['Life', 'Evolution'] },
+            { id: 'quantum-data-stream', name: 'Quantum Data Stream', category: 'experimental', path: 'pages/quantum-data-stream.html', tags: ['Quantum', 'Data'] },
+            { id: 'quantum-entanglement', name: 'Quantum Entanglement', category: 'experimental', path: 'pages/quantum-entanglement.html', tags: ['Quantum', 'Link'] },
+            { id: 'quantum-stabilizer', name: 'Quantum Stabilizer', category: 'experimental', path: 'pages/quantum-stabilizer.html', tags: ['Quantum', 'Balance'] },
+            { id: 'quantum-tensor', name: 'Quantum Tensor', category: 'experimental', path: 'pages/quantum-tensor.html', tags: ['Math', 'Tensor'] },
+            { id: 'quantum-tunneling', name: 'Quantum Tunneling', category: 'experimental', path: 'pages/quantum-tunneling.html', tags: ['Quantum', 'Phase'] },
+            { id: 'seismic-wave', name: 'Seismic Wave', category: 'experimental', path: 'pages/seismic-wave.html', tags: ['Wave', 'Earth'] },
+            { id: 'silicon-life', name: 'Silicon Life', category: 'experimental', path: 'pages/silicon-life.html', tags: ['Life', 'Rock'] },
+            { id: 'spectral-loom', name: 'Spectral Loom', category: 'experimental', path: 'pages/spectral-loom.html', tags: ['Weave', 'Color'] },
+            { id: 'stellar-forge', name: 'Stellar Forge', category: 'experimental', path: 'pages/stellar-forge.html', tags: ['Star', 'Forge'] },
+            { id: 'subatomic-collider', name: 'Subatomic Collider', category: 'experimental', path: 'pages/subatomic-collider.html', tags: ['Physics', 'Collide'] },
+            { id: 'supernova-remnant', name: 'Supernova Remnant', category: 'experimental', path: 'pages/supernova-remnant.html', tags: ['Space', 'Explosion'] },
+            { id: 'synaptic-fire', name: 'Synaptic Fire', category: 'experimental', path: 'pages/synaptic-fire.html', tags: ['Brain', 'Spark'] },
+            { id: 'temporal-fissure', name: 'Temporal Fissure', category: 'experimental', path: 'pages/temporal-fissure.html', tags: ['Time', 'Rift'] },
+            { id: 'tetris', name: 'Tetris', category: 'experimental', path: 'pages/tetris.html', tags: ['Game', 'Blocks'] },
+            { id: 'tetris-experiments', name: 'Tetris Experiments', category: 'experimental', path: 'pages/tetris-experiments.html', tags: ['Game', 'Effects'] },
+            { id: 'time-dilation', name: 'Time Dilation', category: 'experimental', path: 'pages/time-dilation.html', tags: ['Time', 'Relativity'] },
+            { id: 'void-rift', name: 'Void Rift', category: 'experimental', path: 'pages/void-rift.html', tags: ['Void', 'Dark'] },
+            { id: 'glitch-scroll', name: 'Glitch Scroll', category: 'experimental', path: 'pages/glitch-scroll.html', tags: ['Scroll', 'Glitch'] },
+            { id: 'liquid-ripple', name: 'Liquid Ripple', category: 'experimental', path: 'pages/liquid-ripple.html', tags: ['Water', 'Ripple'] },
+            { id: 'magnetic-particles', name: 'Magnetic Particles', category: 'experimental', path: 'pages/magnetic-particles.html', tags: ['Magnetic', 'Particles'] },
+            { id: 'svg-morph', name: 'SVG Morph', category: 'experimental', path: 'pages/svg-morph.html', tags: ['SVG', 'Morph'] },
+            { id: 'force-field', name: 'Force Field', category: 'experimental', path: 'pages/force-field.html', tags: ['Shield', 'Energy'] },
+            { id: 'fluid-sim', name: 'Fluid Sim', category: 'experimental', path: 'pages/fluid-sim.html', tags: ['Fluid', 'Simulation'] },
+            { id: 'aurora-background', name: 'Aurora Background', category: 'experimental', path: 'pages/aurora-background.html', tags: ['Sky', 'Lights'] },
+        ];
+
+        // State
+        let currentFilter = 'all';
+        let currentSearch = '';
+        let currentComponent = null;
+        let testResults = new Map();
+        let isBatchTesting = false;
+
+        // DOM Elements
+        const componentList = document.getElementById('component-list');
+        const searchInput = document.getElementById('search-input');
+        const previewContainer = document.getElementById('preview-container');
+        const previewOverlay = document.getElementById('preview-overlay');
+        const renderStatus = document.getElementById('render-status');
+        const consoleOutput = document.getElementById('console-output');
+        const currentComponentTitle = document.getElementById('current-component');
+        const progressBar = document.getElementById('progress-bar');
+        const progressFill = document.getElementById('progress-fill');
+
+        // Initialize
+        function init() {
+            renderComponentList();
+            updateStats();
+            setupEventListeners();
+            log('Component tester initialized', 'info');
+        }
+
+        // Render component list
+        function renderComponentList() {
+            const filtered = getFilteredComponents();
+            
+            // Group by category
+            const groups = {
+                ui: '🔘 UI Components',
+                experimental: '✨ Visual Effects'
+            };
+
+            let html = '';
+            
+            for (const [catId, catName] of Object.entries(groups)) {
+                const catComponents = filtered.filter(c => c.category === catId);
+                if (catComponents.length === 0) continue;
+
+                html += `
+                    <div class="component-group">
+                        <div class="group-header">${catName}</div>
+                        ${catComponents.map(c => renderComponentItem(c)).join('')}
+                    </div>
+                `;
+            }
+
+            if (filtered.length === 0) {
+                html = `
+                    <div class="empty-state" style="padding: 40px 20px;">
+                        <p>No components match your search</p>
+                    </div>
+                `;
+            }
+
+            componentList.innerHTML = html;
+
+            // Add click handlers
+            document.querySelectorAll('.component-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const id = item.dataset.id;
+                    selectComponent(id);
+                });
+            });
+        }
+
+        function renderComponentItem(component) {
+            const result = testResults.get(component.id);
+            const status = result ? result.status : 'unknown';
+            const statusClass = status;
+            const isActive = currentComponent?.id === component.id;
+            
+            return `
+                <div class="component-item ${isActive ? 'active' : ''} ${status !== 'ok' && status !== 'unknown' ? status : ''}" 
+                     data-id="${component.id}">
+                    <div class="component-status ${statusClass}"></div>
+                    <div class="component-info">
+                        <div class="component-name">${component.name}</div>
+                        <div class="component-meta">
+                            ${component.tags.slice(0, 2).map(t => `<span class="component-tag">${t}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getFilteredComponents() {
+            return components.filter(c => {
+                const matchesFilter = currentFilter === 'all' || 
+                    (currentFilter === 'errors' ? (testResults.get(c.id)?.status === 'error') : c.category === currentFilter);
+                const matchesSearch = !currentSearch || 
+                    c.name.toLowerCase().includes(currentSearch.toLowerCase()) ||
+                    c.tags.some(t => t.toLowerCase().includes(currentSearch.toLowerCase()));
+                return matchesFilter && matchesSearch;
+            });
+        }
+
+        // Select component
+        function selectComponent(id) {
+            const component = components.find(c => c.id === id);
+            if (!component) return;
+
+            currentComponent = component;
+            renderComponentList(); // Update active state
+            
+            currentComponentTitle.textContent = component.name;
+            document.getElementById('btn-reload').disabled = false;
+            document.getElementById('btn-open-tab').disabled = false;
+
+            loadComponentPreview(component);
+        }
+
+        // Load component in preview
+        function loadComponentPreview(component, isBatch = false) {
+            log(`Loading component: ${component.name}`, 'info');
+            
+            // Update status to testing
+            if (!testResults.has(component.id)) {
+                testResults.set(component.id, { status: 'testing', logs: [] });
+            } else {
+                const existing = testResults.get(component.id);
+                testResults.set(component.id, { ...existing, status: 'testing' });
+            }
+            renderComponentList();
+
+            // Show preview overlay
+            previewOverlay.style.display = 'flex';
+            renderStatus.className = 'preview-badge';
+            renderStatus.textContent = 'Loading...';
+
+            // Create iframe
+            previewContainer.innerHTML = '';
+            const iframe = document.createElement('iframe');
+            iframe.className = 'preview-frame';
+            iframe.src = component.path;
+            iframe.dataset.componentId = component.id;
+            
+            const startTime = performance.now();
+            let hasError = false;
+            let consoleLogs = [];
+
+            // Capture iframe console messages
+            window.addEventListener('message', handleIframeMessage);
+
+            iframe.onload = () => {
+                const loadTime = Math.round(performance.now() - startTime);
+                
+                // Inject console capture script
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+                    if (iframeDoc && iframeDoc.readyState === 'complete') {
+                        injectConsoleCapture(iframe);
+                    }
+                } catch (e) {
+                    // Cross-origin issues are expected for some cases
+                }
+
+                // Give time for scripts to execute and render
+                setTimeout(() => {
+                    if (!hasError) {
+                        const result = {
+                            status: 'ok',
+                            loadTime,
+                            logs: consoleLogs
+                        };
+                        testResults.set(component.id, result);
+                        renderStatus.className = 'preview-badge success';
+                        renderStatus.textContent = `✓ Rendered (${loadTime}ms)`;
+                        log(`✓ ${component.name} rendered successfully in ${loadTime}ms`, 'info');
+                        
+                        if (!isBatch) renderComponentList();
+                        updateStats();
+                    }
+                }, 1000);
+            };
+
+            iframe.onerror = () => {
+                hasError = true;
+                const result = {
+                    status: 'error',
+                    error: 'Failed to load',
+                    logs: consoleLogs
+                };
+                testResults.set(component.id, result);
+                renderStatus.className = 'preview-badge error';
+                renderStatus.textContent = '✗ Load Error';
+                log(`✗ ${component.name} failed to load`, 'error');
+                
+                if (!isBatch) renderComponentList();
+                updateStats();
+            };
+
+            previewContainer.appendChild(iframe);
+
+            // Timeout check for rendering
+            setTimeout(() => {
+                const result = testResults.get(component.id);
+                if (result?.status === 'testing') {
+                    const timeoutResult = {
+                        status: 'warning',
+                        error: 'Load timeout - may have render issues',
+                        logs: consoleLogs
+                    };
+                    testResults.set(component.id, timeoutResult);
+                    renderStatus.className = 'preview-badge';
+                    renderStatus.style.borderColor = 'var(--accent-warning)';
+                    renderStatus.style.color = 'var(--accent-warning)';
+                    renderStatus.textContent = '⚠ Timeout';
+                    log(`⚠ ${component.name} - load timeout`, 'warn');
+                    
+                    if (!isBatch) renderComponentList();
+                    updateStats();
+                }
+            }, 5000);
+        }
+
+        function injectConsoleCapture(iframe) {
+            const script = `
+                (function() {
+                    const methods = ['log', 'error', 'warn', 'info'];
+                    methods.forEach(method => {
+                        const original = console[method];
+                        console[method] = function(...args) {
+                            window.parent.postMessage({
+                                type: 'console',
+                                level: method,
+                                message: args.map(a => String(a)).join(' '),
+                                componentId: '${iframe.dataset.componentId}'
+                            }, '*');
+                            original.apply(console, args);
+                        };
+                    });
+                    
+                    window.addEventListener('error', (e) => {
+                        window.parent.postMessage({
+                            type: 'error',
+                            message: e.message,
+                            filename: e.filename,
+                            lineno: e.lineno,
+                            componentId: '${iframe.dataset.componentId}'
+                        }, '*');
+                    });
+                })();
+            `;
+            
+            try {
+                const doc = iframe.contentDocument;
+                const scriptEl = doc.createElement('script');
+                scriptEl.textContent = script;
+                doc.head.appendChild(scriptEl);
+            } catch (e) {
+                // Ignore cross-origin errors
+            }
+        }
+
+        function handleIframeMessage(e) {
+            if (e.data.type === 'console') {
+                log(`[${e.data.componentId}] ${e.data.message}`, e.data.level);
+            } else if (e.data.type === 'error') {
+                log(`[${e.data.componentId}] Error: ${e.data.message} (${e.data.filename}:${e.data.lineno})`, 'error');
+                const result = testResults.get(e.data.componentId);
+                if (result) {
+                    result.status = 'error';
+                    result.error = e.data.message;
+                    testResults.set(e.data.componentId, result);
+                    renderComponentList();
+                    updateStats();
+                }
+            }
+        }
+
+        // Batch test all components
+        async function testAll() {
+            if (isBatchTesting) return;
+            
+            isBatchTesting = true;
+            document.getElementById('btn-test-all').disabled = true;
+            document.getElementById('btn-test-all').innerHTML = '<div class="spinner"></div> Testing...';
+            progressBar.style.display = 'block';
+            
+            log('Starting batch test of all components...', 'info');
+            
+            const toTest = getFilteredComponents();
+            const total = toTest.length;
+            let current = 0;
+            
+            for (const component of toTest) {
+                current++;
+                const progress = (current / total) * 100;
+                progressFill.style.width = `${progress}%`;
+                
+                await new Promise(resolve => {
+                    loadComponentPreview(component, true);
+                    setTimeout(resolve, 1500); // Wait between tests
+                });
+            }
+            
+            progressBar.style.display = 'none';
+            isBatchTesting = false;
+            document.getElementById('btn-test-all').disabled = false;
+            document.getElementById('btn-test-all').innerHTML = '▶️ Test All';
+            
+            const errors = Array.from(testResults.values()).filter(r => r.status === 'error').length;
+            log(`Batch test complete. ${errors} errors found out of ${total} components.`, errors > 0 ? 'warn' : 'info');
+            
+            renderComponentList();
+            updateStats();
+        }
+
+        // Update stats
+        function updateStats() {
+            const total = components.length;
+            const results = Array.from(testResults.values());
+            const ok = results.filter(r => r.status === 'ok').length;
+            const errors = results.filter(r => r.status === 'error').length;
+            
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-ok').textContent = ok;
+            document.getElementById('stat-errors').textContent = errors;
+        }
+
+        // Logging
+        function log(message, level = 'log') {
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'console-entry';
+            entry.innerHTML = `
+                <span class="console-time">${time}</span>
+                <span class="console-level ${level}">${level.toUpperCase()}</span>
+                <span class="console-message">${escapeHtml(message)}</span>
+            `;
+            consoleOutput.appendChild(entry);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            
+            // Also log to browser console
+            console[level](message);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Event listeners
+        function setupEventListeners() {
+            // Search
+            searchInput.addEventListener('input', (e) => {
+                currentSearch = e.target.value;
+                renderComponentList();
+            });
+
+            // Filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentFilter = btn.dataset.filter;
+                    renderComponentList();
+                });
+            });
+
+            // Toolbar buttons
+            document.getElementById('btn-reload').addEventListener('click', () => {
+                if (currentComponent) {
+                    testResults.delete(currentComponent.id);
+                    loadComponentPreview(currentComponent);
+                }
+            });
+
+            document.getElementById('btn-open-tab').addEventListener('click', () => {
+                if (currentComponent) {
+                    window.open(currentComponent.path, '_blank');
+                }
+            });
+
+            document.getElementById('btn-test-all').addEventListener('click', testAll);
+
+            document.getElementById('btn-clear-console').addEventListener('click', () => {
+                consoleOutput.innerHTML = `
+                    <div class="console-entry">
+                        <span class="console-time">${new Date().toLocaleTimeString()}</span>
+                        <span class="console-level info">INFO</span>
+                        <span class="console-message">Console cleared</span>
+                    </div>
+                `;
+            });
+
+            document.getElementById('btn-copy-console').addEventListener('click', () => {
+                const text = Array.from(consoleOutput.children)
+                    .map(e => e.textContent)
+                    .join('\n');
+                navigator.clipboard.writeText(text);
+                log('Console output copied to clipboard', 'info');
+            });
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>

@@ -66,7 +66,7 @@ describe('Buttons Page', () => {
 
         // Mock CanvasRenderingContext2D.fillText
         const getContextOriginal = HTMLCanvasElement.prototype.getContext;
-        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function(type, ...args) {
+        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (type, ...args) {
             // For WebGL, always return our mock in test env
             if (type === 'webgl' || type === 'webgl2') {
                 return createWebGLMock();
@@ -80,6 +80,30 @@ describe('Buttons Page', () => {
             }
             return ctx;
         });
+
+        // Mock WebGL2Manager and WebGPUManager globals
+        window.WebGL2Manager = class {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.gl = canvas.getContext('webgl2'); // Uses test mock gl
+            }
+            createProgram(vs, fs) {
+                // Minimal mock - return truthy program
+                return {
+                    useProgram: vi.fn(),
+                    getUniformLocation: vi.fn(() => ({ uniform1f: vi.fn() })),
+                };
+            }
+        };
+
+        window.WebGPUManager = class {
+            constructor(canvas) {
+                this.canvas = canvas;
+            }
+            async init() {
+                return true;
+            }
+        };
 
         // Mock UIComponents global
         vi.stubGlobal('UIComponents', {
@@ -96,23 +120,23 @@ describe('Buttons Page', () => {
                 }
             },
             LayeredCanvas: class {
-                constructor() {}
+                constructor() { }
                 addLayer() { return { context: createWebGLMock(), canvas: { width: 100, height: 100 } }; }
                 addSVGLayer() { return { element: document.createElementNS('http://www.w3.org/2000/svg', 'svg') }; }
-                setRenderFunction() {}
-                startAnimation() {}
-                getLayer() {}
+                setRenderFunction() { }
+                startAnimation() { }
+                getLayer() { }
             },
             WebGPUParticleSystem: class {
-                constructor() {}
+                constructor() { }
                 init() { return Promise.resolve(true); }
-                updateUniforms() {}
-                render() {}
+                updateUniforms() { }
+                render() { }
             },
             WebGPUVolumetricRenderer: class {
-                constructor() {}
+                constructor() { }
                 init() { return Promise.resolve(true); }
-                render() {}
+                render() { }
             },
             ShaderUtils: {
                 createProgram: vi.fn(() => ({})),
@@ -128,12 +152,28 @@ describe('Buttons Page', () => {
                 getPreferredCanvasFormat: vi.fn(() => 'bgra8unorm')
             }
         });
+
+        // Mock WebGL2Manager and WebGPUManager globals
+        window.WebGL2Manager = class {
+            constructor(canvas) {
+                this.canvas = canvas;
+            }
+        };
+
+        window.WebGPUManager = class {
+            constructor(canvas) {
+                this.canvas = canvas;
+            }
+            async init() {
+                return true;
+            }
+        };
     });
 
     it('initializes basic buttons', async () => {
         await import('../js/buttons.js');
         document.dispatchEvent(new Event('DOMContentLoaded'));
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 200));
 
         const container = document.getElementById('basic-buttons');
         expect(container).toBeTruthy();
@@ -149,7 +189,7 @@ describe('Buttons Page', () => {
         await import('../js/buttons.js');
 
         document.dispatchEvent(new Event('DOMContentLoaded'));
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 200));
 
         const container = document.getElementById('rgb-buttons');
         expect(container).toBeTruthy();
