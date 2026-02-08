@@ -362,7 +362,7 @@ class QuantumEntanglementExperiment {
 
                 var p = particles[index];
 
-                // Centers adjusted for aspect ratio in compute?
+                // Centers adjusted for aspect ratio in vertex shader, but here we work in simulation space
                 // Aspect ratio is applied at rendering time or simulation?
                 // Let's keep simulation space -1..1 (x) and apply aspect ratio during render.
                 // However, our WebGL rings are at +/- 0.5 * aspect corrected?
